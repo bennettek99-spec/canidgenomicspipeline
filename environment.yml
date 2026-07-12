@@ -1,0 +1,44 @@
+# Conda/mamba environment for CANIS.
+# The foundation needs only the Python core; genomics binaries are pulled from bioconda
+# and pinned per-tool in containers for reproducible upstream processing.
+name: canis
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12
+  - pip
+  # --- Python core (also in pyproject; listed for a one-shot conda create) ---
+  - pydantic>=2.6
+  - typer>=0.12
+  - rich>=13.7
+  - pyyaml>=6.0
+  - numpy>=1.26
+  - pandas>=2.1
+  # --- scientific / genomics (optional extras) ---
+  - scikit-allel>=1.3
+  - cyvcf2>=0.30
+  - pysam>=0.22
+  - matplotlib>=3.8
+  - seaborn>=0.13
+  # --- scikit-learn / biopython / msprime for analysis + validation ---
+  - scikit-learn>=1.3
+  - biopython>=1.83
+  - msprime>=1.3
+  # --- external tools (bioconda) used by the read-processing stages ---
+  - bwa-mem2
+  - samtools
+  - bcftools
+  - gatk4
+  - plink2
+  - fastp
+  - multiqc
+  - seqtk
+  - sra-tools
+  # --- dev ---
+  - pytest>=8.0
+  - ruff>=0.3
+  - mypy>=1.9
+  - pip:
+      - sgkit>=0.8
+      - dsuite  # if unavailable on conda for the platform, install from source

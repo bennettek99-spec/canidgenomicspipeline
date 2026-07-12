@@ -1,0 +1,10 @@
+# Keep source, configs, and documentation stable across Windows/Linux development.
+* text=auto eol=lf
+
+# Common genomics formats are binary and must never be line-ending transformed.
+*.bam binary
+*.bcf binary
+*.cram binary
+*.gz binary
+*.npz binary
+*.vcf.gz binary

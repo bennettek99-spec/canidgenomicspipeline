@@ -1,0 +1,36 @@
+# Execution profile for a laptop like the Dell XPS 13 (Intel i7-1260P: 12 cores / 16
+# threads, no discrete GPU). Merge on top of a project config:
+#     canidae run -c configs/examples/popgen_mvp.yaml -c configs/profiles/laptop.yaml
+#
+# Guidance:
+#   * No GPU -> use CPU calling backends (GATK/bcftools/DeepVariant-CPU); never DeepVariant-GPU.
+#   * Thin-and-light chassis throttles under sustained all-core load: leave headroom rather
+#     than oversubscribing all 16 threads, and prefer fewer concurrent stages each with a
+#     moderate thread count over max_workers == cores.
+#   * The pure-Python analysis stages (popgen/introgression/LAI/selection/demography) are the
+#     ones you actually run here; the align/call/joint/SV wrappers target a Linux box.
+
+executor:
+  backend: native
+  max_workers: 2          # bounded by the resource manager; preserves thermal/OS headroom
+  resume: true
+
+resources:
+  cpus: 4                 # per-stage default thread hint for external tools
+  mem_mb: 6144
+  gpus: 0                 # no GPU on this machine
+
+# Enforced by the native executor when stages declare their resource requests. The
+# chromosome-wise analysis stages also read the sequential-processing preference.
+resource_manager:
+  max_memory_mb: 12288
+  max_workers: 2
+  min_free_disk_mb: 8192
+  cleanup_intermediates: true
+  stale_transaction_hours: 24
+  temperature_friendly: true
+  max_threads_per_stage: 4
+  process_chromosomes_sequentially: true
+
+containers:
+  engine: none

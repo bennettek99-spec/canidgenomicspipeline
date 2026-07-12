@@ -1,0 +1,59 @@
+# CANIS packaged default configuration.
+# Every run merges project/CLI layers on top of this. Keep values conservative and
+# machine-agnostic here; put machine- or study-specific values in a project config.
+
+project_name: canis
+seed: 1234
+
+paths:
+  root: "."
+  data_root: data
+  run_root: runs
+  reference_root: data/references
+  cache_root: data/cache
+
+executor:
+  backend: native
+  max_workers: 4
+  fail_fast: true
+  resume: true
+
+resources:
+  cpus: 1
+  mem_mb: 4096
+  gpus: 0
+  time_min: 60
+
+# Local-machine safety controls. A value of 0 disables the corresponding cap; the
+# laptop profile provides concrete conservative limits.
+resource_manager:
+  max_memory_mb: 0
+  max_workers: 0
+  min_free_disk_mb: 2048
+  pause_marker: null
+  cancel_marker: null
+  cleanup_intermediates: true
+  stale_transaction_hours: 24
+  temperature_friendly: true
+  max_threads_per_stage: 4
+  process_chromosomes_sequentially: true
+
+containers:
+  engine: none        # none | apptainer | docker
+  image_dir: containers
+  bind_paths: []
+
+logging:
+  level: INFO
+  json_format: false
+  rich_console: true
+
+# Ordered stage names to execute. Empty in defaults; a project config supplies the recipe,
+# e.g. [acquisition, qc, popgen, reporting].
+pipeline: []
+
+# Per-stage config blocks (validated by each stage's own model).
+stages: {}
+
+# Pinned tool versions / binary overrides (tool name -> spec). Empty by default.
+tools: {}

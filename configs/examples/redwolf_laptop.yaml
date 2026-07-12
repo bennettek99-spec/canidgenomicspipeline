@@ -1,0 +1,62 @@
+# Laptop-sized real red-wolf study: 9 genomes (2 red wolf + 2 coyote + 2 gray wolf +
+# 2 eastern wolf + 1 golden jackal outgroup), designed to run on a Dell XPS 13 via WSL2 with
+# downsampled reads. Filters are loosened to tolerate reduced coverage. See
+# docs/RUN_LAPTOP_REDWOLF.md for the exact step-by-step.
+
+project_name: red-wolf-laptop
+seed: 20
+
+paths:
+  root: .
+
+executor:
+  max_workers: 3          # thin laptop: leave headroom; per-tool threads below
+  resume: true            # checkpointed — re-run the same command to continue after a stop
+
+pipeline:
+  - sample_sheet
+  - align
+  - bcftools_call          # fast: one multi-sample bcftools call over all CRAMs -> callset
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - admixture
+  - cluster
+  - nj_tree
+  - f3
+  - dstats
+  - local_ancestry
+  - demography
+  - geography
+  - report
+
+stages:
+  sample_sheet:
+    path: configs/examples/redwolf_laptop_samples.csv
+  align:
+    fastq_manifest: data/redwolf/fastq_manifest.csv
+    reference: data/references/CanFam3.1.fa
+    threads: 4
+  bcftools_call:
+    reference: data/references/CanFam3.1.fa
+    threads: 4
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.05
+    max_missing: 0.4        # loosened for downsampled coverage
+  admixture:
+    backend: nmf
+    k_min: 2
+    k_max: 5
+  nj_tree:
+    n_bootstrap: 50
+  local_ancestry:
+    sources: [coyote, gray_wolf]
+    targets: [red_wolf, eastern_wolf]
+    window_bp: 1000000      # larger windows compensate for fewer SNPs at low coverage
+  demography:
+    mutation_rate: 4.5e-9
+  report:
+    title: "Red wolf ancestry — real genomes, laptop cohort (9 canids)"

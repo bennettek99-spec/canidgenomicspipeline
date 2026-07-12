@@ -1,0 +1,14 @@
+sample_id,taxon,population,region,latitude,longitude,source_study,accession
+SRR7976417,red_wolf,red_wolf,captive_founder_gulf_coast,29.7,-94.0,vonHoldt2016,SRR7976417
+SRR7976418,red_wolf,red_wolf,captive_founder_gulf_coast,29.7,-94.0,vonHoldt2016,SRR7976418
+SRR7976419,red_wolf,red_wolf,captive_founder_gulf_coast,29.7,-94.0,vonHoldt2016,SRR7976419
+SRR12075083,coyote,coyote,alberta,53.9,-116.6,Rougeux2023,SRR12075083
+SRR12075084,coyote,coyote,alberta,53.9,-116.6,Rougeux2023,SRR12075084
+SRR12075106,coyote,coyote,alberta,53.9,-116.6,Rougeux2023,SRR12075106
+SRR12075090,gray_wolf,gray_wolf,alberta,54.5,-115.0,Rougeux2023,SRR12075090
+SRR12075091,gray_wolf,gray_wolf,alberta,54.5,-115.0,Rougeux2023,SRR12075091
+SRR12075093,gray_wolf,gray_wolf,alberta,54.5,-115.0,Rougeux2023,SRR12075093
+SRR12075101,eastern_wolf,eastern_wolf,algonquin_ontario,45.8,-78.4,Rougeux2023,SRR12075101
+SRR12075104,eastern_wolf,eastern_wolf,algonquin_ontario,45.8,-78.4,Rougeux2023,SRR12075104
+SRR12075105,eastern_wolf,eastern_wolf,algonquin_ontario,45.8,-78.4,Rougeux2023,SRR12075105
+SRR2149876,golden_jackal,golden_jackal,middle_east,31.5,34.9,Koepfli2015,SRR2149876

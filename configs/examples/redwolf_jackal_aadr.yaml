@@ -1,0 +1,59 @@
+# Laptop-scale Red Wolf versus golden jackal comparison from the public 722-canid VCF.
+#
+# Prepare the reduced, indexed VCF first (typically 25,000 CanineHD target sites):
+#   bash scripts/prepare_redwolf_jackal_aadr.sh
+#
+# Then run this analysis config:
+#   canidae run -c configs/examples/redwolf_jackal_aadr.yaml \
+#     -c configs/profiles/laptop.yaml
+#
+# This is an AADR-style reduced SNP panel, not an EIGENSTRAT-format AADR release. The local
+# CANIS pipeline consumes VCF, so the preparation script retains the compact calls as VCF.gz.
+
+project_name: red-wolf-versus-golden-jackal-aadr
+seed: 25
+
+paths:
+  root: .
+  data_root: data/redwolf_jackal_aadr_workspace
+  run_root: runs/redwolf_jackal_aadr
+
+executor:
+  max_workers: 3
+  resume: true
+
+pipeline:
+  - ingest
+  - qc
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - nj_tree
+  - report
+
+stages:
+  ingest:
+    sample_sheet: configs/examples/redwolf_jackal_aadr_samples.csv
+    callset: data/redwolf_jackal_aadr/redwolf_jackal_caninehd25000.vcf.gz
+    dataset_id: PRJNA448733_caninehd25k
+    cohort_id: redwolf_jackal
+  qc:
+    min_call_rate: 1.0
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.0
+    max_missing: 0.0
+  pca:
+    n_components: 2
+  fst:
+    method: hudson
+    min_samples_per_population: 1
+  diversity:
+    min_samples_per_population: 1
+  nj_tree:
+    n_bootstrap: 100
+  report:
+    title: "Red Wolf versus golden jackal — reduced 722-canid SNP panel"
+

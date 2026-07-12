@@ -1,0 +1,61 @@
+# Integrated laptop-safe reduced-panel workflow.
+#
+# This starts directly from the indexed public 722-canid VCF; no full VCF or raw-read
+# download is performed.  On the first run the stage calculates a conservative transfer
+# estimate.  If that estimate is above the confirmation threshold, it stops before source
+# VCF ranges are fetched and asks you to set `confirm_large_transfer: true` deliberately.
+#
+# Run:
+#   canidae run -c configs/examples/redwolf_jackal_reduced_panel.yaml \
+#               -c configs/profiles/laptop.yaml
+
+project_name: red-wolf-jackal-reduced-panel
+seed: 25
+
+paths:
+  root: .
+  data_root: data/redwolf_jackal_reduced_panel_workspace
+  run_root: runs/redwolf_jackal_reduced_panel
+
+executor:
+  max_workers: 1
+  resume: true
+
+pipeline:
+  - reduced_panel
+  - qc
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - nj_tree
+  - report
+
+stages:
+  reduced_panel:
+    sample_sheet: configs/examples/redwolf_jackal_aadr_samples.csv
+    # Choose one of: 2k, 10k, 25k.  The source VCF stays remote and indexed.
+    preset: 10k
+    max_download_bytes: 9000000000
+    confirmation_threshold_bytes: 1000000000
+    confirm_large_transfer: false
+    dataset_id: PRJNA448733_reduced_panel
+    reference_id: CanFam3.1
+  qc:
+    min_call_rate: 1.0
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.0
+    max_missing: 0.0
+  pca:
+    n_components: 2
+  fst:
+    method: hudson
+    min_samples_per_population: 1
+  diversity:
+    min_samples_per_population: 1
+  nj_tree:
+    n_bootstrap: 100
+  report:
+    title: "Red Wolf versus golden jackal — integrated reduced SNP panel"

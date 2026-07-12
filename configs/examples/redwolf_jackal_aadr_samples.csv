@@ -1,0 +1,5 @@
+sample_id,taxon,population,region,latitude,longitude,source_study,accession
+Wolf25,red_wolf,red_wolf,captive_red_wolf,,,Plassais2019_PRJNA448733,SAMN02921317
+Wolf26,red_wolf,red_wolf,captive_red_wolf,,,Plassais2019_PRJNA448733,SAMN02921318
+GoldenJackal01,golden_jackal,golden_jackal,,,,Plassais2019_PRJNA448733,SAMN03366713
+

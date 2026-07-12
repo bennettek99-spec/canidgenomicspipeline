@@ -1,0 +1,56 @@
+# Example project config — Phase-1 population-genomics MVP.
+#
+# Point `sample_sheet` and `callset` at your data, then run:
+#     canidae run -c configs/examples/popgen_mvp.yaml
+#
+# The sample sheet is a CSV with (at least) columns: sample_id, taxon, population.
+# `taxon` must be one of the CanidTaxon labels (gray_wolf, coyote, domestic_dog, ...).
+
+project_name: canid-popgen-mvp
+seed: 7
+
+paths:
+  root: .
+
+executor:
+  max_workers: 4
+  resume: true
+
+pipeline:
+  - ingest          # register the published VCF + validate the sample sheet
+  - qc              # per-sample call rate / heterozygosity
+  - load_genotypes  # VCF -> biallelic-SNP genotype matrix (once)
+  - distance        # pairwise genetic-distance matrix
+  - pca             # principal components
+  - fst             # pairwise Hudson F_ST
+  - diversity       # per-population pi + heterozygosity
+  - admixture       # ancestry proportions (sNMF-style; ADMIXTURE binary if present)
+  - cluster         # hierarchical clustering + ARI vs population labels
+  - roh             # runs of homozygosity / F_ROH
+  - geography       # isolation-by-distance (Mantel) + regional ancestry + map
+  - report          # self-contained HTML report
+
+stages:
+  ingest:
+    sample_sheet: data/samples.csv
+    callset: data/cohort.vcf.gz
+    dataset_id: my_dataset
+  qc:
+    min_call_rate: 0.7
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.01
+    max_missing: 0.1
+  pca:
+    n_components: 8
+  admixture:
+    backend: auto        # auto | nmf | binary(ADMIXTURE)
+    k_min: 2
+    k_max: 6
+  roh:
+    window_bp: 100000
+    min_segment_bp: 500000
+  geography:
+    permutations: 999
+  report:
+    title: "Canid population genomics — MVP"

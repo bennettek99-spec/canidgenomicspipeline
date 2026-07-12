@@ -1,0 +1,72 @@
+# Real red-wolf study on public whole genomes (LINUX / WSL2 ONLY — needs bwa-mem2, samtools,
+# GATK; see docs/REAL_DATA_REDWOLF.md). Cohort = 3 red wolf + 3 coyote + 3 gray wolf +
+# 3 eastern wolf + 1 golden jackal outgroup, assembled across studies (the reason `harmonize`
+# and this raw-reads path exist). Run:
+#
+#   bash scripts/fetch_reference.sh
+#   bash scripts/fetch_redwolf_reads.sh            # ~150-250 GB; set SUBSAMPLE=0.1 on a laptop
+#   canidae run -c configs/examples/redwolf_real.yaml -c configs/profiles/laptop.yaml
+
+project_name: red-wolf-real
+seed: 20
+
+paths:
+  root: .
+
+executor:
+  max_workers: 4
+  resume: true                 # each stage is checkpointed — safe to re-run after a crash
+
+pipeline:
+  - sample_sheet               # register per-sample metadata (no callset yet)
+  - align                      # bwa-mem2 -> CRAM   (per sample)
+  - call_variants              # GATK HaplotypeCaller -> gVCF
+  - joint_genotype             # GATK CombineGVCFs + GenotypeGVCFs -> multi-sample VCF
+  - load_genotypes             # VCF -> biallelic-SNP matrix
+  - distance
+  - pca
+  - fst
+  - diversity
+  - admixture
+  - cluster
+  - nj_tree
+  - f3
+  - dstats                     # D-statistics; outgroup auto-detected (golden jackal)
+  - local_ancestry             # paint red/eastern wolves with coyote vs gray-wolf ancestry
+  - demography
+  - geography
+  - report
+
+stages:
+  sample_sheet:
+    path: configs/examples/redwolf_samples.csv
+  align:
+    fastq_manifest: data/redwolf/fastq_manifest.csv
+    reference: data/references/CanFam3.1.fa
+    threads: 4
+  call_variants:
+    reference: data/references/CanFam3.1.fa
+    backend: gatk              # gatk | bcftools | deepvariant  (all CPU; no GPU needed)
+    threads: 4
+  joint_genotype:
+    reference: data/references/CanFam3.1.fa
+    backend: gatk              # gatk | glnexus
+    threads: 4
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.05
+    max_missing: 0.2           # real WGS has missing calls; keep well-covered sites
+  admixture:
+    backend: nmf
+    k_min: 2
+    k_max: 6
+  nj_tree:
+    n_bootstrap: 100
+  local_ancestry:
+    sources: [coyote, gray_wolf]
+    targets: [red_wolf, eastern_wolf]
+    window_bp: 500000
+  demography:
+    mutation_rate: 4.5e-9      # canid per-bp per-generation estimate
+  report:
+    title: "Red wolf ancestry — real public genomes (vonHoldt 2016 + Rougeux 2023)"

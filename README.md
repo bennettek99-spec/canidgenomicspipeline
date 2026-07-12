@@ -1,0 +1,93 @@
+# CANIS — laptop-safe canid genomics
+
+[![CI](https://github.com/bennettek99-spec/canidgenomicspipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/bennettek99-spec/canidgenomicspipeline/actions/workflows/ci.yml)
+
+CANIS is a configuration-driven comparative evolutionary-genomics pipeline for canids. It is designed for a normal laptop first: it processes chromosomes sequentially, puts hard guards around downloads and disk space, resumes only verified unchanged work, and produces a portable HTML analysis package.
+
+> Comparative evolutionary genomics only. CANIS is exploratory software, not a veterinary diagnostic or a standalone conservation-management decision tool.
+
+## What this version does
+
+- Safe resume cache: every stage is fingerprinted from its inputs, relevant configuration, and CANIS source code. Cache records are small JSON metadata; VCFs and genomic arrays are never copied for caching.
+- Atomic outputs and provenance: stages write to a temporary workspace, validate outputs, then promote them atomically. The run manifest records success, cache skips, failures, resource preflight, recovery directions, and checksums.
+- Enforced QC: sample and site failures are physically removed before genotype loading. `qc_exclusions.csv` records every excluded sample/site and exact reason.
+- Correct chromosome handling: D/f-statistic uncertainty uses chromosomes or fixed physical blocks; local-ancestry HMMs restart at every chromosome and run sequentially.
+- Guarded acquisition: the integrated `reduced_panel` stage supports indexed remote VCFs, 2K/10K/25K SNP presets, range-only streaming, checksum validation, size estimates, an explicit confirmation gate, a 9 GB default ceiling, and temporary-file cleanup.
+- Lightweight VCF harmonization: common-reference verification, SNP normalization, REF/ALT and strand-orientation checks, sample concordance, missingness/batch diagnostics. Liftover is an explicit external preparation step, never an automatic laptop action.
+- Honest diversity and demography: fixed-panel diversity/heterozygosity are labelled panel-relative. Full per-callable-site π, θ, Tajima’s D, and Ne require an explicit callable-site denominator.
+- Local control: `canidae ui` opens a loopback-only browser interface for dataset selection, preset/resource estimates, optional analyses, start/pause/stop/resume, progress, plain-language errors, and output links.
+- Self-contained reporting: `report.html` opens by double-clicking and includes executive summary, QC badges, excluded records, PCA, tree/ancestry/introgression where configured, limitations, source accessions, downloads, methods, and provenance links.
+
+## Quick start (Windows PowerShell)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev,analysis]"
+
+# Validate the install and inspect available stages.
+canidae version
+canidae stages
+pytest -q
+
+# Start the local-only browser interface.
+canidae ui
+```
+
+For a reproducible simulated cohort:
+
+```powershell
+python tests\simulated\make_cohort.py data
+canidae run -c configs\examples\popgen_mvp.yaml `
+  --set stages.ingest.callset=data\cohort.vcf `
+  --set stages.load_genotypes.min_maf=0.0
+```
+
+The report is written to `data/store/report/report.html`; double-click it after the run. The adjacent `data/store/` stage folders and `runs/<run-id>/manifest.json` form the companion reproducibility package.
+
+## Laptop reduced-panel workflow
+
+The integrated public Red Wolf / golden jackal example starts from a remote indexed VCF rather than downloading the full source VCF or raw reads:
+
+```powershell
+canidae run -c configs\examples\redwolf_jackal_reduced_panel.yaml `
+  -c configs\profiles\laptop.yaml
+```
+
+It stops after calculating a real byte-range estimate when explicit confirmation is required. Review that estimate and set `stages.reduced_panel.confirm_large_transfer: true` only if it is acceptable. See [the reduced-panel guide](docs/REDUCED_PANEL_PIPELINE.md).
+
+## Pipeline layout
+
+```text
+configs/                         safe defaults, laptop profile, reproducible recipes
+docs/                            operating guide, architecture, reduced-panel details
+src/canidae/
+  cli.py                         `canidae run`, `canidae ui`, config/stage commands
+  ui.py                          local loopback-only browser controller
+  core/                          cache, atomic staging, provenance, resource manager
+  stages/
+    acquisition/                 ingest and remote indexed reduced-panel extraction
+    qc/                          enforced sample/site filtering and exclusion ledger
+    processing/                  harmonization and VCF utilities
+    popgen/, introgression/,     PCA, FST, diversity, D/f statistics, local ancestry,
+    local_ancestry/, ...         phylogenetics, demography, reporting
+tests/                           unit, simulated, and integration validation
+```
+
+## Data and statistical scope
+
+Use a sample sheet with at least `sample_id`, `taxon`, and `population`. For full-genome demographic estimates, provide a defensible callable-site denominator with `stages.diversity.callable_sites` and/or `stages.demography.callable_sites`. Without it, the report deliberately presents selected-SNP panel-relative values only.
+
+Keep large data outside Git. The repository ignores VCF/BCF/BAM/CRAM/Zarr files, run outputs, staging workspaces, and cache metadata by default.
+
+## Documentation
+
+- [Laptop operation, pause/resume, and cleanup](docs/LAPTOP_OPERATIONS.md)
+- [Integrated reduced-panel acquisition](docs/REDUCED_PANEL_PIPELINE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Legacy public Red Wolf AADR-style extraction notes](docs/REDWOLF_JACKAL_AADR.md)
+- [Changelog](CHANGELOG.md)
+
+## License
+
+MIT. See [LICENSE](LICENSE).
