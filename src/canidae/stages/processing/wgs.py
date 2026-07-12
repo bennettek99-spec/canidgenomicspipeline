@@ -37,10 +37,20 @@ _BASH = ToolSpec(name="bash")
 
 
 def align_command(sample: str, fq1: str, fq2: str, ref: str, cram: str,
-                  threads: int) -> str:
+                  threads: int, *, layout: str = "paired") -> str:
+    if layout == "paired":
+        if not fq2:
+            raise StageInputError("paired-end alignment requires fastq2")
+        reads = f"{fq1} {fq2}"
+    elif layout == "interleaved":
+        reads = f"-p {fq1}"
+    elif layout == "single":
+        reads = fq1
+    else:
+        raise StageInputError(f"unknown FASTQ layout: {layout}")
     rg = rf"@RG\tID:{sample}\tSM:{sample}\tPL:ILLUMINA"
     return (
-        f"bwa-mem2 mem -t {threads} -R '{rg}' {ref} {fq1} {fq2} "
+        f"bwa-mem2 mem -t {threads} -R '{rg}' {ref} {reads} "
         f"| samtools fixmate -m -u - - "
         f"| samtools sort -@ {threads} -u - "
         f"| samtools markdup -@ {threads} --reference {ref} -O CRAM - {cram} "
@@ -87,9 +97,21 @@ def bcftools_joint_command(crams: list[str], ref: str, out_vcf: str, threads: in
 
 def read_fastq_manifest(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path, dtype=str)
-    required = {"sample_id", "fastq1", "fastq2"}
+    required = {"sample_id", "fastq1"}
     if not required <= set(df.columns):
         raise StageInputError(f"fastq manifest needs columns {sorted(required)}")
+    if "layout" not in df.columns:
+        # Legacy manually-created manifests retain their paired-end interpretation.
+        df["layout"] = "paired"
+    if "fastq2" not in df.columns:
+        df["fastq2"] = ""
+    layouts = set(df["layout"].fillna("").astype(str))
+    invalid = layouts - {"paired", "interleaved", "single"}
+    if invalid:
+        raise StageInputError(f"unknown FASTQ layout(s): {sorted(invalid)}")
+    paired_missing = (df["layout"] == "paired") & df["fastq2"].fillna("").eq("")
+    if paired_missing.any():
+        raise StageInputError("paired FASTQ manifest rows need a non-empty fastq2")
     return df
 
 
@@ -110,7 +132,7 @@ class AlignStage(Stage):
     config_model = AlignConfig
 
     def required_inputs(self) -> list[ArtifactSpec]:
-        return []
+        return [ArtifactSpec(ArtifactKind.RAW_READS, "fastq_manifest", optional=True)]
 
     def produced_outputs(self) -> list[ArtifactSpec]:
         return [ArtifactSpec(ArtifactKind.ALIGNMENT, "crams")]
@@ -119,13 +141,20 @@ class AlignStage(Stage):
         cfg: AlignConfig = self.config  # type: ignore[assignment]
         ctx.runner.ensure(_BASH)
         root = ctx.config.paths.root
-        manifest = read_fastq_manifest(_resolve(cfg.fastq_manifest, root))
+        manifest_path = (
+            ctx.datastore.get(ArtifactKind.RAW_READS, "fastq_manifest").path
+            if ctx.datastore.has(ArtifactKind.RAW_READS, "fastq_manifest")
+            else _resolve(cfg.fastq_manifest, root)
+        )
+        manifest = read_fastq_manifest(manifest_path)
         ref = str(_resolve(cfg.reference, root))
         stage_dir = ctx.datastore.stage_dir(self.name)
         rows = []
         for r in manifest.itertuples(index=False):
             cram = str(stage_dir / f"{r.sample_id}.cram")
-            cmd = align_command(r.sample_id, r.fastq1, r.fastq2, ref, cram, cfg.threads)
+            cmd = align_command(
+                r.sample_id, r.fastq1, r.fastq2, ref, cram, cfg.threads, layout=r.layout
+            )
             ctx.runner.run(_BASH, ["-lc", cmd],
                            resources=ResourceSpec(cpus=cfg.threads),
                            record=ctx.scratch.get("_record"), cwd=stage_dir,

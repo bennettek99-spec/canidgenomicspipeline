@@ -1,0 +1,62 @@
+# Template for explicitly selected public gzip FASTQ archives on a laptop.
+#
+# Replace URLs, checksums, expected byte counts, and sample metadata before running. The
+# stage refuses unknown-size sources, transfers >=10 GB, or confirmation-threshold transfers
+# without an explicit `confirm_large_transfer: true` setting.
+
+project_name: laptop-read-acquisition
+
+paths:
+  root: .
+
+executor:
+  max_workers: 1
+
+pipeline:
+  - sample_sheet
+  - acquire_reads
+  - align
+  - bcftools_call
+  - qc
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - report
+
+stages:
+  sample_sheet:
+    path: configs/examples/redwolf_laptop_samples.csv
+  acquire_reads:
+    max_download_bytes: 9000000000
+    confirmation_threshold_bytes: 1000000000
+    confirm_large_transfer: false
+    archives:
+      # Paired-end: exactly two gzip FASTQ URLs; the same random decision is applied to each mate.
+      - sample_id: REPLACE_PAIRED_SAMPLE
+        layout: paired
+        urls: [https://example.org/sample_R1.fastq.gz, https://example.org/sample_R2.fastq.gz]
+        checksums: [sha256:REPLACE, sha256:REPLACE]
+        expected_bytes: [100000000, 100000000]
+        downsample_fraction: 0.1
+      # Interleaved: one gzip FASTQ URL; read pairs remain adjacent during downsampling.
+      - sample_id: REPLACE_INTERLEAVED_SAMPLE
+        layout: interleaved
+        urls: [https://example.org/sample_interleaved.fastq.gz]
+        checksums: [sha256:REPLACE]
+        expected_bytes: [100000000]
+        downsample_fraction: 0.1
+      # Single-end: one gzip FASTQ URL.
+      - sample_id: REPLACE_SINGLE_SAMPLE
+        layout: single
+        urls: [https://example.org/sample_single.fastq.gz]
+        checksums: [sha256:REPLACE]
+        expected_bytes: [100000000]
+        downsample_fraction: 0.1
+  align:
+    reference: data/references/CanFam3.1.fa
+    threads: 2
+  bcftools_call:
+    reference: data/references/CanFam3.1.fa
+    threads: 2

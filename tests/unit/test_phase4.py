@@ -38,6 +38,15 @@ def test_align_command_pipeline() -> None:
     assert "samtools markdup" in cmd and "W1.cram" in cmd
 
 
+def test_align_command_supports_interleaved_and_single_end_reads() -> None:
+    interleaved = align_command("I1", "reads.fq.gz", "", "ref.fa", "I1.cram", 2,
+                                layout="interleaved")
+    single = align_command("S1", "reads.fq.gz", "", "ref.fa", "S1.cram", 2,
+                           layout="single")
+    assert " -p reads.fq.gz " in interleaved
+    assert "reads.fq.gz " in single and " -p " not in single
+
+
 def test_call_command_backends() -> None:
     assert "HaplotypeCaller" in call_command("s", "s.cram", "ref", "s.g.vcf", "gatk", 4)
     assert "mpileup" in call_command("s", "s.cram", "ref", "s.g.vcf", "bcftools", 4)

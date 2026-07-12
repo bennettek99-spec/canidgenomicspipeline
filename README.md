@@ -12,7 +12,7 @@ CANIS is a configuration-driven comparative evolutionary-genomics pipeline for c
 - Atomic outputs and provenance: stages write to a temporary workspace, validate outputs, then promote them atomically. The run manifest records success, cache skips, failures, resource preflight, recovery directions, and checksums.
 - Enforced QC: sample and site failures are physically removed before genotype loading. `qc_exclusions.csv` records every excluded sample/site and exact reason.
 - Correct chromosome handling: D/f-statistic uncertainty uses chromosomes or fixed physical blocks; local-ancestry HMMs restart at every chromosome and run sequentially.
-- Guarded acquisition: the integrated `reduced_panel` stage supports indexed remote VCFs, 2K/10K/25K SNP presets, range-only streaming, checksum validation, size estimates, an explicit confirmation gate, a 9 GB default ceiling, and temporary-file cleanup.
+- Guarded acquisition: `reduced_panel` safely extracts indexed remote VCFs, while `acquire_reads` streams paired, interleaved, or single-end gzip FASTQ archives with pair-preserving downsampling, checksum validation, size estimates, confirmation gates, a 9 GB default ceiling, and temporary-file cleanup.
 - Lightweight VCF harmonization: common-reference verification, SNP normalization, REF/ALT and strand-orientation checks, sample concordance, missingness/batch diagnostics. Liftover is an explicit external preparation step, never an automatic laptop action.
 - Honest diversity and demography: fixed-panel diversity/heterozygosity are labelled panel-relative. Full per-callable-site π, θ, Tajima’s D, and Ne require an explicit callable-site denominator.
 - Local control: `canidae ui` opens a loopback-only browser interface for dataset selection, preset/resource estimates, optional analyses, start/pause/stop/resume, progress, plain-language errors, and output links.
@@ -84,6 +84,7 @@ Keep large data outside Git. The repository ignores VCF/BCF/BAM/CRAM/Zarr files,
 
 - [Laptop operation, pause/resume, and cleanup](docs/LAPTOP_OPERATIONS.md)
 - [Integrated reduced-panel acquisition](docs/REDUCED_PANEL_PIPELINE.md)
+- [Laptop-safe paired/interleaved/single-end FASTQ acquisition](docs/LAPTOP_READ_ACQUISITION.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Legacy public Red Wolf AADR-style extraction notes](docs/REDWOLF_JACKAL_AADR.md)
 - [Changelog](CHANGELOG.md)

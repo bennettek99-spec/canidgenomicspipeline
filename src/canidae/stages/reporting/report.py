@@ -487,6 +487,8 @@ def _methods(ctx: RunContext, diversity_metadata: dict) -> str:
 def _sources_table(ds) -> str:
     rows: list[dict[str, object]] = []
     for artifact in ds.find(ArtifactKind.CALLSET):
+        if artifact.role == "qc_callset":
+            continue  # filtered derivative; cite the original source callset instead
         metadata = artifact.metadata
         rows.append({
             "artifact_role": artifact.role,

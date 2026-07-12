@@ -198,7 +198,7 @@ class RunController:
 
     def status(self) -> dict[str, Any]:
         with self._lock:
-            return {
+            payload = {
                 "state": self.state,
                 "message": self.message,
                 "run_id": self.run_id,
@@ -206,6 +206,8 @@ class RunController:
                 "outputs": list(self.outputs),
                 "active": bool(self._thread is not None and self._thread.is_alive()),
             }
+            payload.update(self._manifest_progress())
+            return payload
 
     def _manager(self) -> ResourceManager:
         if self.config is None or self.run_id is None:
@@ -237,6 +239,35 @@ class RunController:
                 self.state = "failed"
                 self.error = f"{type(exc).__name__}: {exc}"
                 self.message = "The run stopped before completion. Check the manifest and correct the plain-language error."
+
+    def _manifest_progress(self) -> dict[str, Any]:
+        """Read the incrementally flushed manifest for a real current-stage progress view."""
+        if self.config is None or self.run_id is None:
+            return {"progress": "No run started yet."}
+        manifest_path = self.config.paths.run_root / self.run_id / "manifest.json"
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {"progress": "Preparing run manifest…"}
+        records = manifest.get("records", [])
+        completed = sum(record.get("status") in {"succeeded", "skipped", "failed"}
+                        for record in records)
+        current = next((record for record in reversed(records)
+                        if record.get("status") == "running"), None)
+        if current:
+            return {
+                "progress": f"Current stage: {current.get('stage', 'unknown')} "
+                f"({completed}/{len(self.config.pipeline)} finalized)",
+                "current_stage": current.get("stage"),
+            }
+        if records:
+            latest = records[-1]
+            recovery = latest.get("recovery")
+            return {
+                "progress": f"{completed}/{len(self.config.pipeline)} stages finalized.",
+                "recovery": recovery,
+            }
+        return {"progress": "Preparing first stage…"}
 
 
 def _outputs_for(config: GlobalConfig) -> list[dict[str, str]]:
@@ -342,7 +373,7 @@ _HTML = """<!doctype html>
 <section class="card"><h2>Laptop-safe plan</h2><label>Reduced panel (public mode)</label><select id="preset" onchange="estimate()"><option value="2k">2,000 SNPs</option><option value="10k" selected>10,000 SNPs</option><option value="25k">25,000 SNPs</option></select><div id="estimate" class="estimate">Loading estimate…</div><label class="check"><input id="confirm" type="checkbox"> I confirm a transfer above the displayed confirmation threshold, if the exact preflight asks.</label><label>Maximum workers</label><input id="workers" type="number" min="1" max="8" value="2"><label>Memory ceiling (MiB)</label><input id="memory" type="number" min="1024" max="65536" value="8192"><p class="note">The exact indexed-range estimate runs before source VCF ranges are fetched. The hard ceiling is below 10 GB.</p></section>
 <section class="card"><h2>Analysis package</h2><p class="note">PCA, F<sub>ST</sub>, and panel-aware diversity are included so the final report remains complete.</p><label class="check"><input type="checkbox" value="distance" checked> Pairwise distance</label><label class="check"><input type="checkbox" value="tree" checked> Neighbor-joining tree</label><label class="check"><input type="checkbox" value="admixture"> Admixture</label><label class="check"><input type="checkbox" value="introgression"> Chromosome-aware D-statistics</label><label class="check"><input type="checkbox" value="local_ancestry"> Chromosome-reset local ancestry</label><label>Report title</label><input id="title" value="CANIS laptop analysis"></section></div>
 <section class="card"><h2>Run controls</h2><button onclick="start()">Start safe run</button><button class="alt" onclick="pause()">Pause</button><button class="alt" onclick="resume()">Resume</button><button class="warn" onclick="stopRun()">Stop safely</button><div id="status" class="status estimate">Idle.</div><div id="outputs" class="outputs"></div></section>
-<script>const $=id=>document.getElementById(id);async function api(url,method='GET',data={}){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:method==='GET'?undefined:JSON.stringify(data)});const v=await r.json();if(!r.ok)throw Error(v.error||'Request failed');return v}function updateMode(){const pub=$('mode').value==='redwolf_public';$('vcf').disabled=pub;$('preset').disabled=!pub;$('samples').disabled=!pub;$('panelRelative').disabled=pub}async function estimate(){try{const v=await api('/api/estimate?preset='+$('preset').value);$('estimate').textContent='Preliminary transfer: '+v.download+' • disk: '+v.disk+' • runtime: '+v.runtime+'\n'+v.note}catch(e){$('estimate').textContent=e.message}}function payload(){return{dataset_mode:$('mode').value,vcf_path:$('vcf').value,sample_sheet:$('sheet').value,reference_build:$('reference').value,dataset_id:$('dataset').value,panel_relative:$('panelRelative').checked,selected_samples:$('samples').value,panel_preset:$('preset').value,confirm_large_transfer:$('confirm').checked,max_workers:$('workers').value,memory_mb:$('memory').value,report_title:$('title').value,analyses:[...document.querySelectorAll('input[type=checkbox][value]:checked')].map(x=>x.value)}}function render(v){$('status').textContent=(v.state||'')+'\n'+(v.message||'')+(v.error?'\nError: '+v.error:'')+ (v.run_id?'\nRun ID: '+v.run_id:'');$('outputs').innerHTML=(v.outputs||[]).map(o=>'<a href="file:///'+o.path.replaceAll('\\\\','/')+'" target="_blank">'+o.label+'</a>').join('')}async function start(){try{render(await api('/api/start','POST',payload()))}catch(e){$('status').textContent=e.message}}async function pause(){try{render(await api('/api/pause','POST'))}catch(e){$('status').textContent=e.message}}async function resume(){try{render(await api('/api/resume','POST'))}catch(e){$('status').textContent=e.message}}async function stopRun(){try{render(await api('/api/stop','POST'))}catch(e){$('status').textContent=e.message}}async function poll(){try{render(await api('/api/status'))}catch(_){}setTimeout(poll,1800)}updateMode();estimate();poll();</script></body></html>"""
+<script>const $=id=>document.getElementById(id);async function api(url,method='GET',data={}){const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:method==='GET'?undefined:JSON.stringify(data)});const v=await r.json();if(!r.ok)throw Error(v.error||'Request failed');return v}function updateMode(){const pub=$('mode').value==='redwolf_public';$('vcf').disabled=pub;$('preset').disabled=!pub;$('samples').disabled=!pub;$('panelRelative').disabled=pub}async function estimate(){try{const v=await api('/api/estimate?preset='+$('preset').value);$('estimate').textContent='Preliminary transfer: '+v.download+' • disk: '+v.disk+' • runtime: '+v.runtime+'\n'+v.note}catch(e){$('estimate').textContent=e.message}}function payload(){return{dataset_mode:$('mode').value,vcf_path:$('vcf').value,sample_sheet:$('sheet').value,reference_build:$('reference').value,dataset_id:$('dataset').value,panel_relative:$('panelRelative').checked,selected_samples:$('samples').value,panel_preset:$('preset').value,confirm_large_transfer:$('confirm').checked,max_workers:$('workers').value,memory_mb:$('memory').value,report_title:$('title').value,analyses:[...document.querySelectorAll('input[type=checkbox][value]:checked')].map(x=>x.value)}}function render(v){$('status').textContent=(v.state||'')+'\n'+(v.message||'')+(v.progress?'\n'+v.progress:'')+(v.error?'\nError: '+v.error:'')+(v.recovery?'\nRecovery: '+v.recovery:'')+ (v.run_id?'\nRun ID: '+v.run_id:'');$('outputs').innerHTML=(v.outputs||[]).map(o=>'<a href="file:///'+o.path.replaceAll('\\\\','/')+'" target="_blank">'+o.label+'</a>').join('')}async function start(){try{render(await api('/api/start','POST',payload()))}catch(e){$('status').textContent=e.message}}async function pause(){try{render(await api('/api/pause','POST'))}catch(e){$('status').textContent=e.message}}async function resume(){try{render(await api('/api/resume','POST'))}catch(e){$('status').textContent=e.message}}async function stopRun(){try{render(await api('/api/stop','POST'))}catch(e){$('status').textContent=e.message}}async function poll(){try{render(await api('/api/status'))}catch(_){}setTimeout(poll,1800)}updateMode();estimate();poll();</script></body></html>"""
 
 
 __all__ = ["RunController", "UiRequestError", "build_ui_config", "estimate_laptop_run", "serve_ui"]
