@@ -1,0 +1,63 @@
+# Laptop-safe, genuine eastern-coyote comparison derived from the public
+# Heppenheimer et al. (2018) Dryad RADseq genotype deposit (doi:10.5061/dryad.7f9q2cd).
+# It compares 26 Ontario eastern coyotes against 12 Arizona western coyotes at
+# RADseq SNPs. It intentionally omits f-statistics and local ancestry: this
+# callset has no wolf or external outgroup samples and is not whole genome.
+
+project_name: eastern-coyote-radseq-laptop
+seed: 25
+
+paths:
+  root: .
+  data_root: data/eastern_coyote_radseq_workspace
+  run_root: runs/eastern_coyote_radseq
+
+executor:
+  max_workers: 1
+  resume: true
+
+pipeline:
+  - ingest
+  - qc
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - admixture
+  - nj_tree
+  - report
+
+stages:
+  ingest:
+    sample_sheet: configs/examples/eastern_coyote_radseq_samples.csv
+    callset: data/eastern_coyote_radseq/eastern_coyote_ontario_arizona_radseq.vcf.gz
+    dataset_id: Heppenheimer2018_Dryad_10.5061_dryad.7f9q2cd
+    cohort_id: eastern_coyote_ontario_vs_arizona
+    reference_build: source_MAP_coordinates_only
+    panel_relative: true
+    panel_name: RADseq_22935_source_loci
+  qc:
+    min_sample_call_rate: 0.95
+    min_site_call_rate: 0.95
+    min_site_maf: 0.01
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.01
+    max_missing: 0.05
+  pca:
+    n_components: 2
+  fst:
+    method: hudson
+    min_samples_per_population: 2
+  diversity:
+    min_samples_per_population: 2
+  admixture:
+    backend: nmf
+    k_min: 2
+    k_max: 4
+    n_iter: 100
+  nj_tree:
+    n_bootstrap: 50
+  report:
+    title: "Ontario eastern coyote vs Arizona western coyote - laptop RADseq analysis"

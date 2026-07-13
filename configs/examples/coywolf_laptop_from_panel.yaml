@@ -1,0 +1,65 @@
+# Re-analyze the compact panel created by coywolf_laptop.yaml without contacting
+# the remote 722-canid VCF.  This keeps the golden jackal as the explicit external
+# lineage for both outgroup-f3 and D-statistics.
+
+project_name: coywolf-laptop-local-analysis
+seed: 25
+
+paths:
+  root: .
+  data_root: data/coywolf_laptop_corrected_workspace
+  run_root: runs/coywolf_laptop_corrected
+
+executor:
+  max_workers: 1
+  resume: true
+
+pipeline:
+  - ingest
+  - qc
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - admixture
+  - nj_tree
+  - f3
+  - dstats
+  - report
+
+stages:
+  ingest:
+    sample_sheet: configs/examples/coywolf_laptop_samples.csv
+    callset: data/coywolf_laptop_workspace/store/reduced_panel/reduced_panel_2k.vcf.gz
+    dataset_id: PRJNA448733_coywolf_proxy_reduced_panel
+    cohort_id: coywolf_proxy
+    reference_build: CanFam3.1
+    panel_relative: true
+    panel_name: fixed_snp_panel_2k
+  qc:
+    min_call_rate: 1.0
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.0
+    max_missing: 0.0
+  pca:
+    n_components: 2
+  fst:
+    method: hudson
+    min_samples_per_population: 1
+  diversity:
+    min_samples_per_population: 1
+  admixture:
+    backend: nmf
+    k_min: 2
+    k_max: 4
+    n_iter: 100
+  f3:
+    outgroup: golden_jackal
+  dstats:
+    outgroup: golden_jackal
+  nj_tree:
+    n_bootstrap: 50
+  report:
+    title: "Coyote-wolf (coywolf proxy) - reduced 722-canid SNP panel"

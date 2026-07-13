@@ -1,0 +1,7 @@
+sample_id,taxon,population,region,source_study
+Coyote01,coyote,coyote,north_america,Plassais2019_PRJNA448733
+Coyote02,coyote,coyote,north_america,Plassais2019_PRJNA448733
+AlaskanWolf,gray_wolf,gray_wolf,north_america,Plassais2019_PRJNA448733
+AlgonquinWolf13467,eastern_wolf,eastern_wolf,north_america,Plassais2019_PRJNA448733
+AlgonquinWolf13470,eastern_wolf,eastern_wolf,north_america,Plassais2019_PRJNA448733
+GoldenJackal01,golden_jackal,golden_jackal,,Plassais2019_PRJNA448733

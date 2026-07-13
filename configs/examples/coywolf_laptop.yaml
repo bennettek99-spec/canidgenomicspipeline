@@ -1,0 +1,74 @@
+# Small native-Windows coywolf-proxy exploration from the public 722-canid VCF.
+#
+# The two Algonquin wolves are labelled as eastern_wolf in the sample sheet: this is
+# a coyote-wolf comparison/proxy, not a claim that this fixed-marker panel can
+# diagnose an individual animal as a "coywolf".  The pipeline starts by calculating
+# an exact remote byte-range estimate and refuses any transfer above 9 GB.
+#
+# Run:
+#   canidae run -c configs/examples/coywolf_laptop.yaml -c configs/profiles/laptop.yaml
+
+project_name: coywolf-laptop-reduced-panel
+seed: 25
+
+paths:
+  root: .
+  data_root: data/coywolf_laptop_workspace
+  run_root: runs/coywolf_laptop
+
+executor:
+  max_workers: 1
+  resume: true
+
+pipeline:
+  - reduced_panel
+  - qc
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - admixture
+  - nj_tree
+  - f3
+  - dstats
+  - report
+
+stages:
+  reduced_panel:
+    sample_sheet: configs/examples/coywolf_laptop_samples.csv
+    preset: 2k
+    max_download_bytes: 9000000000
+    confirmation_threshold_bytes: 1000000000
+    confirm_large_transfer: false
+    min_retained_sites: 500
+    dataset_id: PRJNA448733_coywolf_proxy_reduced_panel
+    reference_id: CanFam3.1
+  qc:
+    min_call_rate: 1.0
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.0
+    max_missing: 0.0
+  pca:
+    n_components: 2
+  fst:
+    method: hudson
+    min_samples_per_population: 1
+  diversity:
+    min_samples_per_population: 1
+  admixture:
+    backend: nmf
+    k_min: 2
+    k_max: 4
+    n_iter: 100
+  dstats:
+    # Keep the known external lineage as O rather than relying on automatic
+    # divergence ranking in this deliberately tiny panel.
+    outgroup: golden_jackal
+  f3:
+    outgroup: golden_jackal
+  nj_tree:
+    n_bootstrap: 50
+  report:
+    title: "Coyote-wolf (coywolf proxy) - reduced 722-canid SNP panel"

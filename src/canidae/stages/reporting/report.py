@@ -424,6 +424,9 @@ def _limitations(ds, diversity_metadata: dict) -> list[str]:
         "independently replicated publication analyses.",
         str(diversity_metadata.get("limitations", "Diversity scope was not declared.")),
     ]
+    if ds.has(ArtifactKind.CALLSET, "callset"):
+        callset_meta = ds.get(ArtifactKind.CALLSET, "callset").metadata
+        values.extend(str(value) for value in callset_meta.get("analysis_limitations", []))
     if ds.has(ArtifactKind.ANALYSIS_RESULT, "demography"):
         demo = ds.get(ArtifactKind.ANALYSIS_RESULT, "demography")
         values.append(str(demo.metadata.get("limitations", "Demographic limitations unavailable.")))
