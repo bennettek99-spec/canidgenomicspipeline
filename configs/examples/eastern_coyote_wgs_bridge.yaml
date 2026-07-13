@@ -1,0 +1,68 @@
+# Cross-source bridge analysis: Ontario eastern coyotes and Arizona western coyotes
+# from the Heppenheimer et al. RADseq deposit, plus selected NHGRI 722-canid WGS
+# coyote, gray-wolf, eastern-wolf, and golden-jackal samples. The bridge VCF is
+# created first with scripts/build_eastern_coyote_wgs_bridge.py.
+#
+# This is deliberately an exploratory, cross-platform comparison at shared RADseq
+# loci, not a whole-genome joint callset or a standalone wolf-ancestry estimate.
+
+project_name: eastern-coyote-wgs-bridge-laptop
+seed: 25
+
+paths:
+  root: .
+  data_root: data/eastern_coyote_wgs_bridge_workspace
+  run_root: runs/eastern_coyote_wgs_bridge
+
+executor:
+  max_workers: 1
+  resume: true
+
+pipeline:
+  - ingest
+  - qc
+  - load_genotypes
+  - distance
+  - pca
+  - fst
+  - diversity
+  - admixture
+  - nj_tree
+  - report
+
+stages:
+  ingest:
+    sample_sheet: data/eastern_coyote_wgs_bridge/eastern_coyote_wgs_bridge_samples.csv
+    callset: data/eastern_coyote_wgs_bridge/eastern_coyote_wgs_bridge_1000.vcf.gz
+    dataset_id: EasternCoyote2018_Radseq_NHGRI722_cross_platform_bridge
+    cohort_id: eastern_coyote_wgs_bridge
+    reference_build: NHGRI722_REF_ALT_at_matching_RADseq_coordinates
+    panel_relative: true
+    panel_name: 1000_RADseq_coordinate_matched_WGS_bridge
+    analysis_limitations:
+      - "Cross-platform bridge diagnostic: PCA PC1 separates RADseq coyotes from every WGS animal, including WGS coyotes. This is consistent with platform and ascertainment effects, so PC1, FST, NMF, and NJ topology must not be interpreted as a direct ancestry estimate."
+      - "Only 267 coordinate- and allele-pair-matched bridge SNPs were available before QC; this is not a whole-genome joint callset."
+  qc:
+    min_sample_call_rate: 0.95
+    min_site_call_rate: 0.95
+    min_site_maf: 0.01
+  load_genotypes:
+    biallelic_snps_only: true
+    min_maf: 0.01
+    max_missing: 0.05
+  pca:
+    n_components: 2
+  fst:
+    method: hudson
+    min_samples_per_population: 1
+  diversity:
+    min_samples_per_population: 1
+  admixture:
+    backend: nmf
+    k_min: 2
+    k_max: 5
+    n_iter: 100
+  nj_tree:
+    n_bootstrap: 50
+  report:
+    title: "Ontario eastern coyote, gray wolf, eastern wolf, coyote, and golden jackal - cross-platform bridge panel"

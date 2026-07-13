@@ -33,6 +33,10 @@ class IngestConfig(StageConfig):
     panel_relative: bool = False
     panel_name: str = ""
     callable_sites: int = 0
+    analysis_limitations: list[str] = Field(
+        default_factory=list,
+        description="Study-specific limitations displayed in the final report.",
+    )
 
 
 @STAGES.register("ingest")
@@ -80,6 +84,7 @@ class IngestStage(Stage):
                 "panel_relative": cfg.panel_relative,
                 "panel_name": cfg.panel_name or None,
                 "callable_sites": cfg.callable_sites or None,
+                "analysis_limitations": cfg.analysis_limitations,
             },
         )
 
