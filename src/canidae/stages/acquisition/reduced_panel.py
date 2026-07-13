@@ -18,15 +18,18 @@ import gzip
 import hashlib
 import http.client
 import json
+import os
 import shutil
 import struct
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
 from collections import Counter
-from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -34,6 +37,7 @@ from typing import Literal
 import pandas as pd
 from pydantic import Field, field_validator, model_validator
 
+from canidae.core.atomic import atomic_write_text
 from canidae.core.errors import IntegrityError, StageInputError
 from canidae.core.model import ArtifactKind, FileFormat
 from canidae.core.registry import STAGES
@@ -91,17 +95,68 @@ class TransferBudget:
 
     limit: int
     used: int = 0
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def reserve(self, amount: int) -> None:
+        with self._lock:
+            self._reserve_unlocked(amount)
+
+    def add(self, amount: int) -> None:
+        with self._lock:
+            self._reserve_unlocked(amount)
+            self.used += amount
+
+    def _reserve_unlocked(self, amount: int) -> None:
         if amount < 0 or self.used + amount > self.limit:
             raise TransferLimitExceededError(
                 "transfer would exceed laptop safety ceiling: "
                 f"{self.used + amount:,} > {self.limit:,} bytes"
             )
 
-    def add(self, amount: int) -> None:
-        self.reserve(amount)
-        self.used += amount
+
+@dataclass(slots=True)
+class RangeCache:
+    """Persistent validated cache for remote BGZF byte ranges."""
+
+    root: Path
+    namespace: str
+    hits: int = 0
+    reused_bytes: int = 0
+
+    @property
+    def directory(self) -> Path:
+        return self.root / self.namespace
+
+    def get(self, start: int, end: int) -> bytes | None:
+        path = self._path(start, end)
+        digest_path = path.with_suffix(".sha256")
+        try:
+            data = path.read_bytes()
+            expected = digest_path.read_text(encoding="ascii").strip()
+        except OSError:
+            return None
+        if len(data) != end - start + 1 or hashlib.sha256(data).hexdigest() != expected:
+            path.unlink(missing_ok=True)
+            digest_path.unlink(missing_ok=True)
+            return None
+        self.hits += 1
+        self.reused_bytes += len(data)
+        return data
+
+    def put(self, start: int, end: int, data: bytes) -> None:
+        if len(data) != end - start + 1:
+            return
+        path = self._path(start, end)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".tmp-{threading.get_ident()}")
+        digest_tmp = path.with_suffix(f".sha256.tmp-{threading.get_ident()}")
+        tmp.write_bytes(data)
+        digest_tmp.write_text(hashlib.sha256(data).hexdigest(), encoding="ascii")
+        os.replace(tmp, path)
+        os.replace(digest_tmp, path.with_suffix(".sha256"))
+
+    def _path(self, start: int, end: int) -> Path:
+        return self.directory / f"{start}-{end}.bin"
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +188,8 @@ class ReducedPanelResult:
     downloaded_bytes: int
     skipped_records: dict[str, int]
     output_sha256: str
+    cached_ranges: int = 0
+    reused_bytes: int = 0
 
 
 def preset_site_count(preset: str) -> int:
@@ -413,14 +470,33 @@ def _source_header(
     raise ReducedPanelError("VCF header exceeded 16 MB compressed; refusing to continue")
 
 
-def _genotype(sample_field: str, gt_index: int) -> str | None:
+def _genotype(
+    sample_field: str,
+    formats: list[str],
+    *,
+    min_gq: float,
+    min_dp: int,
+) -> str | None:
     values = sample_field.split(":")
+    gt_index = formats.index("GT")
     if gt_index >= len(values):
         return None
     gt = values[gt_index]
     alleles = gt.replace("|", "/").split("/")
     if len(alleles) != 2 or any(allele not in {"0", "1"} for allele in alleles):
         return None
+    for name, threshold in (("GQ", min_gq), ("DP", min_dp)):
+        if threshold <= 0:
+            continue
+        if name not in formats:
+            return None
+        index = formats.index(name)
+        try:
+            value = float(values[index])
+        except (IndexError, ValueError):
+            return None
+        if value < threshold:
+            return None
     return gt
 
 
@@ -463,6 +539,61 @@ def _atomic_json(path: Path, payload: dict) -> None:
     temporary.replace(path)
 
 
+def _indexed_plan(
+    panel_data: bytes,
+    index_data: bytes,
+    target_sites: int,
+    prerequisite_bytes: int,
+) -> tuple[set[tuple[str, int]], list[tuple[int, int]], TransferEstimate]:
+    names, indexes = _parse_tabix(index_data)
+    name_to_index = {name: index for name, index in zip(names, indexes, strict=True)}
+    positions = _panel_positions(panel_data, target_sites)
+    source_contigs = set(name_to_index)
+    targets = {
+        (mapped, pos)
+        for chrom, pos in positions
+        if (mapped := _resolve_contig(chrom, source_contigs)) is not None
+    }
+    if not targets:
+        raise ReducedPanelError("marker-panel chromosome names do not match the source index")
+    chunks: set[tuple[int, int]] = set()
+    for chrom, pos in targets:
+        chunks.update(_chunks_for(name_to_index[chrom], pos))
+    merged = _merge_chunks(chunks)
+    range_bytes = sum(
+        ((end >> 16) + _BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged
+    )
+    estimate = TransferEstimate(
+        prerequisite_bytes=prerequisite_bytes,
+        range_bytes=range_bytes,
+        header_allowance_bytes=_HEADER_ALLOWANCE_BYTES,
+        n_ranges=len(merged),
+        n_target_sites=len(targets),
+    )
+    return targets, merged, estimate
+
+
+def preflight_indexed_panel(
+    *,
+    target_sites: int,
+    source_vcf_url: str = DEFAULT_SOURCE_VCF_URL,
+    panel_url: str = DEFAULT_PANEL_URL,
+    panel_checksum: str = DEFAULT_PANEL_MD5,
+    index_checksum: str = "",
+    max_download_bytes: int = DEFAULT_DOWNLOAD_CEILING_BYTES,
+    timeout_seconds: int = 120,
+) -> TransferEstimate:
+    """Calculate the exact indexed transfer plan without fetching source VCF ranges."""
+    budget = TransferBudget(max_download_bytes)
+    panel_data = _request(panel_url, budget, timeout_seconds=timeout_seconds)
+    verify_checksum(panel_data, panel_checksum, label="marker panel")
+    index_data = _request(
+        f"{source_vcf_url}.tbi", budget, timeout_seconds=timeout_seconds
+    )
+    verify_checksum(index_data, index_checksum, label="tabix index")
+    return _indexed_plan(panel_data, index_data, target_sites, budget.used)[2]
+
+
 def extract_indexed_panel(
     *,
     source_vcf_url: str,
@@ -480,6 +611,10 @@ def extract_indexed_panel(
     min_retained_sites: int | None = None,
     timeout_seconds: int = 120,
     temporary_dir: Path | None = None,
+    range_cache_dir: Path | None = None,
+    range_workers: int = 2,
+    min_genotype_quality: float = 0.0,
+    min_genotype_depth: int = 0,
     progress: Callable[[str], None] | None = None,
 ) -> ReducedPanelResult:
     """Extract a compact VCF from remote tabix-indexed data.
@@ -501,6 +636,8 @@ def extract_indexed_panel(
         )
     if confirmation_threshold_bytes < 0:
         raise ReducedPanelError("confirmation_threshold_bytes must be >= 0")
+    if not 1 <= range_workers <= 4:
+        raise ReducedPanelError("range_workers must be between 1 and 4")
 
     output_path = Path(output_path)
     manifest_path = Path(manifest_path)
@@ -526,31 +663,8 @@ def extract_indexed_panel(
         index_digest = verify_checksum(index_data, index_checksum, label="tabix index")
         (work / "source.vcf.gz.tbi").write_bytes(index_data)
 
-        names, indexes = _parse_tabix(index_data)
-        name_to_index = {name: index for name, index in zip(names, indexes, strict=True)}
-        positions = _panel_positions(panel_data, target_sites)
-        source_contigs = set(name_to_index)
-        targets = {
-            (mapped, pos)
-            for chrom, pos in positions
-            if (mapped := _resolve_contig(chrom, source_contigs)) is not None
-        }
-        if not targets:
-            raise ReducedPanelError("marker-panel chromosome names do not match the source index")
-
-        chunks: set[tuple[int, int]] = set()
-        for chrom, pos in targets:
-            chunks.update(_chunks_for(name_to_index[chrom], pos))
-        merged = _merge_chunks(chunks)
-        estimated_ranges = sum(
-            ((end >> 16) + _BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged
-        )
-        estimate = TransferEstimate(
-            prerequisite_bytes=budget.used,
-            range_bytes=estimated_ranges,
-            header_allowance_bytes=_HEADER_ALLOWANCE_BYTES,
-            n_ranges=len(merged),
-            n_target_sites=len(targets),
+        targets, merged, estimate = _indexed_plan(
+            panel_data, index_data, target_sites, budget.used
         )
         if progress:
             progress(
@@ -577,53 +691,92 @@ def extract_indexed_panel(
 
         records: dict[tuple[str, int], str] = {}
         skipped: Counter[str] = Counter()
-        for number, (virtual_begin, virtual_end) in enumerate(merged, start=1):
+        cache = None
+        if range_cache_dir is not None:
+            namespace = hashlib.sha256(
+                f"{source_vcf_url}|{index_digest}".encode()
+            ).hexdigest()[:24]
+            cache = RangeCache(Path(range_cache_dir), namespace)
+
+        def fetch(item: tuple[int, tuple[int, int]]) -> tuple[int, int, bytes]:
+            number, (virtual_begin, virtual_end) = item
             byte_start = virtual_begin >> 16
             byte_end = (virtual_end >> 16) + _BGZF_MAX_BLOCK - 1
-            data = _request(
-                source_vcf_url,
-                budget,
-                (byte_start, byte_end),
-                timeout_seconds=timeout_seconds,
-                progress=progress,
-            )
-            text = _decompress_bgzf(data, virtual_begin & 0xFFFF).decode(errors="replace")
-            for line in text.splitlines():
-                if not line or line.startswith("#"):
-                    continue
-                fields = line.split("\t")
-                if len(fields) <= max(sample_columns):
-                    skipped["truncated_record"] += 1
-                    continue
-                try:
-                    key = (fields[0], int(fields[1]))
-                except (ValueError, IndexError):
-                    skipped["malformed_position"] += 1
-                    continue
-                if key not in targets or key in records:
-                    continue
-                if len(fields) < 10:
-                    skipped["missing_format_or_samples"] += 1
-                    continue
-                ref, alt = fields[3], fields[4]
-                if len(ref) != 1 or len(alt) != 1 or "," in alt:
-                    skipped["not_biallelic_snp"] += 1
-                    continue
-                formats = fields[8].split(":")
-                if "GT" not in formats:
-                    skipped["missing_gt_field"] += 1
-                    continue
-                gt_index = formats.index("GT")
-                genotypes = [_genotype(fields[index], gt_index) for index in sample_columns]
-                if any(gt is None for gt in genotypes):
-                    skipped["missing_or_non_diploid_gt"] += 1
-                    continue
-                records[key] = "\t".join(fields[:8] + ["GT"] + [str(gt) for gt in genotypes])
-            if progress and (number % 100 == 0 or number == len(merged)):
-                progress(
-                    f"ranges {number:,}/{len(merged):,}; downloaded "
-                    f"{format_bytes(budget.used)}; retained {len(records):,} SNPs"
+            data = cache.get(byte_start, byte_end) if cache else None
+            if data is None:
+                data = _request(
+                    source_vcf_url,
+                    budget,
+                    (byte_start, byte_end),
+                    timeout_seconds=timeout_seconds,
+                    progress=progress,
                 )
+                if cache:
+                    cache.put(byte_start, byte_end, data)
+            return number, virtual_begin, data
+
+        range_started = time.monotonic()
+
+        def bounded_fetches() -> Iterator[tuple[int, int, bytes]]:
+            # Executor.map submits its entire iterable eagerly on supported Python
+            # versions. Feed it small batches so completed BGZF ranges cannot build
+            # up into a multi-gigabyte in-memory queue behind one slow response.
+            indexed_ranges = list(enumerate(merged, start=1))
+            batch_size = max(range_workers * 2, 1)
+            with ThreadPoolExecutor(max_workers=range_workers) as pool:
+                for offset in range(0, len(indexed_ranges), batch_size):
+                    yield from pool.map(fetch, indexed_ranges[offset : offset + batch_size])
+
+        for number, virtual_begin, data in bounded_fetches():
+                text = _decompress_bgzf(data, virtual_begin & 0xFFFF).decode(errors="replace")
+                for line in text.splitlines():
+                    if not line or line.startswith("#"):
+                        continue
+                    fields = line.split("\t")
+                    if len(fields) <= max(sample_columns):
+                        skipped["truncated_record"] += 1
+                        continue
+                    try:
+                        key = (fields[0], int(fields[1]))
+                    except (ValueError, IndexError):
+                        skipped["malformed_position"] += 1
+                        continue
+                    if key not in targets or key in records:
+                        continue
+                    if len(fields) < 10:
+                        skipped["missing_format_or_samples"] += 1
+                        continue
+                    ref, alt = fields[3], fields[4]
+                    if len(ref) != 1 or len(alt) != 1 or "," in alt:
+                        skipped["not_biallelic_snp"] += 1
+                        continue
+                    formats = fields[8].split(":")
+                    if "GT" not in formats:
+                        skipped["missing_gt_field"] += 1
+                        continue
+                    genotypes = [
+                        _genotype(
+                            fields[index], formats,
+                            min_gq=min_genotype_quality,
+                            min_dp=min_genotype_depth,
+                        )
+                        for index in sample_columns
+                    ]
+                    if any(gt is None for gt in genotypes):
+                        skipped["missing_or_non_diploid_gt"] += 1
+                        continue
+                    records[key] = "\t".join(
+                        fields[:8] + ["GT"] + [str(gt) for gt in genotypes]
+                    )
+                if progress and (number % 100 == 0 or number == len(merged)):
+                    reused = cache.reused_bytes if cache else 0
+                    elapsed = max(time.monotonic() - range_started, 0.001)
+                    remaining_s = (len(merged) - number) / max(number / elapsed, 1e-9)
+                    progress(
+                        f"ranges {number:,}/{len(merged):,}; downloaded "
+                        f"{format_bytes(budget.used)}; reused {format_bytes(reused)}; "
+                        f"retained {len(records):,} SNPs; ETA {remaining_s / 60:.1f} min"
+                    )
 
         minimum = min_retained_sites if min_retained_sites is not None else min(1_000, target_sites)
         if len(records) < minimum:
@@ -634,7 +787,7 @@ def extract_indexed_panel(
         _atomic_gzip_vcf(output_path, meta_lines, columns, sample_ids, records, preset=preset)
         output_sha256 = hashlib.sha256(output_path.read_bytes()).hexdigest()
         manifest = {
-            "schema_version": 1,
+            "schema_version": 2,
             "kind": "canis_reduced_panel",
             "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
             "source": {"vcf_url": source_vcf_url, "tabix_index_url": index_url},
@@ -648,6 +801,8 @@ def extract_indexed_panel(
             "transfer": {
                 "estimate": estimate.as_dict(),
                 "downloaded_bytes": budget.used,
+                "cached_ranges": cache.hits if cache else 0,
+                "reused_bytes": cache.reused_bytes if cache else 0,
                 "hard_ceiling_bytes": max_download_bytes,
                 "confirmation_threshold_bytes": confirmation_threshold_bytes,
                 "confirmed_large_transfer": confirm_large_transfer,
@@ -657,6 +812,8 @@ def extract_indexed_panel(
                 "minimum_retained_sites": minimum,
                 "skipped_records": dict(sorted(skipped.items())),
                 "required_calls": "complete diploid biallelic SNP GT for every selected sample",
+                "minimum_genotype_quality": min_genotype_quality,
+                "minimum_genotype_depth": min_genotype_depth,
             },
             "cleanup": {"temporary_marker_panel_and_index": "removed after extraction"},
             "output": {"path": str(output_path), "sha256": output_sha256},
@@ -670,6 +827,8 @@ def extract_indexed_panel(
             downloaded_bytes=budget.used,
             skipped_records=dict(sorted(skipped.items())),
             output_sha256=output_sha256,
+            cached_ranges=cache.hits if cache else 0,
+            reused_bytes=cache.reused_bytes if cache else 0,
         )
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -698,6 +857,9 @@ class ReducedPanelConfig(StageConfig):
     confirm_large_transfer: bool = False
     min_retained_sites: int | None = Field(default=None, ge=1)
     timeout_seconds: int = Field(default=120, ge=5, le=600)
+    range_workers: int = Field(default=2, ge=1, le=4)
+    min_genotype_quality: float = Field(default=0.0, ge=0.0)
+    min_genotype_depth: int = Field(default=0, ge=0)
     dataset_id: str = "remote_reduced_panel"
     reference_id: str = "CanFam3.1"
 
@@ -756,6 +918,15 @@ class ReducedPanelStage(Stage):
             from canidae.core.logging import get_logger
 
             get_logger("stage.reduced_panel").info("%s", message)
+            if ctx.run_dir is not None:
+                atomic_write_text(
+                    Path(ctx.run_dir) / "progress.json",
+                    json.dumps({
+                        "stage": self.name,
+                        "message": message,
+                        "updated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                    }, indent=2) + "\n",
+                )
 
         result = extract_indexed_panel(
             source_vcf_url=cfg.source_vcf_url,
@@ -773,6 +944,10 @@ class ReducedPanelStage(Stage):
             min_retained_sites=cfg.min_retained_sites,
             timeout_seconds=cfg.timeout_seconds,
             temporary_dir=stage_dir,
+            range_cache_dir=ctx.config.paths.cache_root / "reduced-panel-ranges",
+            range_workers=cfg.range_workers,
+            min_genotype_quality=cfg.min_genotype_quality,
+            min_genotype_depth=cfg.min_genotype_depth,
             progress=progress,
         )
         normalized_sheet = stage_dir / "sample_sheet.csv"
@@ -806,6 +981,10 @@ class ReducedPanelStage(Stage):
                 "retained_sites": result.retained_sites,
                 "manifest": str(result.manifest_path),
                 "sha256": result.output_sha256,
+                "hard_call_filters": {
+                    "min_genotype_quality": cfg.min_genotype_quality,
+                    "min_genotype_depth": cfg.min_genotype_depth,
+                },
             },
         )
         return StageResult(
@@ -817,6 +996,8 @@ class ReducedPanelStage(Stage):
                 "n_samples": len(selected),
                 "estimated_transfer_bytes": result.transfer_estimate.total_bytes,
                 "downloaded_bytes": result.downloaded_bytes,
+                "cached_ranges": result.cached_ranges,
+                "reused_bytes": result.reused_bytes,
             },
         )
 
@@ -832,6 +1013,7 @@ __all__ = [
     "DEFAULT_PANEL_URL",
     "DEFAULT_SOURCE_VCF_URL",
     "PANEL_PRESETS",
+    "RangeCache",
     "ReducedPanelConfig",
     "ReducedPanelError",
     "ReducedPanelResult",
@@ -843,6 +1025,7 @@ __all__ = [
     "enforce_transfer_policy",
     "extract_indexed_panel",
     "format_bytes",
+    "preflight_indexed_panel",
     "preset_site_count",
     "verify_checksum",
 ]

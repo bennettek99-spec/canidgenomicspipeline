@@ -42,6 +42,7 @@ class AdmixtureConfig(StageConfig):
     max_sites: int = 20000          # subsample sites above this (0 = use all)
     cv_holdout: float = 0.1
     n_iter: int = 250
+    n_replicates: int = 3
 
 
 @STAGES.register("admixture")
@@ -52,6 +53,7 @@ class AdmixtureStage(Stage):
     def required_inputs(self) -> list[ArtifactSpec]:
         return [
             ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet"),
         ]
 
@@ -60,7 +62,10 @@ class AdmixtureStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: AdmixtureConfig = self.config  # type: ignore[assignment]
-        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = align_labels(
             geno, load_sample_labels(
                 ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path))
@@ -70,9 +75,9 @@ class AdmixtureStage(Stage):
         _log.info("admixture backend=%s, K in %s", backend, k_values)
 
         if backend == "binary":
-            best_k, Q, cv_errors = self._run_binary(cfg, ctx, geno, k_values)
+            best_k, Q, cv_errors, diagnostics = self._run_binary(cfg, ctx, geno, k_values)
         else:
-            best_k, Q, cv_errors = self._run_nmf(cfg, ctx, geno, k_values)
+            best_k, Q, cv_errors, diagnostics = self._run_nmf(cfg, ctx, geno, k_values)
 
         q_cols = [f"Q{i + 1}" for i in range(best_k)]
         table = pd.DataFrame(Q, columns=q_cols)
@@ -91,6 +96,7 @@ class AdmixtureStage(Stage):
                 "k_values": k_values,
                 "cv_errors": {int(k): round(float(v), 6) for k, v in cv_errors.items()},
                 "q_columns": q_cols,
+                "replicate_diagnostics": diagnostics,
             },
         )
         return StageResult(
@@ -102,11 +108,33 @@ class AdmixtureStage(Stage):
 
     def _run_nmf(self, cfg, ctx, geno: Genotypes, k_values):
         X = self._dosage_matrix(geno, cfg, seed=ctx.config.seed)
-        cv_errors = ancestry_nmf.cross_validate_k(
-            X, k_values, holdout=cfg.cv_holdout, n_iter=cfg.n_iter, seed=ctx.config.seed)
+        replicate_cv = [
+            ancestry_nmf.cross_validate_k(
+                X, k_values, holdout=cfg.cv_holdout, n_iter=cfg.n_iter,
+                seed=ctx.config.seed + replicate,
+            )
+            for replicate in range(cfg.n_replicates)
+        ]
+        cv_errors = {
+            K: float(np.mean([values[K] for values in replicate_cv])) for K in k_values
+        }
         best_k = ancestry_nmf.select_k(cv_errors)
-        fit = ancestry_nmf.fit_admixture(X, best_k, seed=ctx.config.seed, n_iter=cfg.n_iter)
-        return best_k, fit.Q, cv_errors
+        fits = [
+            ancestry_nmf.fit_admixture(
+                X, best_k, seed=ctx.config.seed + replicate, n_iter=cfg.n_iter
+            )
+            for replicate in range(cfg.n_replicates)
+        ]
+        fit = min(fits, key=lambda value: value.reconstruction_error)
+        diagnostics = {
+            "n_replicates": cfg.n_replicates,
+            "reconstruction_errors": [round(value.reconstruction_error, 6) for value in fits],
+            "cv_errors_by_replicate": [
+                {int(k): round(float(v), 6) for k, v in values.items()}
+                for values in replicate_cv
+            ],
+        }
+        return best_k, fit.Q, cv_errors, diagnostics
 
     def _run_binary(self, cfg, ctx, geno: Genotypes, k_values):
         runner = ctx.runner
@@ -126,7 +154,10 @@ class AdmixtureStage(Stage):
             cv_errors[K] = _parse_cv_error(result.stdout, K)
             q_by_k[K] = np.loadtxt(stage_dir / f"cohort.{K}.Q")
         best_k = min(cv_errors, key=lambda k: cv_errors[k])
-        return best_k, np.atleast_2d(q_by_k[best_k]), cv_errors
+        return best_k, np.atleast_2d(q_by_k[best_k]), cv_errors, {
+            "n_replicates": 1,
+            "backend": "admixture_binary",
+        }
 
     # -- helpers -----------------------------------------------------------------------
 

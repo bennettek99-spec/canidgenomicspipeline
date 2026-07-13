@@ -18,6 +18,7 @@ pipeline:
   - align
   - bcftools_call          # fast: one multi-sample bcftools call over all CRAMs -> callset
   - load_genotypes
+  - analysis_readiness
   - distance
   - pca
   - fst
@@ -52,6 +53,11 @@ stages:
     k_max: 5
   nj_tree:
     n_bootstrap: 50
+  f3:
+    outgroup: golden_jackal
+  dstats:
+    outgroup: golden_jackal
+    block_mode: chromosome
   local_ancestry:
     sources: [coyote, gray_wolf]
     targets: [red_wolf, eastern_wolf]

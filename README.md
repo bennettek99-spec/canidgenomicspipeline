@@ -8,11 +8,13 @@ CANIS is a configuration-driven comparative evolutionary-genomics pipeline for c
 
 ## What this version does
 
-- Safe resume cache: every stage is fingerprinted from its inputs, relevant configuration, and CANIS source code. Cache records are small JSON metadata; VCFs and genomic arrays are never copied for caching.
-- Atomic outputs and provenance: stages write to a temporary workspace, validate outputs, then promote them atomically. The run manifest records success, cache skips, failures, resource preflight, recovery directions, and checksums.
+- Safe resume cache: every stage is fingerprinted from its inputs, stage-relevant configuration, and transitive CANIS code dependencies, so unrelated report/config edits do not invalidate expensive acquisition. Cache records are small JSON metadata; VCFs and genomic arrays are never copied for caching.
+- Atomic outputs and provenance: stages write to a temporary workspace, validate outputs, then promote them atomically. Full-content artifact checksums, the resolved YAML configuration, interrupted-stage recovery, and stable promoted paths are retained with the run manifest.
 - Enforced QC: sample and site failures are physically removed before genotype loading. `qc_exclusions.csv` records every excluded sample/site and exact reason.
-- Correct chromosome handling: D/f-statistic uncertainty uses chromosomes or fixed physical blocks; local-ancestry HMMs restart at every chromosome and run sequentially.
-- Guarded acquisition: `reduced_panel` safely extracts indexed remote VCFs, while `acquire_reads` streams paired, interleaved, or single-end gzip FASTQ archives with pair-preserving downsampling, checksum validation, size estimates, confirmation gates, a 9 GB default ceiling, and temporary-file cleanup.
+- Correct chromosome handling: D/f-statistic uncertainty uses chromosomes or fixed physical blocks, outgroups must be explicit, D tests include FDR-adjusted values, and local-ancestry HMMs restart at every chromosome and run sequentially.
+- Guarded acquisition: `reduced_panel` performs exact byte-range preflight, reuses checksummed ranges after interruption, bounds concurrent memory, reports live ETA, and can enforce GQ/DP hard-call filters. `acquire_reads` retains its streamed, checksummed, pair-preserving safeguards and 9 GB default ceiling.
+- Analysis readiness: a dedicated gate applies autosome/optional LD filtering and records small-population, near-duplicate, ascertainment, and hard-call-quality limitations before scientific stages run.
+- Scalable local arrays: genotype matrices switch to memory-mapped `.npy` artifacts above a configurable threshold instead of loading one monolithic NPZ into RAM.
 - Lightweight VCF harmonization: common-reference verification, SNP normalization, REF/ALT and strand-orientation checks, sample concordance, missingness/batch diagnostics. Liftover is an explicit external preparation step, never an automatic laptop action.
 - Honest diversity and demography: fixed-panel diversity/heterozygosity are labelled panel-relative. Full per-callable-site π, θ, Tajima’s D, and Ne require an explicit callable-site denominator.
 - Local control: `canidae ui` opens a loopback-only browser interface for dataset selection, preset/resource estimates, optional analyses, start/pause/stop/resume, progress, plain-language errors, and output links.

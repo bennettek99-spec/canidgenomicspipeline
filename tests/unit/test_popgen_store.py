@@ -42,6 +42,14 @@ def test_save_load_roundtrip(tmp_path: Path) -> None:
     np.testing.assert_array_equal(np.asarray(loaded.calls), np.asarray(geno.calls))
 
 
+def test_memory_mapped_store_roundtrip(tmp_path: Path) -> None:
+    geno = _demo_genotypes()
+    out = save_genotypes(tmp_path / "g.store", geno, backend="npy_mmap")
+    loaded = load_genotypes(out)
+    assert out.is_dir()
+    np.testing.assert_array_equal(np.asarray(loaded.calls), np.asarray(geno.calls))
+
+
 def test_population_indices_aligns_to_matrix() -> None:
     geno = _demo_genotypes()
     labels = pd.DataFrame(

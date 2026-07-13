@@ -112,11 +112,13 @@ def bootstrap_support(
     *,
     n_boot: int = 100,
     seed: int = 0,
+    blocks: np.ndarray | None = None,
 ) -> tuple[Clade, dict[frozenset[str], float]]:
     """Return the NJ tree on the full data plus per-bipartition bootstrap support in [0,1].
 
     ``gn`` is a (n_sites, n_taxa) matrix; ``distance_fn(gn)`` returns a (n_taxa, n_taxa)
-    distance matrix. Sites are resampled with replacement for each replicate.
+    distance matrix. Sites are resampled with replacement unless block labels are supplied,
+    in which case complete linkage blocks are resampled together.
     """
     main = neighbor_joining(distance_fn(gn), labels)
     target = bipartitions(main)
@@ -125,7 +127,13 @@ def bootstrap_support(
     n_sites = gn.shape[0]
     rng = np.random.default_rng(seed)
     for _ in range(n_boot):
-        cols = rng.integers(0, n_sites, n_sites)
+        if blocks is None:
+            cols = rng.integers(0, n_sites, n_sites)
+        else:
+            block_array = np.asarray(blocks)
+            unique = np.unique(block_array)
+            sampled = rng.choice(unique, size=unique.size, replace=True)
+            cols = np.concatenate([np.flatnonzero(block_array == value) for value in sampled])
         boot = bipartitions(neighbor_joining(distance_fn(gn[cols]), labels))
         for split in target:
             if split in boot:

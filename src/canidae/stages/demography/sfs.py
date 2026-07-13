@@ -42,6 +42,7 @@ class DemographyStage(Stage):
     def required_inputs(self) -> list[ArtifactSpec]:
         return [
             ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet"),
         ]
 
@@ -50,7 +51,10 @@ class DemographyStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: DemographyConfig = self.config  # type: ignore[assignment]
-        geno_art = ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes")
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno_art = ctx.datastore.get(ArtifactKind.GENOTYPES, role)
         geno = load_genotypes(geno_art.path)
         labels = load_sample_labels(
             ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)

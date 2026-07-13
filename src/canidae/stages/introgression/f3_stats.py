@@ -25,6 +25,7 @@ from canidae.stages.popgen.store import (
 
 class F3Config(StageConfig):
     outgroup: str = ""
+    allow_auto_outgroup: bool = False
     n_blocks: int = 20
 
 
@@ -36,6 +37,7 @@ class F3Stage(Stage):
     def required_inputs(self) -> list[ArtifactSpec]:
         return [
             ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet"),
         ]
 
@@ -44,12 +46,19 @@ class F3Stage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: F3Config = self.config  # type: ignore[assignment]
-        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
             ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
         groups = population_indices(geno, labels)
         freqs = fstats.allele_frequencies(geno, groups)
 
+        if not cfg.outgroup and not cfg.allow_auto_outgroup:
+            raise StageInputError(
+                "outgroup-f3 requires an explicit biological outgroup; set stages.f3.outgroup"
+            )
         outgroup = cfg.outgroup or _auto_outgroup(freqs)
         ingroup = [p for p in groups if p != outgroup]
         if len(ingroup) < 2:

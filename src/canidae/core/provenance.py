@@ -18,7 +18,7 @@ import socket
 import subprocess
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -46,7 +46,7 @@ class ProvenanceRecord:
     id: str
     stage: str
     started_at: str
-    status: str = "running"  # running | succeeded | failed | skipped
+    status: str = "running"  # running | succeeded | failed | skipped | interrupted
     finished_at: str | None = None
     duration_s: float | None = None
     config_digest: str = ""
@@ -113,6 +113,7 @@ class ProvenanceWriter:
         config_digest: str = "",
         seed: int | None = None,
         repo_dir: Path | None = None,
+        resolved_config_yaml: str | None = None,
     ) -> None:
         self.run_dir = Path(run_dir)
         self.run_dir.mkdir(parents=True, exist_ok=True)
@@ -124,6 +125,9 @@ class ProvenanceWriter:
         self.run_events: list[dict[str, Any]] = []
         self._counter = 0
         self._start_times: dict[str, float] = {}
+        self._load_and_reconcile_existing()
+        if resolved_config_yaml is not None:
+            atomic_write_text(self.run_dir / "resolved-config.yaml", resolved_config_yaml)
 
     def start(self, stage: str) -> ProvenanceRecord:
         """Open a provenance record for a stage. Call :meth:`finish` when done."""
@@ -207,6 +211,7 @@ class ProvenanceWriter:
             "config_digest": self.config_digest,
             "git_commit": self.git_commit,
             "seed": self.seed,
+            "resolved_config": str(self.run_dir / "resolved-config.yaml"),
             "run_metadata": self.run_metadata,
             "run_events": self.run_events,
             "records": [r.to_dict() for r in self.records],
@@ -215,6 +220,47 @@ class ProvenanceWriter:
         atomic_write_text(path, json.dumps(manifest, indent=2, default=str))
         atomic_write_text(self.run_dir / "manifest.md", self._render_markdown())
         return path
+
+    def _load_and_reconcile_existing(self) -> None:
+        """Preserve prior records on same-ID resume and mark abandoned work interrupted."""
+        path = self.run_dir / "manifest.json"
+        if not path.exists():
+            return
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        allowed = {item.name for item in fields(ProvenanceRecord)}
+        for entry in payload.get("records", []):
+            if not isinstance(entry, dict):
+                continue
+            values = {key: value for key, value in entry.items() if key in allowed}
+            values["tools"] = [
+                ToolInvocation(**tool) if isinstance(tool, dict) else tool
+                for tool in values.get("tools", [])
+            ]
+            try:
+                record = ProvenanceRecord(**values)
+            except TypeError:
+                continue
+            if record.status == "running":
+                record.status = "interrupted"
+                record.finished_at = _now_iso()
+                record.error = "Previous CANIS process ended before finalizing this stage."
+                record.recovery = "Resume the same run; verified completed stages remain cached."
+            self.records.append(record)
+        self.run_metadata = payload.get("run_metadata", {}) or {}
+        self.run_events = payload.get("run_events", []) or []
+        if self.records:
+            self.run_events.append({
+                "event": "run_resumed",
+                "status": "succeeded",
+                "at": _now_iso(),
+                "error": None,
+                "recovery": None,
+                "details": {"prior_records": len(self.records)},
+            })
+        self._counter = len(self.records)
 
     def _render_markdown(self) -> str:
         lines = [

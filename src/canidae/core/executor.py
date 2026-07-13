@@ -25,7 +25,7 @@ from canidae.core.provenance import ProvenanceRecord
 from canidae.core.resources import ResourceManager
 from canidae.core.stage import RunContext, Stage, StageResult
 from canidae.core.stage_cache import StageCache
-from canidae.core.staging import StagedDataStore
+from canidae.core.staging import StagedDataStore, rewrite_staged_paths
 
 _log = get_logger("executor")
 
@@ -281,6 +281,12 @@ class NativeExecutor:
                         execution.datastore.cleanup()
                         self._record_failure(stage, ctx, report, exc, record=record)
                         continue
+
+                    result.metrics = rewrite_staged_paths(
+                        result.metrics,
+                        execution.datastore.stage_root,
+                        ctx.datastore.root / stage.name,
+                    )
 
                     result.metrics.setdefault(
                         "cache_fingerprint",

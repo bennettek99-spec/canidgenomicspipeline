@@ -29,7 +29,7 @@ def hash_file(path: Path, mode: HashMode | None = None) -> str:
     if not path.exists():
         raise FileNotFoundError(path)
     if path.is_dir():
-        return hash_dir(path)
+        return hash_dir(path, mode=mode or "quick")
     size = path.stat().st_size
     chosen = mode or ("quick" if size >= _QUICK_THRESHOLD else "full")
     return _quick_fingerprint(path, size) if chosen == "quick" else _full_sha256(path)
@@ -56,14 +56,19 @@ def _quick_fingerprint(path: Path, size: int) -> str:
     return f"quick:{h.hexdigest()}"
 
 
-def hash_dir(path: Path) -> str:
-    """Hash a directory as a stable manifest of relative paths + quick fingerprints."""
+def hash_dir(path: Path, *, mode: HashMode = "quick") -> str:
+    """Hash a directory as a stable manifest using quick or full member hashes."""
     h = hashlib.sha256()
     for child in sorted(p for p in path.rglob("*") if p.is_file()):
         rel = child.relative_to(path).as_posix()
         h.update(rel.encode())
-        h.update(_quick_fingerprint(child, child.stat().st_size).encode())
-    return f"dir:{h.hexdigest()}"
+        member = (
+            _full_sha256(child)
+            if mode == "full"
+            else _quick_fingerprint(child, child.stat().st_size)
+        )
+        h.update(member.encode())
+    return f"dir-{mode}:{h.hexdigest()}"
 
 
 def hash_bytes(data: bytes) -> str:

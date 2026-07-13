@@ -19,6 +19,7 @@ import pandas as pd
 from pydantic import Field
 from scipy.stats import norm
 
+from canidae.core.errors import StageInputError
 from canidae.core.logging import get_logger
 from canidae.core.model import ArtifactKind, FileFormat
 from canidae.core.registry import STAGES
@@ -35,12 +36,15 @@ _log = get_logger("stage.dstats")
 
 
 class DStatsConfig(StageConfig):
-    outgroup: str = ""          # population to use as O; auto-picked (most divergent) if empty
+    # Required: biological outgroups must never be inferred from PCA distance.
+    outgroup: str = ""
+    allow_auto_outgroup: bool = False
     # Physical blocks avoid treating adjacent sites from different chromosomes as a single
     # replicate. The site_count option retains the legacy equal-site-count jackknife.
-    block_mode: Literal["fixed_mb", "chromosome", "site_count"] = "fixed_mb"
-    block_size_mb: float = Field(default=0.5, gt=0)
+    block_mode: Literal["fixed_mb", "chromosome", "site_count"] = "chromosome"
+    block_size_mb: float = Field(default=5.0, gt=0)
     n_blocks: int = Field(default=20, ge=1)  # used only by legacy site_count mode
+    min_effective_blocks: int = Field(default=2, ge=2)
     window_bp: int = 100_000
     min_window_sites: int = 10
 
@@ -53,6 +57,7 @@ class DStatsStage(Stage):
     def required_inputs(self) -> list[ArtifactSpec]:
         return [
             ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet"),
         ]
 
@@ -61,13 +66,26 @@ class DStatsStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: DStatsConfig = self.config  # type: ignore[assignment]
-        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
             ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
         groups = population_indices(geno, labels)
         freqs = fstats.allele_frequencies(geno, groups)
 
+        if not cfg.outgroup and not cfg.allow_auto_outgroup:
+            raise StageInputError(
+                "D-statistics require an explicit biological outgroup; set stages.dstats.outgroup"
+            )
         outgroup = cfg.outgroup or _auto_outgroup(freqs)
+        if outgroup not in groups:
+            raise StageInputError(f"configured D-statistics outgroup is absent: {outgroup}")
+        if len(groups) < 4:
+            raise StageInputError(
+                "D-statistics require at least four populations including outgroup"
+            )
         ingroup = [p for p in groups if p != outgroup]
         fstats_block_mode = {
             "fixed_mb": "fixed_bp",
@@ -93,6 +111,13 @@ class DStatsStage(Stage):
                              "p_value": None if pval != pval else float(f"{pval:.3g}")})
 
         table = pd.DataFrame(rows)
+        if table.empty:
+            raise StageInputError("no valid D-statistic quartets were generated")
+        if int(table["n_blocks"].min()) < cfg.min_effective_blocks:
+            raise StageInputError(
+                f"D-statistics produced fewer than {cfg.min_effective_blocks} effective blocks"
+            )
+        table["q_value_bh"] = _bh_qvalues(table["p_value"].to_numpy(dtype=float))
         out = ctx.datastore.path_for(self.name, "dstats.csv")
         table.to_csv(out, index=False)
 
@@ -103,7 +128,11 @@ class DStatsStage(Stage):
             metadata={"analysis": "dstats", "outgroup": outgroup,
                       "n_quartets": len(table), "top_quartet": top,
                       "block_mode": cfg.block_mode, "block_size_bp": block_size_bp,
-                      "legacy_n_blocks": cfg.n_blocks})
+                      "legacy_n_blocks": cfg.n_blocks,
+                      "multiple_testing": "Benjamini-Hochberg",
+                      "median_sites_per_block": float(
+                          np.nanmedian(table["n_sites"] / table["n_blocks"])
+                      )})
         return StageResult(
             artifacts=[art],
             metrics={"n_quartets": len(table), "outgroup": outgroup,
@@ -136,3 +165,17 @@ def _auto_outgroup(freqs: dict[str, np.ndarray]) -> str:
         diffs = [float(np.nanmean(np.abs(freqs[p] - freqs[q]))) for q in pops if q != p]
         scores[p] = float(np.mean(diffs)) if diffs else 0.0
     return max(scores, key=lambda p: scores[p])
+
+
+def _bh_qvalues(values: np.ndarray) -> np.ndarray:
+    """Benjamini-Hochberg adjusted p-values, preserving NaNs and original order."""
+    values = np.asarray(values, dtype=float)
+    result = np.full(values.shape, np.nan, dtype=float)
+    finite = np.flatnonzero(np.isfinite(values))
+    if not finite.size:
+        return result
+    ordered = finite[np.argsort(values[finite])]
+    adjusted = values[ordered] * finite.size / np.arange(1, finite.size + 1)
+    adjusted = np.minimum.accumulate(adjusted[::-1])[::-1]
+    result[ordered] = np.minimum(adjusted, 1.0)
+    return result

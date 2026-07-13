@@ -19,6 +19,7 @@ pipeline:
   - bcftools_call
   - qc
   - load_genotypes
+  - analysis_readiness
   - distance
   - pca
   - fst

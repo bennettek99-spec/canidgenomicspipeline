@@ -12,7 +12,7 @@ default. Designed to scale from a handful to **thousands** of whole genomes acro
 Scope: comparative evolutionary genomics only. **Not** for veterinary diagnostics or
 conservation-management decisions.
 
-> **Current operating model (v0.2):** CANIS is laptop-first. It uses a local native
+> **Current operating model (v0.3):** CANIS is laptop-first. It uses a local native
 > executor, bounded workers/memory/disk, sequential chromosome analysis, metadata-only safe
 > resume, and reduced-panel/same-build VCF entry points. Cluster, automatic liftover, and
 > large raw-read workflows are not default execution paths; see [Laptop operations](LAPTOP_OPERATIONS.md).
@@ -35,9 +35,9 @@ conservation-management decisions.
    (bwa-mem2, GATK, bcftools, PLINK2, ADMIXTURE, Dsuite, IQ-TREE). We orchestrate them
    through a uniform runner abstraction and add value in the *glue*, the *domain model*,
    the *harmonization*, and the *analysis/reporting* — not by rewriting aligners.
-5. **Scale by design.** Genotype matrices for thousands of samples never fit in memory
-   naively. Use chunked, compressed on-disk formats (CRAM, BCF, Zarr) and out-of-core /
-   distributed compute (Dask, cluster schedulers) from the start.
+5. **Scale by design.** Larger genotype matrices use memory-mapped on-disk arrays and
+   chromosome-sequential algorithms on a laptop. Distributed and cluster backends remain
+   future extension points rather than claims about the current implementation.
 6. **Fail loudly and early.** Validate inputs against schemas before launching
    multi-hour jobs. Every external command is checked for exit status, expected outputs,
    and (where cheap) output sanity.

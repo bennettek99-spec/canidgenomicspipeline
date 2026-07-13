@@ -30,11 +30,13 @@ Before a run, CANIS checks available disk space across the data, run, and cache 
 
 Remove the marker and rerun with the same `--run-id` to continue. The safe cache accepts a previous stage only when its inputs, config, code fingerprint, and registered output hashes still agree. The run manifest includes the recovery command context and a reason for every skip or stop.
 
+If the process itself is interrupted, the next invocation with the same run ID marks any abandoned `running` stage as `interrupted` before continuing. `runs/<run-id>/resolved-config.yaml` preserves the exact layered configuration used. Reduced-panel source ranges are independently reusable from their checksummed cache even when acquisition did not finish.
+
 ## Output lifecycle
 
 Each stage writes under a temporary `.staging/` directory. After all declared outputs exist and can be hashed, CANIS promotes that stage directory atomically and atomically updates `artifacts.json`. A crash therefore leaves either the previous completed result or no registered new result; it cannot expose a half-written VCF as a completed artifact.
 
-The cache contains JSON fingerprints only, never duplicate genomics files. Use `executor.resume: false` to force recalculation, or remove an individual cache record under `data/cache/stage-cache/` when intentionally rebuilding one stage.
+The stage cache contains JSON fingerprints only, never duplicate genomics files. Its code fingerprint follows the stage's transitive CANIS imports and its configuration fingerprint includes only that stage plus declared paths/inputs, so changing a report title does not refetch the source panel. Persisted artifacts always use full-content checksums. Use `executor.resume: false` to force recalculation, or remove an individual cache record under `data/cache/stage-cache/` when intentionally rebuilding one stage.
 
 ## Suggested laptop recipe
 

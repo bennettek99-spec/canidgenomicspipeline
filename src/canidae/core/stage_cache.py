@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import inspect
 import json
@@ -23,10 +24,12 @@ class StageCache:
     The cache never copies a VCF, BAM, BCF, or genotype array.  It records fingerprints of
     declared inputs, relevant configured paths, the complete resolved configuration digest,
     and the source file defining the stage class.  A cache hit is accepted only when the
-    current registered output files still match the recorded fingerprints.
+    current registered output files still match the recorded fingerprints.  Fingerprints
+    are intentionally stage-scoped: changing a report title must never invalidate an
+    acquisition stage and replay a multi-gigabyte transfer.
     """
 
-    schema_version = 1
+    schema_version = 2
 
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
@@ -37,7 +40,6 @@ class StageCache:
         payload: dict[str, Any] = {
             "schema_version": self.schema_version,
             "stage": stage.name,
-            "config_digest": ctx.config.digest(),
             "stage_config": stage.config.model_dump(mode="json"),
             "code": code,
             "inputs": [_artifact_fingerprint(artifact) for artifact in inputs],
@@ -128,23 +130,72 @@ def _code_fingerprint(stage: Stage) -> dict[str, str | None]:
         "module": type(stage).__module__,
         "path": str(path),
         "fingerprint": hash_file(path, mode="full") if path.exists() else None,
-        # A stage commonly delegates numerical work to sibling modules (for example,
-        # DStats -> fstats).  Fingerprint the compact source tree as well so a helper-code
-        # change cannot incorrectly reuse an old stage result.  This is metadata only.
-        "package_fingerprint": _package_fingerprint(path),
+        "dependencies": _dependency_fingerprints(path),
     }
 
 
-def _package_fingerprint(source: Path) -> str | None:
-    package = next((parent for parent in (source.parent, *source.parents)
-                    if parent.name == "canidae"), None)
+def _dependency_fingerprints(source: Path) -> list[dict[str, str]]:
+    """Fingerprint the stage and its transitive in-package imports only.
+
+    The previous implementation hashed every Python file in CANIS, which was safe but made
+    unrelated UI/report edits invalidate remote acquisition.  This small AST walker retains
+    code-safe invalidation while limiting it to modules the stage can actually import.
+    """
+    package = next(
+        (parent for parent in (source.parent, *source.parents) if parent.name == "canidae"),
+        None,
+    )
     if package is None or not package.exists():
-        return None
-    digest = hashlib.sha256()
-    for path in sorted(package.rglob("*.py")):
-        digest.update(str(path.relative_to(package)).encode("utf-8"))
-        digest.update(hash_file(path, mode="full").encode("ascii"))
-    return digest.hexdigest()
+        return []
+    module_paths = _module_path_index(package)
+    pending = [source.resolve()]
+    seen: set[Path] = set()
+    entries: list[dict[str, str]] = []
+    while pending:
+        path = pending.pop()
+        if path in seen or not path.exists():
+            continue
+        seen.add(path)
+        entries.append({
+            "path": path.relative_to(package).as_posix(),
+            "fingerprint": hash_file(path, mode="full"),
+        })
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            continue
+        for module in _imported_canidae_modules(tree):
+            candidate = module_paths.get(module)
+            if candidate is not None and candidate not in seen:
+                pending.append(candidate)
+    return sorted(entries, key=lambda entry: entry["path"])
+
+
+def _module_path_index(package: Path) -> dict[str, Path]:
+    paths: dict[str, Path] = {}
+    for path in package.rglob("*.py"):
+        relative = path.relative_to(package)
+        parts = list(relative.with_suffix("").parts)
+        if parts[-1] == "__init__":
+            parts.pop()
+        module = ".".join(["canidae", *parts])
+        paths[module] = path.resolve()
+    return paths
+
+
+def _imported_canidae_modules(tree: ast.AST) -> set[str]:
+    modules: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names if alias.name.startswith("canidae"))
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.startswith("canidae")
+        ):
+            modules.add(node.module)
+            modules.update(f"{node.module}.{alias.name}" for alias in node.names)
+    return modules
 
 
 def _configured_path_fingerprints(stage: Stage, ctx: RunContext) -> list[dict[str, str | None]]:

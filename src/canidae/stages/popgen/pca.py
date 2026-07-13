@@ -8,6 +8,7 @@ explained-variance ratio (carried on the artifact metadata for the report).
 from __future__ import annotations
 
 import allel
+import numpy as np
 import pandas as pd
 
 from canidae.core.errors import StageInputError
@@ -30,6 +31,7 @@ class PCAStage(Stage):
     def required_inputs(self) -> list[ArtifactSpec]:
         return [
             ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet"),
         ]
 
@@ -38,7 +40,10 @@ class PCAStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: PCAConfig = self.config  # type: ignore[assignment]
-        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = align_labels(
             geno, load_sample_labels(
                 ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
@@ -58,7 +63,10 @@ class PCAStage(Stage):
             )
 
         scaler = None if cfg.scaler.lower() in {"none", ""} else cfg.scaler
-        coords, model = allel.pca(gn, n_components=max_components, scaler=scaler)
+        # SciPy is removing float16 SVD support; float32 is stable and still laptop-friendly.
+        coords, model = allel.pca(
+            np.asarray(gn, dtype=np.float32), n_components=max_components, scaler=scaler
+        )
 
         pc_cols = [f"PC{i + 1}" for i in range(max_components)]
         table = pd.DataFrame(coords, columns=pc_cols)

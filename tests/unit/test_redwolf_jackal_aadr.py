@@ -16,6 +16,7 @@ def test_redwolf_jackal_aadr_config_and_samples_are_wired() -> None:
         "ingest",
         "qc",
         "load_genotypes",
+        "analysis_readiness",
         "distance",
         "pca",
         "fst",

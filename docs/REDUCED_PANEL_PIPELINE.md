@@ -19,8 +19,8 @@ canidae run -c configs/examples/redwolf_jackal_reduced_panel.yaml `
             -c configs/profiles/laptop.yaml
 ```
 
-The first attempt downloads only the marker panel and small tabix index, then calculates a
-conservative byte-range estimate. If the estimate exceeds the configured confirmation
+The first attempt downloads only the marker panel and small tabix index, then calculates an
+exact merged byte-range plan without fetching source VCF ranges. If the estimate exceeds the configured confirmation
 threshold, CANIS stops before downloading source VCF ranges and prints the exact estimate.
 Review it, then set this one configuration field to proceed:
 
@@ -41,8 +41,9 @@ remote indexed VCF
   -> download marker panel + tabix index
   -> estimate byte ranges and apply confirmation/ceiling policy
   -> validate selected sample names against VCF header
-  -> fetch only target ranges
-  -> retain complete diploid biallelic SNP GT calls
+  -> fetch only target ranges through a persistent checksummed cache
+  -> retain complete diploid biallelic SNP GT calls, optionally filtered by GQ/DP
+  -> autosome/readiness filtering and population/duplicate audits
   -> compact .vcf.gz + normalized sample sheet + manifest
   -> QC and analysis stages
 ```
@@ -60,6 +61,9 @@ stages:
     max_download_bytes: 9000000000
     confirmation_threshold_bytes: 1000000000
     confirm_large_transfer: false
+    range_workers: 2
+    min_genotype_quality: 20
+    min_genotype_depth: 5
 ```
 
 ## Safety and reproducibility
@@ -71,6 +75,11 @@ stages:
   preset, and selected samples are written to `reduced_panel_<preset>.manifest.json`.
 - Temporary marker-panel and index files are removed after every attempt. The retained compact
   VCF, manifest, and normalized sample sheet live under `data/.../store/reduced_panel/`.
+- Verified source ranges persist under the configured cache root. An interrupted rerun reuses
+  only files whose length and SHA-256 sidecar still match; corrupt or incomplete entries are
+  discarded and fetched again. Fetching is parallel but buffered in small batches for laptop RAM.
+- Live range counts, downloaded/reused bytes, retained SNPs, and ETA are written to
+  `runs/<run-id>/progress.json` for the local UI.
 - Extraction requires at least 1,000 retained sites by default (or the selected preset size if
   it is smaller). Increase `min_retained_sites` for a stricter requirement.
 

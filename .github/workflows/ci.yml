@@ -35,7 +35,6 @@ jobs:
 
       - name: Type-check (mypy)
         run: mypy src
-        continue-on-error: true  # strict mode is aspirational during Phase 0
 
       - name: Test
         run: pytest --cov=canidae --cov-report=term-missing

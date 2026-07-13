@@ -25,6 +25,7 @@ pipeline:
   - reduced_panel
   - qc
   - load_genotypes
+  - analysis_readiness
   - distance
   - pca
   - fst
@@ -48,6 +49,10 @@ stages:
     biallelic_snps_only: true
     min_maf: 0.0
     max_missing: 0.0
+  analysis_readiness:
+    strict: false
+    autosomes_only: true
+    min_samples_per_population: 2
   pca:
     n_components: 2
   fst:

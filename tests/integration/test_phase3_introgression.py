@@ -33,7 +33,8 @@ from make_cohort import simulate_introgression_cohort
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 R = ArtifactKind.ANALYSIS_RESULT
 
-PIPELINE = ["ingest", "qc", "load_genotypes", "distance", "nj_tree", "pca", "fst",
+PIPELINE = ["ingest", "qc", "load_genotypes", "analysis_readiness",
+            "distance", "nj_tree", "pca", "fst",
             "diversity", "f3", "dstats", "report"]
 
 
@@ -46,6 +47,9 @@ def admixed(tmp_path_factory) -> GlobalConfig:
         "executor.max_workers": 3, "logging.level": "WARNING",
         "stages.ingest.sample_sheet": str(sheet), "stages.ingest.callset": str(vcf),
         "stages.nj_tree.n_bootstrap": 30, "stages.admixture.backend": "nmf",
+        "stages.analysis_readiness.ld_prune": False,
+        "stages.f3.outgroup": "jackal", "stages.dstats.outgroup": "jackal",
+        "stages.dstats.block_mode": "site_count",
     })
     run_pipeline(cfg)
     return cfg
@@ -75,8 +79,8 @@ def _store(cfg: GlobalConfig) -> DataStore:
 
 def test_dstats_detects_gene_flow(admixed) -> None:
     art = _store(admixed).get(R, "dstats")
-    assert art.metadata["outgroup"] == "jackal"        # auto-picked most divergent
-    assert art.metadata["block_mode"] == "fixed_mb"
+    assert art.metadata["outgroup"] == "jackal"
+    assert art.metadata["block_mode"] == "site_count"
     df = pd.read_csv(art.path)
     # the trio testing wolf-vs-dog allele sharing with coyote (the true sisters are
     # wolf & dog) must be significant given the simulated coyote->dog gene flow

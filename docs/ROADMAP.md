@@ -13,13 +13,18 @@ CANIS is intentionally laptop-first. The roadmap is not a promise to automatical
 - Same-build harmonization checks, orientation diagnostics, and no automatic liftover.
 - Resource limits, disk preflight, conservative threads, intermediate cleanup, pause/resume/cancel markers, and browser UI controls.
 - A self-contained, navigable HTML report with tables, figures, limitations, provenance, and source accessions.
+- Exact indexed-range preflight, persistent verified range reuse, live transfer ETA, and bounded concurrent buffering.
+- Analysis-readiness filtering/audits, explicit outgroups, block-aware uncertainty, and multiple-testing output.
+- Memory-mapped genotype artifacts with automatic size-based selection.
+- Resolved-config snapshots, interrupted-run recovery, and blocking incremental type checks in CI.
 
 ## Near-term quality work
 
 1. Add more tested public preset metadata sheets and source-specific citation bundles.
-2. Add optional streamed/chunked genotype backends for larger pre-called VCFs while preserving the exact same artifact contracts.
+2. Add a chunk-iterating analysis API on top of the delivered memory-mapped genotype backend for algorithms that do not require whole-matrix access.
 3. Expand report interactivity with optional self-contained SVG/Canvas views without making Plotly or a web service mandatory.
 4. Add input-specific QC modules for coverage/read quality when the user intentionally chooses a raw-read workflow.
+5. Add optional executable parity tests against PLINK2, bcftools, and Dsuite when those binaries are available in CI.
 
 ## Deliberately external preparation steps
 

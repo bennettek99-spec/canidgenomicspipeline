@@ -89,7 +89,9 @@ class DataStore:
                     role=artifact.role,
                     path=artifact.path,
                     fmt=artifact.fmt,
-                    checksum=hash_file(artifact.path),
+                    # Cache fingerprints may be quick, but the persisted artifact checksum
+                    # is an integrity claim and therefore always covers complete content.
+                    checksum=hash_file(artifact.path, mode="full"),
                     produced_by=artifact.produced_by,
                     provenance_id=artifact.provenance_id,
                     schema_version=artifact.schema_version,
@@ -159,8 +161,7 @@ class DataStore:
             raise IntegrityError(f"artifact vanished: {artifact.path}")
         if artifact.checksum is None:
             return
-        # Only full sha256 checksums are re-verifiable; quick fingerprints are advisory.
-        if artifact.checksum.startswith("sha256:"):
+        if artifact.checksum.startswith(("sha256:", "dir-full:")):
             current = hash_file(artifact.path, mode="full")
             if current != artifact.checksum:
                 raise IntegrityError(

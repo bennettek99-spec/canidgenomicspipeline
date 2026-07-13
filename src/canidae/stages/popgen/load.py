@@ -9,6 +9,8 @@ provenance.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import allel
 import numpy as np
 
@@ -23,6 +25,8 @@ class LoadGenotypesConfig(StageConfig):
     biallelic_snps_only: bool = True
     min_maf: float = 0.0        # minor-allele-frequency floor (0 disables)
     max_missing: float = 1.0    # max per-site missing fraction (1 disables)
+    storage_backend: Literal["auto", "npz", "npy_mmap"] = "auto"
+    mmap_threshold_mb: int = 256
 
 
 @STAGES.register("load_genotypes")
@@ -78,10 +82,18 @@ class LoadGenotypesStage(Stage):
             )
 
         genotypes = Genotypes(calls=ga, pos=pos, chrom=chrom, samples=samples)
-        out = save_genotypes(ctx.datastore.path_for(self.name, "genotypes.npz"), genotypes)
+        estimated_mb = np.asarray(ga).nbytes / (1024 * 1024)
+        backend = cfg.storage_backend
+        if backend == "auto":
+            backend = "npy_mmap" if estimated_mb >= cfg.mmap_threshold_mb else "npz"
+        filename = "genotypes.store" if backend == "npy_mmap" else "genotypes.npz"
+        out = save_genotypes(
+            ctx.datastore.path_for(self.name, filename), genotypes, backend=backend
+        )
 
         art = Artifact(
-            ArtifactKind.GENOTYPES, "genotypes", out, fmt=FileFormat.NPZ,
+            ArtifactKind.GENOTYPES, "genotypes", out,
+            fmt=FileFormat.OTHER if backend == "npy_mmap" else FileFormat.NPZ,
             produced_by=self.name,
             metadata={
                 "n_samples": int(samples.size),
@@ -92,12 +104,15 @@ class LoadGenotypesStage(Stage):
                 "panel_name": source.metadata.get("panel_name"),
                 "callable_sites": source.metadata.get("callable_sites"),
                 "reference_build": source.metadata.get("reference_build"),
+                "hard_call_filters": source.metadata.get("hard_call_filters"),
+                "storage_backend": backend,
             },
         )
         metrics = {
             "n_variants_input": int(n_input),
             "n_variants_kept": int(ga.shape[0]),
             "n_samples": int(samples.size),
+            "storage_backend": backend,
         }
         return StageResult(artifacts=[art], metrics=metrics)
 

@@ -16,6 +16,7 @@ def test_public_ui_config_starts_with_integrated_reduced_panel(tmp_path: Path) -
         "sample_sheet": "samples.csv",
         "selected_samples": "Wolf25, Wolf26",
         "analyses": ["tree", "introgression"],
+        "outgroup": "golden_jackal",
     }, tmp_path)
 
     assert cfg.pipeline[0] == "reduced_panel"
@@ -30,5 +31,5 @@ def test_local_ui_config_requires_input_paths(tmp_path: Path) -> None:
 
 def test_laptop_estimate_mentions_exact_preflight() -> None:
     estimate = estimate_laptop_run("25k")
-    assert estimate["download"] == "about 2-8 GB"
-    assert "exact indexed-range estimate" in estimate["note"]
+    assert estimate["download"] == "exact preflight required"
+    assert "real tabix preflight" in estimate["note"]

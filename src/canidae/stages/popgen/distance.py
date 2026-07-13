@@ -27,14 +27,20 @@ class DistanceStage(Stage):
     config_model = DistanceConfig
 
     def required_inputs(self) -> list[ArtifactSpec]:
-        return [ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes")]
+        return [
+            ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
+        ]
 
     def produced_outputs(self) -> list[ArtifactSpec]:
         return [ArtifactSpec(ArtifactKind.ANALYSIS_RESULT, "distance")]
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: DistanceConfig = self.config  # type: ignore[assignment]
-        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         ac = geno.calls.count_alleles()
         gn = geno.calls.to_n_alt()[ac.is_segregating()]  # (n_seg_sites, n_samples)
         if gn.shape[0] < 1:

@@ -83,7 +83,7 @@ def run_pipeline(
     runner = make_runner(config.containers)
     provenance = ProvenanceWriter(
         run_dir, config_digest=config.digest(), seed=config.seed,
-        repo_dir=config.paths.root,
+        repo_dir=config.paths.root, resolved_config_yaml=config.to_yaml(),
     )
     resource_manager = ResourceManager(config.resource_manager, run_dir=run_dir)
     try:

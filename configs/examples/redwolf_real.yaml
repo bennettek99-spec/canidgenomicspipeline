@@ -23,6 +23,7 @@ pipeline:
   - call_variants              # GATK HaplotypeCaller -> gVCF
   - joint_genotype             # GATK CombineGVCFs + GenotypeGVCFs -> multi-sample VCF
   - load_genotypes             # VCF -> biallelic-SNP matrix
+  - analysis_readiness
   - distance
   - pca
   - fst
@@ -31,7 +32,7 @@ pipeline:
   - cluster
   - nj_tree
   - f3
-  - dstats                     # D-statistics; outgroup auto-detected (golden jackal)
+  - dstats                     # D-statistics with an explicit biological outgroup
   - local_ancestry             # paint red/eastern wolves with coyote vs gray-wolf ancestry
   - demography
   - geography
@@ -62,6 +63,11 @@ stages:
     k_max: 6
   nj_tree:
     n_bootstrap: 100
+  f3:
+    outgroup: golden_jackal
+  dstats:
+    outgroup: golden_jackal
+    block_mode: chromosome
   local_ancestry:
     sources: [coyote, gray_wolf]
     targets: [red_wolf, eastern_wolf]

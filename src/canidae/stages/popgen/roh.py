@@ -31,14 +31,20 @@ class RohStage(Stage):
     config_model = RohConfig
 
     def required_inputs(self) -> list[ArtifactSpec]:
-        return [ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes")]
+        return [
+            ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
+        ]
 
     def produced_outputs(self) -> list[ArtifactSpec]:
         return [ArtifactSpec(ArtifactKind.ANALYSIS_RESULT, "roh")]
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: RohConfig = self.config  # type: ignore[assignment]
-        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         genome_bp = _covered_genome_bp(geno)
         is_het = geno.calls.is_het()  # (n_variants, n_samples)
 

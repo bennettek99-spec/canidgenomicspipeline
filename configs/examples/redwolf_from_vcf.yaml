@@ -21,6 +21,7 @@ executor:
 pipeline:
   - ingest            # registers the VCF + the sample sheet (both in one step)
   - load_genotypes
+  - analysis_readiness
   - distance
   - pca
   - fst
@@ -49,6 +50,11 @@ stages:
     k_max: 6
   nj_tree:
     n_bootstrap: 100
+  f3:
+    outgroup: golden_jackal
+  dstats:
+    outgroup: golden_jackal
+    block_mode: chromosome
   local_ancestry:
     sources: [coyote, gray_wolf]
     targets: [red_wolf, eastern_wolf]

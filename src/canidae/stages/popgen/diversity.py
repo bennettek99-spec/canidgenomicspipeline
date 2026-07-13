@@ -25,7 +25,7 @@ from canidae.stages.popgen.store import (
 
 
 class DiversityConfig(StageConfig):
-    min_samples_per_population: int = 1
+    min_samples_per_population: int = 2
     callable_sites: int = Field(
         default=0,
         ge=0,
@@ -41,6 +41,7 @@ class DiversityStage(Stage):
     def required_inputs(self) -> list[ArtifactSpec]:
         return [
             ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet"),
         ]
 
@@ -49,7 +50,10 @@ class DiversityStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: DiversityConfig = self.config  # type: ignore[assignment]
-        geno_art = ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes")
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno_art = ctx.datastore.get(ArtifactKind.GENOTYPES, role)
         geno = load_genotypes(geno_art.path)
         labels = load_sample_labels(
             ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
@@ -98,6 +102,14 @@ class DiversityStage(Stage):
             if not callable_sites
             else "Callable-site denominator supplied by configuration/source metadata."
         )
+        small_groups = {
+            pop: len(idx) for pop, idx in population_indices(geno, labels).items() if len(idx) < 2
+        }
+        if small_groups:
+            limitations += (
+                " Singleton population estimates are descriptive and do not represent "
+                "population-level uncertainty."
+            )
         art = Artifact(
             ArtifactKind.ANALYSIS_RESULT, "diversity", out, fmt=FileFormat.CSV,
             produced_by=self.name,
@@ -107,6 +119,7 @@ class DiversityStage(Stage):
                 "scope": scope,
                 "callable_sites": callable_sites or None,
                 "limitations": limitations,
+                "small_sample_populations": small_groups,
             },
         )
         return StageResult(

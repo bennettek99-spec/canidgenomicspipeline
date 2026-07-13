@@ -144,8 +144,9 @@ class StagedDataStore:
             hash_file(artifact.path)
 
         staged_exists = self._stage_root.exists()
+        final_root = self.base.root / self.stage_name
         if staged_exists:
-            atomic_replace_directory(self._stage_root, self.base.root / self.stage_name)
+            atomic_replace_directory(self._stage_root, final_root)
 
         promoted: list[Artifact] = []
         for artifact in artifacts:
@@ -155,7 +156,13 @@ class StagedDataStore:
                 promoted.append(artifact)
             else:
                 promoted.append(
-                    replace(artifact, path=self.base.root / self.stage_name / relative)
+                    replace(
+                        artifact,
+                        path=final_root / relative,
+                        metadata=rewrite_staged_paths(
+                            artifact.metadata, self._stage_root, final_root
+                        ),
+                    )
                 )
         self.cleanup()
         return promoted
@@ -168,3 +175,19 @@ class StagedDataStore:
     def __getattr__(self, name: str) -> Any:
         """Delegate uncommon read-only datastore APIs without widening this wrapper."""
         return getattr(self.base, name)
+
+
+def rewrite_staged_paths(value: Any, staged_root: Path, final_root: Path) -> Any:
+    """Recursively rewrite temporary transaction paths after atomic promotion."""
+    staged = str(staged_root)
+    final = str(final_root)
+    if isinstance(value, str):
+        return value.replace(staged, final)
+    if isinstance(value, dict):
+        return {key: rewrite_staged_paths(item, staged_root, final_root)
+                for key, item in value.items()}
+    if isinstance(value, list):
+        return [rewrite_staged_paths(item, staged_root, final_root) for item in value]
+    if isinstance(value, tuple):
+        return tuple(rewrite_staged_paths(item, staged_root, final_root) for item in value)
+    return value

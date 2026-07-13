@@ -35,7 +35,10 @@ class MlTreeStage(Stage):
     config_model = MlTreeConfig
 
     def required_inputs(self) -> list[ArtifactSpec]:
-        return [ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes")]
+        return [
+            ArtifactSpec(ArtifactKind.GENOTYPES, "genotypes"),
+            ArtifactSpec(ArtifactKind.GENOTYPES, "analysis_genotypes", optional=True),
+        ]
 
     def produced_outputs(self) -> list[ArtifactSpec]:
         return [ArtifactSpec(ArtifactKind.TREE, "ml")]
@@ -43,7 +46,10 @@ class MlTreeStage(Stage):
     def run(self, ctx: RunContext) -> StageResult:
         cfg: MlTreeConfig = self.config  # type: ignore[assignment]
         ctx.runner.ensure(_IQTREE)
-        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
+        role = "analysis_genotypes" if ctx.datastore.has(
+            ArtifactKind.GENOTYPES, "analysis_genotypes"
+        ) else "genotypes"
+        geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         stage_dir = ctx.datastore.stage_dir(self.name)
         aln = stage_dir / "alignment.phy"
         write_phylip(geno, aln, segregating_only=cfg.segregating_only)

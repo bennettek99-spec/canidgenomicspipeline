@@ -119,6 +119,24 @@ def test_confirmation_happens_before_source_vcf_ranges_and_temporary_files_are_c
     assert not (tmp_path / "out.vcf.gz").exists()
 
 
+def test_range_cache_reuses_only_valid_complete_ranges(tmp_path: Path) -> None:
+    cache = panel.RangeCache(tmp_path, "source-version")
+    cache.put(10, 14, b"abcde")
+    assert cache.get(10, 14) == b"abcde"
+    assert cache.hits == 1
+    assert cache.reused_bytes == 5
+
+    (cache.directory / "10-14.bin").write_bytes(b"corrupt")
+    assert cache.get(10, 14) is None
+
+
+def test_genotype_quality_and_depth_thresholds_are_enforced() -> None:
+    formats = ["GT", "GQ", "DP"]
+    assert panel._genotype("0/1:30:8", formats, min_gq=20, min_dp=5) == "0/1"
+    assert panel._genotype("0/1:10:8", formats, min_gq=20, min_dp=5) is None
+    assert panel._genotype("0/1:30:2", formats, min_gq=20, min_dp=5) is None
+
+
 def test_atomic_compact_vcf_contains_only_selected_samples(tmp_path: Path) -> None:
     output = tmp_path / "compact.vcf.gz"
     panel._atomic_gzip_vcf(
@@ -182,4 +200,6 @@ def test_integrated_example_registers_reduced_panel_stage() -> None:
     cfg = GlobalConfig.load(ROOT / "configs/examples/redwolf_jackal_reduced_panel.yaml")
     stages = instantiate_stages(cfg)
     assert stages[0].name == "reduced_panel"
-    assert [stage.name for stage in stages[1:4]] == ["qc", "load_genotypes", "distance"]
+    assert [stage.name for stage in stages[1:5]] == [
+        "qc", "load_genotypes", "analysis_readiness", "distance"
+    ]

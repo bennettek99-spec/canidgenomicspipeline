@@ -8,6 +8,7 @@ from pydantic import Field
 
 from canidae.core.executor import NativeExecutor
 from canidae.core.model import Artifact, ArtifactKind, FileFormat
+from canidae.core.provenance import ProvenanceWriter
 from canidae.core.resources import ResourceManager
 from canidae.core.stage import ArtifactSpec, RunContext, Stage, StageConfig, StageResult
 from canidae.core.stage_cache import StageCache
@@ -108,9 +109,22 @@ def test_safe_resume_fingerprint_includes_stage_code(tmp_context: RunContext, mo
 
     import canidae.core.stage_cache as stage_cache_module
 
-    monkeypatch.setattr(stage_cache_module, "_package_fingerprint", lambda _path: "changed-code")
+    monkeypatch.setattr(
+        stage_cache_module,
+        "_dependency_fingerprints",
+        lambda _path: [{"path": "helper.py", "fingerprint": "changed-code"}],
+    )
     changed = cache.fingerprint(stage, tmp_context, [])
     assert not cache.is_current(stage, tmp_context, changed)
+
+
+def test_safe_resume_ignores_unrelated_global_configuration(tmp_context: RunContext) -> None:
+    stage = _CountingStage(_ValueConfig(value=4))
+    cache = StageCache(tmp_context.datastore.root.parent / "cache" / "stage-cache")
+    before = cache.fingerprint(stage, tmp_context, [])
+    tmp_context.config = tmp_context.config.model_copy(update={"project_name": "renamed-report"})
+    after = cache.fingerprint(stage, tmp_context, [])
+    assert before["fingerprint"] == after["fingerprint"]
 
 
 def test_failed_stage_never_promotes_partial_outputs_or_index_entries(
@@ -141,3 +155,41 @@ def test_cancel_marker_stops_at_a_safe_boundary_with_recovery_state(
     manifest = (Path(tmp_context.run_dir) / "manifest.json").read_text(encoding="utf-8")
     assert "cancel_marker_present" in manifest
     assert "Remove" in manifest
+
+
+def test_provenance_resume_marks_abandoned_stage_interrupted(tmp_path: Path) -> None:
+    first = ProvenanceWriter(
+        tmp_path / "run", config_digest="abc", resolved_config_yaml="project_name: test\n"
+    )
+    first.start("download")
+    resumed = ProvenanceWriter(
+        tmp_path / "run", config_digest="abc", resolved_config_yaml="project_name: test\n"
+    )
+    assert resumed.records[0].status == "interrupted"
+    assert "Previous CANIS process ended" in str(resumed.records[0].error)
+    assert (tmp_path / "run" / "resolved-config.yaml").exists()
+
+
+class _MetricPathStage(Stage):
+    name = "metric_path"
+
+    def required_inputs(self) -> list[ArtifactSpec]:
+        return []
+
+    def produced_outputs(self) -> list[ArtifactSpec]:
+        return [ArtifactSpec(ArtifactKind.QC_TABLE, "metric_path")]
+
+    def run(self, ctx: RunContext) -> StageResult:
+        path = ctx.datastore.path_for(self.name, "metric.csv")
+        path.write_text("ok\n", encoding="utf-8")
+        return StageResult(
+            [Artifact(ArtifactKind.QC_TABLE, "metric_path", path, FileFormat.CSV)],
+            metrics={"output_path": str(path)},
+        )
+
+
+def test_promoted_metric_paths_do_not_reference_staging(tmp_context: RunContext) -> None:
+    assert NativeExecutor().run([_MetricPathStage()], tmp_context).ok
+    manifest = (Path(tmp_context.run_dir) / "manifest.json").read_text(encoding="utf-8")
+    assert '"output_path"' in manifest
+    assert ".staging" not in manifest

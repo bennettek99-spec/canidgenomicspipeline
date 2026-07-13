@@ -8,6 +8,7 @@ scale — same contract (load once, analyse many), different backing format.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,9 +42,26 @@ class Genotypes:
         return {s: i for i, s in enumerate(self.samples)}
 
 
-def save_genotypes(path: Path, genotypes: Genotypes) -> Path:
-    """Persist a :class:`Genotypes` to a compressed ``.npz``."""
+def save_genotypes(
+    path: Path, genotypes: Genotypes, *, backend: str = "npz"
+) -> Path:
+    """Persist genotypes as compact NPZ or an out-of-core memory-mapped directory."""
     path = Path(path)
+    if backend == "npy_mmap":
+        path.mkdir(parents=True, exist_ok=True)
+        np.save(path / "gt.npy", np.asarray(genotypes.calls, dtype=np.int8), allow_pickle=False)
+        np.save(path / "pos.npy", np.asarray(genotypes.pos, dtype=np.int64), allow_pickle=False)
+        np.save(path / "chrom.npy", np.asarray(genotypes.chrom, dtype="U32"), allow_pickle=False)
+        np.save(
+            path / "samples.npy", np.asarray(genotypes.samples, dtype="U64"), allow_pickle=False
+        )
+        (path / "metadata.json").write_text(
+            json.dumps({"schema_version": 1, "backend": "npy_mmap"}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        return path
+    if backend != "npz":
+        raise ValueError(f"unsupported genotype storage backend: {backend}")
     np.savez_compressed(
         path,
         gt=np.asarray(genotypes.calls, dtype=np.int8),
@@ -57,6 +75,14 @@ def save_genotypes(path: Path, genotypes: Genotypes) -> Path:
 
 def load_genotypes(path: Path) -> Genotypes:
     """Load a :class:`Genotypes` previously written by :func:`save_genotypes`."""
+    path = Path(path)
+    if path.is_dir():
+        return Genotypes(
+            calls=allel.GenotypeArray(np.load(path / "gt.npy", mmap_mode="r")),
+            pos=np.load(path / "pos.npy", mmap_mode="r"),
+            chrom=np.load(path / "chrom.npy", mmap_mode="r").astype(str),
+            samples=np.load(path / "samples.npy", mmap_mode="r").astype(str),
+        )
     with np.load(path, allow_pickle=False) as data:
         return Genotypes(
             calls=allel.GenotypeArray(data["gt"]),

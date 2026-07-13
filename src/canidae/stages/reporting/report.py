@@ -183,6 +183,7 @@ class ReportStage(Stage):
             ArtifactSpec(ArtifactKind.QC_TABLE, "sample_qc", optional=True),
             ArtifactSpec(ArtifactKind.QC_TABLE, "qc_exclusions", optional=True),
             ArtifactSpec(ArtifactKind.QC_TABLE, "harmonization_diagnostics", optional=True),
+            ArtifactSpec(ArtifactKind.QC_TABLE, "analysis_readiness", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet", optional=True),
         ]
 
@@ -394,6 +395,14 @@ def _badges(ds, diversity_metadata: dict, exploratory: bool) -> list[dict[str, s
             "kind": "warn", "label": "Panel-relative diversity",
             "detail": "Selected SNPs are not a whole-genome callable-site denominator.",
         })
+    if ds.has(ArtifactKind.QC_TABLE, "analysis_readiness"):
+        readiness = ds.get(ArtifactKind.QC_TABLE, "analysis_readiness")
+        status = str(readiness.metadata.get("status", "unknown"))
+        badges.append({
+            "kind": "ok" if status == "ready" else "warn",
+            "label": f"Analysis readiness: {status}",
+            "detail": "Autosome, LD, population-size, duplicate, and ascertainment checks.",
+        })
     else:
         badges.append({
             "kind": "ok", "label": "Callable-site denominator supplied",
@@ -432,13 +441,25 @@ def _limitations(ds, diversity_metadata: dict) -> list[str]:
             "Harmonization is limited to pre-called VCFs on a common verified build; "
             "automatic cross-assembly liftover is intentionally not run."
         )
+    if ds.has(ArtifactKind.QC_TABLE, "analysis_readiness"):
+        readiness = ds.get(ArtifactKind.QC_TABLE, "analysis_readiness")
+        values.extend(
+            f"Readiness {issue.get('severity', 'warning')}: {issue.get('code')} "
+            f"({issue.get('detail')})."
+            for issue in readiness.metadata.get("issues", [])
+        )
     return list(dict.fromkeys(values))
 
 
 def _executive_summary(ds, diversity_metadata: dict) -> str:
     parts: list[str] = []
-    if ds.has(ArtifactKind.GENOTYPES, "genotypes"):
-        meta = ds.get(ArtifactKind.GENOTYPES, "genotypes").metadata
+    genotype_role = (
+        "analysis_genotypes"
+        if ds.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+        else "genotypes"
+    )
+    if ds.has(ArtifactKind.GENOTYPES, genotype_role):
+        meta = ds.get(ArtifactKind.GENOTYPES, genotype_role).metadata
         parts.append(
             f"The analysis contains {meta.get('n_samples', '?')} included samples and "
             f"{meta.get('n_variants', '?')} retained variants."

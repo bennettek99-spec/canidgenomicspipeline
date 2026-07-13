@@ -20,6 +20,7 @@ pipeline:
   - ingest          # register the published VCF + validate the sample sheet
   - qc              # per-sample call rate / heterozygosity
   - load_genotypes  # VCF -> biallelic-SNP genotype matrix (once)
+  - analysis_readiness
   - distance        # pairwise genetic-distance matrix
   - pca             # principal components
   - fst             # pairwise Hudson F_ST
