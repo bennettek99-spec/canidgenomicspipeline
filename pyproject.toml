@@ -125,3 +125,11 @@ markers = [
 # Live-network tests are opt-in: run them with `pytest -m network`. Everything
 # else must pass offline, including the hybrid and reduced-panel fixtures.
 addopts = "-ra --strict-markers -m 'not network'"
+
+[tool.coverage.run]
+source = ["canidae"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = false
