@@ -18,13 +18,27 @@ CANIS is intentionally laptop-first. The roadmap is not a promise to automatical
 - Memory-mapped genotype artifacts with automatic size-based selection.
 - Resolved-config snapshots, interrupted-run recovery, and blocking incremental type checks in CI.
 
+## Delivered hybrid-canid diagnostics (v0.4 path)
+
+- Library extraction under `canidae.analysis` and `canidae.io.indexed_vcf` (scripts are thin wrappers).
+- Registered stages: `reference_mixture`, `breed_assign`, `multiway_admixture`.
+- Presets: `configs/examples/nyc_coydog_validation.yaml`, `configs/examples/eastern_coyote_ancestry.yaml`.
+- Report sections for mixture / breed / multiway results with explicit bridge-locus limitations.
+- Deterministic synthetic bridge panel with known mixture fractions, backing unit, stage-DAG, and golden-snapshot tests.
+- Golden snapshots for both the synthetic fixture (runs in CI) and the real study panels (skipped where `data/` is absent).
+- Source citation bundles under `configs/citations/`, referenced by every public preset and rendered in the report.
+- Chunk-iterating genotype API over the memory-mapped backend.
+- Optional PLINK2 / Dsuite parity tests, and an opt-in `network` marker for live-source transport tests.
+- Remaining: optional `bridge_panel` acquisition stage to replace ad-hoc data prep paths.
+
 ## Near-term quality work
 
-1. Add more tested public preset metadata sheets and source-specific citation bundles.
-2. Add a chunk-iterating analysis API on top of the delivered memory-mapped genotype backend for algorithms that do not require whole-matrix access.
-3. Expand report interactivity with optional self-contained SVG/Canvas views without making Plotly or a web service mandatory.
-4. Add input-specific QC modules for coverage/read quality when the user intentionally chooses a raw-read workflow.
-5. Add optional executable parity tests against PLINK2, bcftools, and Dsuite when those binaries are available in CI.
+1. Expand report interactivity with optional self-contained SVG/Canvas views without making Plotly or a web service mandatory.
+2. Add input-specific QC modules for coverage/read quality when the user intentionally chooses a raw-read workflow.
+3. Extend executable parity coverage to bcftools, and run the existing PLINK2/Dsuite parity tests in a CI job that installs those binaries.
+4. Move the remaining whole-matrix stages onto the chunk-iterating API where the algorithm allows it.
+5. Fill the `doi:` fields in `configs/citations/` that this repository does not yet record, so every source resolves to a publication.
+
 
 ## Deliberately external preparation steps
 

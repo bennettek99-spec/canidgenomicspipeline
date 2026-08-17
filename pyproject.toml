@@ -116,9 +116,12 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra --strict-markers"
 testpaths = ["tests"]
 markers = [
     "integration: end-to-end tests that may invoke external tools",
     "slow: long-running tests",
+    "network: tests that fetch from a live remote source (deselected by default)",
 ]
+# Live-network tests are opt-in: run them with `pytest -m network`. Everything
+# else must pass offline, including the hybrid and reduced-panel fixtures.
+addopts = "-ra --strict-markers -m 'not network'"

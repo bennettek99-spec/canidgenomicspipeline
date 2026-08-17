@@ -57,3 +57,4 @@ stages:
     n_bootstrap: 100
   report:
     title: "Red Wolf versus golden jackal — reduced 722-canid SNP panel"
+    citations: [nhgri_722g_wgs]

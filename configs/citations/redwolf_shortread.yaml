@@ -1,0 +1,45 @@
+# Red wolf / coyote / gray wolf / eastern wolf / golden jackal short-read runs.
+#
+# Sources for the laptop red-wolf recipes, as recorded in docs/REAL_DATA_REDWOLF.md.
+#
+# `doi:` is left empty where this repository does not record one. Fill it in
+# from the source publication before citing in a manuscript.
+
+id: redwolf_shortread
+label: Red wolf comparative short-read panel
+description: >-
+  Public short-read runs for red wolf and its comparators, used by the
+  read-acquisition and reduced-panel red-wolf recipes.
+
+sources:
+  - key: vonholdt2016_redwolf
+    label: Red wolf (Canis rufus) genomes
+    study: vonHoldt et al.
+    year: 2016
+    accession: SRR7976417
+    accession_kind: sra_run
+    doi: ""
+    used_for: Red wolf query genomes (SRR7976417, SRR7976418, SRR7976419).
+    access: Public NCBI SRA runs; no access restrictions recorded.
+
+  - key: PRJNA641325
+    label: Coyote, gray wolf, and eastern wolf genomes
+    study: Rougeux et al.
+    year: 2023
+    accession: PRJNA641325
+    accession_kind: bioproject
+    doi: ""
+    used_for: >-
+      Coyote, Alberta gray wolf, and eastern wolf comparators for the red-wolf
+      ancestry recipes.
+    access: Public NCBI BioProject; no access restrictions recorded.
+
+  - key: koepfli2015_jackal
+    label: Golden jackal outgroup genome
+    study: Koepfli et al.
+    year: 2015
+    accession: SRR2149876
+    accession_kind: sra_run
+    doi: ""
+    used_for: Outgroup for D-statistics and rooting in the red-wolf recipes.
+    access: Public NCBI SRA run; no access restrictions recorded.

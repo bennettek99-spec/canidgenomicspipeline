@@ -1,0 +1,16 @@
+{
+  "dog_fraction": {
+    "T211": 0.235374,
+    "NY05": 0.334205,
+    "NY04": null,
+    "NY01": 0.401848
+  },
+  "diagnostic_sites_called": {
+    "T211": 21,
+    "NY05": 28,
+    "NY04": 7,
+    "NY01": 32
+  },
+  "n_reference_loci": 252,
+  "validation_passed": false
+}

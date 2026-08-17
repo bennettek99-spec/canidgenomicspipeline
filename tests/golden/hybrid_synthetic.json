@@ -1,0 +1,143 @@
+{
+  "reference_mixture": {
+    "dog_fraction": {
+      "NYFIXTURE_F1": 0.4864,
+      "NYFIXTURE_PARENT": 0.05,
+      "NYFIXTURE_OFF1": 0.2378,
+      "NYFIXTURE_OFF2": 0.2529
+    },
+    "diagnostic_sites_called": {
+      "NYFIXTURE_F1": 161,
+      "NYFIXTURE_PARENT": 161,
+      "NYFIXTURE_OFF1": 161,
+      "NYFIXTURE_OFF2": 161
+    }
+  },
+  "breed_assign": {
+    "calibration": {
+      "n_tested": 20,
+      "top1_accuracy": 1.0
+    },
+    "results": {
+      "NYFIXTURE_F1": {
+        "best_breed": "Beagle",
+        "single_breed_gap": 12.49,
+        "single_breed_supported": true,
+        "loci_used": 285
+      },
+      "NYFIXTURE_OFF1": {
+        "best_breed": "Beagle",
+        "single_breed_gap": -0.73,
+        "single_breed_supported": false,
+        "loci_used": 285
+      },
+      "NYFIXTURE_OFF2": {
+        "best_breed": "Beagle",
+        "single_breed_gap": 1.36,
+        "single_breed_supported": false,
+        "loci_used": 285
+      },
+      "NYFIXTURE_PARENT": {
+        "best_breed": "Beagle",
+        "single_breed_gap": 0.84,
+        "single_breed_supported": false,
+        "loci_used": 285
+      }
+    }
+  },
+  "multiway_admixture": {
+    "loci_informative": 306,
+    "per_sample": {
+      "EC01": [
+        0.25,
+        0.08
+      ],
+      "EC02": [
+        0.29,
+        0.0
+      ],
+      "EC03": [
+        0.27,
+        0.0
+      ],
+      "EC04": [
+        0.27,
+        0.0
+      ],
+      "EC05": [
+        0.17,
+        0.0
+      ],
+      "EC06": [
+        0.33,
+        0.0
+      ],
+      "EC07": [
+        0.21,
+        0.0
+      ],
+      "EC08": [
+        0.36,
+        0.0
+      ],
+      "EC09": [
+        0.16,
+        0.02
+      ],
+      "EC10": [
+        0.29,
+        0.0
+      ],
+      "NYFIXTURE_F1": [
+        0.0,
+        0.44
+      ],
+      "NYFIXTURE_OFF1": [
+        0.0,
+        0.14
+      ],
+      "NYFIXTURE_OFF2": [
+        0.0,
+        0.17
+      ],
+      "NYFIXTURE_PARENT": [
+        0.0,
+        0.0
+      ],
+      "WC01": [
+        0.0,
+        0.0
+      ],
+      "WC02": [
+        0.0,
+        0.0
+      ],
+      "WC03": [
+        0.0,
+        0.0
+      ],
+      "WC04": [
+        0.0,
+        0.0
+      ],
+      "WC05": [
+        0.0,
+        0.0
+      ],
+      "WC06": [
+        0.0,
+        0.0
+      ]
+    },
+    "cohort": {
+      "eastern": [
+        0.17,
+        0.04
+      ],
+      "western_control": [
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

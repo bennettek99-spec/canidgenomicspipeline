@@ -6,17 +6,9 @@ every sample in the same records, so the same ~337 indexed byte ranges already
 transferred once can be re-fetched to recover genotype calls for ALL panel
 samples at the same bridge loci.
 
-Pipeline stages:
-1. Fetch all-sample genotypes at the bridge loci (resumable per byte range).
-2. Group samples into breeds by name, with wild canids as outgroups.
-3. Leave-one-out assignment calibration on the reference dogs (does this panel
-   resolve breeds at all?).
-4. Score the NYC samples' dog component against breed allele-frequency panels
-   under a simple mixture model, including a pooled any-dog panel that detects
-   "no single breed matches" (mixed-breed or absent parent breed).
-
 This remains a 252-locus cross-platform diagnostic, not a genomic ancestry
-estimate.
+estimate. Pure helpers live in :mod:`canidae.analysis` and
+:mod:`canidae.io.indexed_vcf`.
 """
 
 from __future__ import annotations
@@ -24,66 +16,40 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
-import sys
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-import numpy as np
-
-sys.path.insert(0, str(Path(__file__).parent))
-import prepare_redwolf_jackal_aadr as indexed_vcf
-import validate_nyc_coydog as nyc
-
-# Groups whose names contain these substrings are treated as wild/feral canids
-# rather than domestic dogs (outgroups + coyote allele frequencies).
-WILD_KEYWORDS = (
-    "coyote", "wolf", "jackal", "fox", "dhole", "lycaon", "wilddog",
-    "dingo", "ngsd", "newguineasinging",
+from canidae.analysis.breed_panel import (
+    INFERRED_VILLAGE_CODES,
+    breed_of,
+    classify_group,
 )
-# Free-roaming / unregistered dog populations. PER and BAN are large
-# site-coded groups inferred (from sampling publications) to be Peruvian and
-# Bangladeshi free-roaming dogs; the inference is flagged in outputs.
-VILLAGE_PREFIXES = ("VillDog_",)
-VILLAGE_KEYWORDS = ("IndigenousDog",)
-INFERRED_VILLAGE_CODES = {"PER": "Peru", "BAN": "Bangladesh"}
-# CFA. (24 samples) has no documented meaning; excluded from named candidates.
-UNRESOLVED_CODES = {"CFA."}
-# Domestic breeds whose names contain wild-canid substrings.
-DOMESTIC_EXCEPTIONS = frozenset({"IrishWolfhound"})
-MIN_EFFECTIVE_P = 1e-4
-# Log-likelihood units; below this the best single breed is not considered
-# distinguishable from the pooled any-dog panel.
-SINGLE_BREED_GAP = 5.0
+from canidae.analysis.bridge_panel import bridge_sites
+from canidae.analysis.genotypes import dosage
+from canidae.analysis.reference_mixture import (
+    MIN_EFFECTIVE_P,
+    SINGLE_BREED_GAP,
+    allele_frequencies,
+    binom2_logpmf,
+    calls_log_likelihood,
+    leave_one_out,
+    log_likelihood,
+)
+from canidae.io.indexed_vcf import (
+    BGZF_MAX_BLOCK,
+    SOURCE_VCF_URL,
+    TransferBudget,
+    chunks_for,
+    decompress_bgzf,
+    genotype,
+    merge_chunks,
+    parse_tabix,
+    request,
+    source_header,
+)
 
-
-def breed_of(sample: str) -> str:
-    return sample.rstrip("0123456789")
-
-
-def classify_group(group: str) -> str:
-    """Categorize a parsed name-group: wild, village, mixed, ambiguous, or breed."""
-    lowered = group.lower()
-    if group in DOMESTIC_EXCEPTIONS:
-        return "breed"
-    if any(keyword in lowered for keyword in WILD_KEYWORDS):
-        return "wild"
-    if any(group.startswith(prefix) for prefix in VILLAGE_PREFIXES) or any(
-        keyword.lower() in lowered for keyword in VILLAGE_KEYWORDS
-    ):
-        return "village"
-    if group in INFERRED_VILLAGE_CODES or group in UNRESOLVED_CODES:
-        return "village" if group in INFERRED_VILLAGE_CODES else "ambiguous"
-    if "mix" in lowered or "unknown" in lowered:
-        return "mixed"
-    # Short initialisms (BC, GR, Helsinki_BC, run IDs, sample codes with digits)
-    # cannot be mapped to breeds safely; keep them only in the pooled panel.
-    if any(character.isdigit() for character in group) or len(group) <= 3:
-        return "ambiguous"
-    if group == "Helsinki_BC":
-        return "ambiguous"
-    return "breed"
+import validate_nyc_coydog as nyc
 
 
 def fetch_all_sample_genotypes(
@@ -97,13 +63,13 @@ def fetch_all_sample_genotypes(
     index_path = out_dir / "722g.990.SNP.INDEL.chrAll.vcf.gz.tbi"
     if not index_path.exists() and known_index is not None and known_index.exists():
         index_path = known_index
-    budget = indexed_vcf.TransferBudget(max_bytes)
+    budget = TransferBudget(max_bytes)
     if index_path.exists():
         raw_index = index_path.read_bytes()
     else:
-        raw_index = indexed_vcf._request(f"{indexed_vcf.SOURCE_VCF_URL}.tbi", budget)
+        raw_index = request(f"{SOURCE_VCF_URL}.tbi", budget)
         index_path.write_bytes(raw_index)
-    names, indexes = indexed_vcf._parse_tabix(raw_index)
+    names, indexes = parse_tabix(raw_index)
     by_chrom = dict(zip(names, indexes, strict=True))
     missing_chromosomes = sorted({chrom for chrom, _ in sites if chrom not in by_chrom})
     if missing_chromosomes:
@@ -111,10 +77,10 @@ def fetch_all_sample_genotypes(
 
     chunks: set[tuple[int, int]] = set()
     for chrom, pos in sites:
-        chunks.update(indexed_vcf._chunks_for(by_chrom[chrom], pos))
-    merged = indexed_vcf._merge_chunks(chunks)
+        chunks.update(chunks_for(by_chrom[chrom], pos))
+    merged = merge_chunks(chunks)
     estimated = sum(
-        ((end >> 16) + indexed_vcf.BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged
+        ((end >> 16) + BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged
     )
     if budget.used + estimated > max_bytes:
         raise RuntimeError(
@@ -122,7 +88,7 @@ def fetch_all_sample_genotypes(
             f"{budget.used + estimated:,} > {max_bytes:,} bytes"
         )
 
-    _, columns = indexed_vcf._source_header(indexed_vcf.SOURCE_VCF_URL, budget)
+    _, columns = source_header(SOURCE_VCF_URL, budget)
     samples = columns[9:]
     if not samples:
         raise RuntimeError("source VCF exposes no genotype columns")
@@ -142,11 +108,9 @@ def fetch_all_sample_genotypes(
         if ordinal in done:
             continue
         start = virtual_begin >> 16
-        end = (virtual_end >> 16) + indexed_vcf.BGZF_MAX_BLOCK - 1
-        raw = indexed_vcf._request(indexed_vcf.SOURCE_VCF_URL, budget, (start, end))
-        text = indexed_vcf._decompress_bgzf(raw, virtual_begin & 0xFFFF).decode(
-            errors="replace"
-        )
+        end = (virtual_end >> 16) + BGZF_MAX_BLOCK - 1
+        raw = request(SOURCE_VCF_URL, budget, (start, end))
+        text = decompress_bgzf(raw, virtual_begin & 0xFFFF).decode(errors="replace")
         kept: list[list[object]] = []
         for line in text.splitlines():
             if not line or line.startswith("#"):
@@ -167,7 +131,7 @@ def fetch_all_sample_genotypes(
             if "GT" not in format_fields:
                 continue
             gt_index = format_fields.index("GT")
-            genotypes = [indexed_vcf._genotype(field, gt_index) for field in fields[9:]]
+            genotypes = [genotype(field, gt_index) for field in fields[9:]]
             records[key] = genotypes
             kept.append([key[0], key[1], genotypes])
         with checkpoint.open("a", encoding="utf-8") as handle:
@@ -188,131 +152,6 @@ def fetch_all_sample_genotypes(
         "retained_loci": len(records),
     }
     return samples, records, metadata
-
-
-def allele_frequencies(
-    keys: list[tuple[str, int]],
-    records: dict[tuple[str, int], list[str | None]],
-    indices: list[int],
-) -> np.ndarray:
-    """Laplace-smoothed ALT frequencies per locus for one sample group."""
-    freqs = np.full(len(keys), np.nan)
-    for position, key in enumerate(keys):
-        dosages = [
-            nyc.dosage(records[key][index])
-            for index in indices
-            if records[key][index] is not None
-        ]
-        if dosages:
-            freqs[position] = (sum(dosages) + 1.0) / (2 * len(dosages) + 2.0)
-    return freqs
-
-
-def binom2_logpmf(dosage: float, p: float) -> float:
-    p = min(max(p, MIN_EFFECTIVE_P), 1.0 - MIN_EFFECTIVE_P)
-    if dosage > 1.0:
-        return 2.0 * math.log(p)
-    if dosage > 0.0:
-        return math.log(2.0) + math.log(p) + math.log1p(-p)
-    return 2.0 * math.log1p(-p)
-
-
-def log_likelihood(
-    keys: list[tuple[str, int]],
-    records: dict[tuple[str, int], list[str | None]],
-    sample_index: int,
-    panel: np.ndarray,
-) -> tuple[float, int]:
-    total = 0.0
-    used = 0
-    for position, key in enumerate(keys):
-        p = panel[position]
-        if not math.isfinite(p):
-            continue
-        genotype = records[key][sample_index]
-        if genotype is None:
-            continue
-        total += binom2_logpmf(nyc.dosage(genotype), p)
-        used += 1
-    return total, used
-
-
-def calls_log_likelihood(
-    calls: dict[tuple[str, int], tuple[str | None, int, int, int]],
-    keys: list[tuple[str, int]],
-    panel: np.ndarray,
-    coyote_panel: np.ndarray,
-    dog_fraction: float,
-) -> tuple[float, int]:
-    """Mixture likelihood: p_eff = f*p_breed + (1-f)*p_coyote per locus."""
-    total = 0.0
-    used = 0
-    for position, key in enumerate(keys):
-        p_breed = panel[position]
-        p_coyote = coyote_panel[position]
-        if not (math.isfinite(p_breed) and math.isfinite(p_coyote)):
-            continue
-        genotype, _, _, _ = calls[key]
-        if genotype is None:
-            continue
-        p_eff = dog_fraction * p_breed + (1.0 - dog_fraction) * p_coyote
-        total += binom2_logpmf(nyc.dosage(genotype), p_eff)
-        used += 1
-    return total, used
-
-
-def leave_one_out(
-    keys: list[tuple[str, int]],
-    records: dict[tuple[str, int], list[str | None]],
-    samples: list[str],
-    groups: dict[str, list[int]],
-    min_group: int,
-) -> tuple[list[dict[str, object]], dict[str, float]]:
-    eligible = {group: indices for group, indices in groups.items() if len(indices) >= min_group}
-    panels = {
-        group: allele_frequencies(keys, records, indices) for group, indices in eligible.items()
-    }
-    rows: list[dict[str, object]] = []
-    correct = 0
-    total = 0
-    for group, members in sorted(eligible.items()):
-        for sample_index in members:
-            own_minus = allele_frequencies(
-                keys, records, [i for i in members if i != sample_index]
-            )
-            scored: list[tuple[float, str]] = []
-            for candidate, panel in panels.items():
-                effective = own_minus if candidate == group else panel
-                ll, used = log_likelihood(keys, records, sample_index, effective)
-                if used < 0.9 * len(keys):
-                    continue
-                scored.append((ll, candidate))
-            scored.sort(reverse=True)
-            if not scored:
-                continue
-            sample_id = samples[sample_index]
-            prediction = scored[0][1]
-            is_correct = prediction == group
-            correct += is_correct
-            total += 1
-            rows.append(
-                {
-                    "sample_id": sample_id,
-                    "true_breed": group,
-                    "predicted_breed": prediction,
-                    "correct": is_correct,
-                    "runner_up": scored[1][1] if len(scored) > 1 else "",
-                    "log_likelihood_gap": (
-                        round(scored[0][0] - scored[1][0], 2) if len(scored) > 1 else None
-                    ),
-                }
-            )
-    summary = {
-        "n_tested": total,
-        "top1_correct": correct,
-        "top1_accuracy": correct / total if total else None,
-    }
-    return rows, summary
 
 
 def main() -> None:
@@ -359,7 +198,7 @@ def main() -> None:
         parser.error("--min-group must be at least 2")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    sites = nyc.bridge_sites(args.bridge_vcf)
+    sites = bridge_sites(args.bridge_vcf)
     saved = json.loads(args.reference_json.read_text(encoding="utf-8"))
     reference_keys = sorted(
         ((key.rsplit(":", 1)[0], int(key.rsplit(":", 1)[1])) for key in saved),
@@ -409,8 +248,6 @@ def main() -> None:
     wild_groups = {
         group: indices for group, indices in groups.items() if categories[group] == "wild"
     }
-    # The pooled any-dog panel includes every domestic sample: named breeds,
-    # village dogs, mixed/unknown, and unresolved site codes alike.
     pooled_dogs = [
         index
         for group, indices in groups.items()
@@ -463,11 +300,11 @@ def main() -> None:
         entries: list[dict[str, object]] = []
         for breed, panel in panels.items():
             ll, used = calls_log_likelihood(
-                calls, reference_keys, panel, coyote_panel, dog_fraction
+                calls, reference_keys, panel, coyote_panel, float(dog_fraction)
             )
             entries.append({"breed": breed, "log_likelihood": round(ll, 2), "loci_used": used})
         any_ll, any_used = calls_log_likelihood(
-            calls, reference_keys, pooled_panel, coyote_panel, dog_fraction
+            calls, reference_keys, pooled_panel, coyote_panel, float(dog_fraction)
         )
         entries.sort(key=lambda entry: entry["log_likelihood"], reverse=True)
         for rank, entry in enumerate(entries[: args.top_k], start=1):
@@ -479,7 +316,8 @@ def main() -> None:
                     "log_likelihood": entry["log_likelihood"],
                     "gap_to_next": (
                         round(
-                            entries[rank - 1]["log_likelihood"] - entries[rank]["log_likelihood"],
+                            float(entries[rank - 1]["log_likelihood"])
+                            - float(entries[rank]["log_likelihood"]),
                             2,
                         )
                         if rank < len(entries)
@@ -494,8 +332,10 @@ def main() -> None:
             "best_breed": best["breed"],
             "best_log_likelihood": best["log_likelihood"],
             "any_dog_log_likelihood": round(any_ll, 2),
-            "single_breed_gap": round(best["log_likelihood"] - any_ll, 2),
-            "single_breed_supported": bool(best["log_likelihood"] - any_ll > SINGLE_BREED_GAP),
+            "single_breed_gap": round(float(best["log_likelihood"]) - any_ll, 2),
+            "single_breed_supported": bool(
+                float(best["log_likelihood"]) - any_ll > SINGLE_BREED_GAP
+            ),
             "loci_used": any_used,
         }
         print(
@@ -558,6 +398,23 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"Wrote {args.out_dir / 'breed_assignment.json'}", flush=True)
+
+
+__all__ = [
+    "INFERRED_VILLAGE_CODES",
+    "MIN_EFFECTIVE_P",
+    "SINGLE_BREED_GAP",
+    "allele_frequencies",
+    "binom2_logpmf",
+    "breed_of",
+    "calls_log_likelihood",
+    "classify_group",
+    "dosage",
+    "fetch_all_sample_genotypes",
+    "leave_one_out",
+    "log_likelihood",
+    "main",
+]
 
 
 if __name__ == "__main__":

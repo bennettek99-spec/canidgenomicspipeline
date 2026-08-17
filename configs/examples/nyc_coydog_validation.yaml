@@ -1,0 +1,63 @@
+# NYC coydog pedigree check + breed scoring on the WGS/RADseq bridge panel.
+#
+# Prerequisites (prepared once by the scripts under scripts/):
+#   data/eastern_coyote_wgs_bridge/eastern_coyote_wgs_bridge_1000.vcf.gz
+#   data/nyc_coydog_validation/{reference_genotypes.json, *_calls.csv}
+#   data/nyc_coydog_breeds/all_sample_genotypes.json
+#
+# Run:
+#   canidae run -c configs/examples/nyc_coydog_validation.yaml `
+#     -c configs/profiles/laptop.yaml
+#
+# This is a bridge-locus diagnostic recipe, not a whole-genome ancestry run.
+
+project_name: nyc-coydog-validation
+seed: 7
+
+paths:
+  root: .
+
+pipeline:
+  - reference_mixture
+  - breed_assign
+  - report
+
+stages:
+  reference_mixture:
+    bridge_vcf: data/eastern_coyote_wgs_bridge/eastern_coyote_wgs_bridge_1000.vcf.gz
+    reference_genotypes: data/nyc_coydog_validation/reference_genotypes.json
+    calls_dir: data/nyc_coydog_validation
+    query_samples: [T211, NY05, NY04, NY01]
+    wgs_samples:
+      - Coyote01
+      - Coyote02
+      - Coyote03
+      - Beagle01
+      - Beagle02
+      - Chihuahua01
+      - Chihuahua03
+      - GermanShepherd01
+      - GermanShepherd02
+      - GoldenRetriever01
+      - GoldenRetriever02
+      - LabradorRetriever01
+      - LabradorRetriever02
+    coyote_samples: [Coyote01, Coyote02, Coyote03]
+    min_depth: 8
+    expected_f1: NY01
+    expected_parent: T211
+    expected_offspring: [NY04, NY05]
+  breed_assign:
+    bridge_vcf: data/eastern_coyote_wgs_bridge/eastern_coyote_wgs_bridge_1000.vcf.gz
+    wgs_genotypes: data/nyc_coydog_breeds/all_sample_genotypes.json
+    calls_dir: data/nyc_coydog_validation
+    dog_fractions: data/nyc_coydog_validation/validation.json
+    locus_filter_json: data/nyc_coydog_validation/reference_genotypes.json
+    query_samples: [T211, NY05, NY04, NY01]
+    min_depth: 8
+    min_group: 3
+    top_k: 5
+  report:
+    title: "NYC coydog pedigree validation (bridge-locus diagnostic)"
+    exploratory: true
+    citations: [nhgri_722g_wgs, eastern_coyote_radseq]

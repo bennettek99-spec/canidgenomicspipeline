@@ -1,0 +1,37 @@
+# NHGRI Dog Genome 722-genome whole-genome SNP/INDEL panel.
+#
+# Every CANIS recipe that reads reference genotypes from
+# 722g.990.SNP.INDEL.chrAll.vcf.gz draws on this source. Cite it, and preserve
+# its access conditions, in anything derived from those genotypes.
+#
+# `doi:` is left empty where this repository does not record one. Fill it in
+# from the source publication before citing in a manuscript; an empty field is
+# reported as "not recorded" rather than guessed.
+
+id: nhgri_722g_wgs
+label: NHGRI Dog Genome 722-genome WGS panel
+description: >-
+  Public whole-genome variant calls across 722 dogs, village dogs, and wild
+  canids, distributed by the NHGRI Dog Genome Project. CANIS reads it by
+  indexed byte range rather than downloading the full source VCF.
+
+sources:
+  - key: PRJNA448733
+    label: NHGRI canid whole-genome sequencing BioProject
+    accession: PRJNA448733
+    accession_kind: bioproject
+    doi: ""
+    used_for: >-
+      Coyote, wolf, village-dog, and breed-dog reference allele frequencies at
+      bridge loci; the reduced CanFam3.1 SNP panels.
+    access: Public NCBI BioProject; no access restrictions recorded.
+
+  - key: nhgri_download
+    label: NHGRI Dog Genome variant download (722g.990.SNP.INDEL.chrAll.vcf.gz)
+    url: https://research.nhgri.nih.gov/dog_genome/downloads/datasets/WGS/
+    accession_kind: other
+    doi: ""
+    used_for: The indexed source VCF and its tabix index.
+    access: >-
+      Public download hosted by NHGRI. Byte-range fetches are budget-capped by
+      canidae.io.indexed_vcf; do not mirror the full file without need.

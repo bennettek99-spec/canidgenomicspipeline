@@ -41,8 +41,14 @@ def test_redwolf_jackal_preparation_script_uses_indexed_panel_sources() -> None:
 
 
 def test_windows_preparation_script_has_a_sub_10gb_hard_limit() -> None:
-    script = (ROOT / "scripts/prepare_redwolf_jackal_aadr.py").read_text(encoding="utf-8")
+    from canidae.io.indexed_vcf import DEFAULT_LIMIT
 
-    assert "DEFAULT_LIMIT = 9_000_000_000" in script
-    assert "status != 206" in script
-    assert "server ignored byte-range request" in script
+    script = (ROOT / "scripts/prepare_redwolf_jackal_aadr.py").read_text(encoding="utf-8")
+    lib = (ROOT / "src/canidae/io/indexed_vcf.py").read_text(encoding="utf-8")
+
+    assert DEFAULT_LIMIT == 9_000_000_000
+    assert "DEFAULT_LIMIT" in script
+    assert "status != 206" in lib
+    assert "server ignored byte-range request" in lib
+    assert "from canidae.io.indexed_vcf import" in script
+  

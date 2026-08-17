@@ -47,9 +47,61 @@ canidae run -c configs\examples\popgen_mvp.yaml `
 
 The report is written to `data/store/report/report.html`; double-click it after the run. The adjacent `data/store/` stage folders and `runs/<run-id>/manifest.json` form the companion reproducibility package.
 
+## Hybrid-canid diagnostics (bridge loci)
+
+NYC coydog pedigree check + breed scoring, and eastern coyote three-way
+coyote/wolf/dog mixture, are first-class stages (not only `scripts/`):
+
+```powershell
+# Requires pre-built bridge panel + call tables under data/ (see docs/ROADMAP.md).
+canidae run -c configs\examples\nyc_coydog_validation.yaml `
+  -c configs\profiles\laptop.yaml
+
+canidae run -c configs\examples\eastern_coyote_ancestry.yaml `
+  -c configs\profiles\laptop.yaml
+```
+
+These recipes are **bridge-locus diagnostics** (~250 sites), not whole-genome
+ancestry. Stages: `reference_mixture`, `breed_assign`, `multiway_admixture`.
+The reports say so, and the `breed_assign` "no single breed supported" flag is
+the expected outcome at this marker count.
+
+The equivalent `scripts/` entry points remain as shortcuts for one-off data
+preparation, but the YAML recipes above are the supported path: they run through
+the same executor, cache, and provenance as every other pipeline.
+
+The estimators are covered by a deterministic synthetic bridge panel with known
+mixture fractions, so `pytest` verifies that they recover the truth rather than
+merely running:
+
+```powershell
+pytest tests\unit\test_hybrid_analysis.py tests\integration\test_hybrid_pipeline.py
+```
+
+`tests/golden/` pins both the synthetic results and the study results. The
+study-panel snapshots skip unless the prepared panels are present under `data/`;
+re-bless either set with `CANIDAE_UPDATE_GOLDEN=1` after reviewing the diff.
+
+## Citing the data behind a run
+
+Each public preset names its data sources through a citation bundle under
+`configs/citations/`, and the report renders them under **Sources**:
+
+```yaml
+stages:
+  report:
+    citations: [nhgri_722g_wgs, eastern_coyote_radseq]
+```
+
+A bundle lists each study, its accession or DOI, what the recipe uses it for,
+and its access conditions. Identifiers this repository does not record are shown
+as "not recorded" rather than guessed — fill them in before citing in a
+manuscript.
+
 ## Laptop reduced-panel workflow
 
 The integrated public Red Wolf / golden jackal example starts from a remote indexed VCF rather than downloading the full source VCF or raw reads:
+
 
 ```powershell
 canidae run -c configs\examples\redwolf_jackal_reduced_panel.yaml `
@@ -72,7 +124,9 @@ src/canidae/
     qc/                          enforced sample/site filtering and exclusion ledger
     processing/                  harmonization and VCF utilities
     popgen/, introgression/,     PCA, FST, diversity, D/f statistics, local ancestry,
-    local_ancestry/, ...         phylogenetics, demography, reporting
+    local_ancestry/, hybrid/,    hybrid bridge-locus mixture/breed diagnostics,
+    ...                          phylogenetics, demography, reporting
+
 tests/                           unit, simulated, and integration validation
 ```
 

@@ -18,7 +18,9 @@ from pathlib import Path
 
 import pandas as pd
 from jinja2 import Template
+from pydantic import Field
 
+from canidae.core.citations import citation_rows, load_citation_bundles
 from canidae.core.model import Artifact, ArtifactKind, FileFormat
 from canidae.core.registry import STAGES
 from canidae.core.stage import ArtifactSpec, RunContext, Stage, StageConfig, StageResult
@@ -58,10 +60,12 @@ _TEMPLATE = Template(
 </style></head><body>
 <nav aria-label="Report navigation">
   <a href="#summary">Summary</a><a href="#cohort">Cohort &amp; QC</a>
-  <a href="#pca">PCA</a><a href="#diversity">Diversity</a><a href="#introgression">Introgression</a>
+  <a href="#pca">PCA</a><a href="#diversity">Diversity</a><a href="#hybrid">Hybrid diagnostics</a>
+  <a href="#introgression">Introgression</a>
   <a href="#sources">Sources</a><a href="#limitations">Limitations</a><a href="#downloads">Outputs</a><a href="#methods">Methods</a>
 </nav>
 <h1>{{ title }}</h1>
+
 <p class="meta">Project <b>{{ project }}</b> &middot; generated {{ generated }}
    &middot; config digest <code>{{ digest }}</code></p>
 <div class="badges">{% for badge in badges %}<span class="badge {{ badge.kind }}" title="{{ badge.detail }}">{{ badge.label }}</span>{% endfor %}</div>
@@ -77,11 +81,13 @@ _TEMPLATE = Template(
 {{ cohort_table }}
 {% if excluded_table %}<h3>Excluded samples and sites</h3>{{ excluded_table }}{% endif %}
 
-<h2 id="pca">Principal component analysis</h2>
+{% if pca_img %}<h2 id="pca">Principal component analysis</h2>
 <img src="data:image/png;base64,{{ pca_img }}" alt="PCA scatter">
 {% if pca_svg %}<p class="small">Interactive PCA: hover or focus a point to inspect its sample and coordinates.</p>{{ pca_svg }}{% endif %}
+{% endif %}
 
 {% if admixture_img %}<h2>Admixture</h2>
+
 <p class="stat">Backend: {{ admix_backend }} &middot; selected K = {{ admix_k }}
    (cross-validation).</p>
 <img src="data:image/png;base64,{{ admixture_img }}" alt="admixture barplot">{% endif %}
@@ -94,17 +100,32 @@ _TEMPLATE = Template(
 {% if tree_img %}<h2>Phylogeny (neighbor-joining)</h2>
 <img src="data:image/png;base64,{{ tree_img }}" alt="NJ tree">{% endif %}
 
-<h2>Population differentiation (F<sub>ST</sub>)</h2>
+{% if fst_img %}<h2>Population differentiation (F<sub>ST</sub>)</h2>
 <img src="data:image/png;base64,{{ fst_img }}" alt="FST heatmap">
-{{ fst_table }}
+{{ fst_table }}{% endif %}
 
-<h2 id="diversity">Genetic diversity</h2>
+{% if div_img %}<h2 id="diversity">Genetic diversity</h2>
 {% if diversity_note %}<p class="note">{{ diversity_note }}</p>{% endif %}
 <img src="data:image/png;base64,{{ div_img }}" alt="diversity barplot">
-{{ div_table }}
+{{ div_table }}{% endif %}
+
+{% if mixture_table or breed_table or multiway_table %}<h2 id="hybrid">Hybrid-canid diagnostics</h2>
+<p class="note">Bridge-locus diagnostics only &mdash; not whole-genome ancestry or local-ancestry estimates.
+   Interpret with the limitations listed below.</p>
+{% if mixture_table %}<h3>Two-source mixture (coyote vs dog)</h3>
+{% if mixture_verdict %}<p class="stat">{{ mixture_verdict }}</p>{% endif %}
+{{ mixture_table }}{% endif %}
+{% if breed_table %}<h3>Breed assignment of dog component</h3>
+{% if breed_calibration %}<p class="stat">{{ breed_calibration }}</p>{% endif %}
+{{ breed_table }}{% endif %}
+{% if multiway_table %}<h3>Three-way coyote / wolf / dog admixture</h3>
+{% if multiway_summary %}<p class="stat">{{ multiway_summary }}</p>{% endif %}
+{{ multiway_table }}{% endif %}
+{% endif %}
 
 {% if dstats_table or f3_table %}<h2 id="introgression">Introgression</h2>
 {% if dstats_table %}<h3>D-statistics (ABBA-BABA)</h3>
+
 <p class="stat">|Z| &gt; 3 indicates significant gene flow (P2&harr;P3). Outgroup:
    {{ dstats_outgroup }}.</p>
 {{ dstats_table }}{% endif %}
@@ -135,9 +156,12 @@ _TEMPLATE = Template(
 {% if qc_table %}<h2>Sample quality control</h2>{{ qc_table }}{% endif %}
 {% if harmonization_table %}<h2>Callset harmonization diagnostics</h2>{{ harmonization_table }}{% endif %}
 
-{% if sources_table %}<h2 id="sources">Source accessions and citations</h2>
+{% if sources_table or citations_table %}<h2 id="sources">Source accessions and citations</h2>
 <p class="small">Cite the source study/accession listed here and preserve its access conditions. The local manifest records the exact URLs and checksums used.</p>
-{{ sources_table }}{% endif %}
+{% if citations_table %}<h3>Published data sources</h3>
+<p class="small">Entries reading &ldquo;not recorded&rdquo; are not absent identifiers &mdash; they are simply not recorded in this repository. Resolve them against the source publication before citing.</p>
+{{ citations_table }}{% endif %}
+{% if sources_table %}<h3>Artifacts in this run</h3>{{ sources_table }}{% endif %}{% endif %}
 
 <h2 id="limitations">Statistical limitations and warnings</h2>
 <ul>{% for limitation in limitations %}<li>{{ limitation }}</li>{% endfor %}</ul>
@@ -155,6 +179,13 @@ _TEMPLATE = Template(
 class ReportConfig(StageConfig):
     title: str = "Canid population-genomics report"
     exploratory: bool = True
+    citations: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Citation bundles for the data behind this recipe. Each entry is a "
+            "bundle id under configs/citations/ or a path to a bundle YAML."
+        ),
+    )
 
 
 @STAGES.register("report")
@@ -165,10 +196,11 @@ class ReportStage(Stage):
     def required_inputs(self) -> list[ArtifactSpec]:
         R = ArtifactKind.ANALYSIS_RESULT
         return [
-            ArtifactSpec(R, "pca"),
-            ArtifactSpec(R, "fst"),
-            ArtifactSpec(R, "diversity"),
-            ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet"),
+            # Popgen figures are optional so hybrid-only recipes can still report.
+            ArtifactSpec(R, "pca", optional=True),
+            ArtifactSpec(R, "fst", optional=True),
+            ArtifactSpec(R, "diversity", optional=True),
+            ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "sample_sheet", optional=True),
             ArtifactSpec(R, "admixture", optional=True),
             ArtifactSpec(R, "cluster", optional=True),
             ArtifactSpec(R, "distance", optional=True),
@@ -180,12 +212,16 @@ class ReportStage(Stage):
             ArtifactSpec(R, "local_ancestry", optional=True),
             ArtifactSpec(R, "selection", optional=True),
             ArtifactSpec(R, "demography", optional=True),
+            ArtifactSpec(R, "reference_mixture", optional=True),
+            ArtifactSpec(R, "breed_assign", optional=True),
+            ArtifactSpec(R, "multiway_admixture", optional=True),
             ArtifactSpec(ArtifactKind.QC_TABLE, "sample_qc", optional=True),
             ArtifactSpec(ArtifactKind.QC_TABLE, "qc_exclusions", optional=True),
             ArtifactSpec(ArtifactKind.QC_TABLE, "harmonization_diagnostics", optional=True),
             ArtifactSpec(ArtifactKind.QC_TABLE, "analysis_readiness", optional=True),
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet", optional=True),
         ]
+
 
     def produced_outputs(self) -> list[ArtifactSpec]:
         return [ArtifactSpec(ArtifactKind.REPORT, "html")]
@@ -196,15 +232,15 @@ class ReportStage(Stage):
         R = ArtifactKind.ANALYSIS_RESULT
         d = ds.stage_dir(self.name)
 
-        pca_art = ds.get(R, "pca")
-        fst_art = ds.get(R, "fst")
-        div_art = ds.get(R, "diversity")
-        sheet = (
-            ds.get(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet").path
-            if ds.has(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet")
-            else ds.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
-        )
-        diversity_meta = div_art.metadata
+        sheet = None
+        if ds.has(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet"):
+            sheet = ds.get(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet").path
+        elif ds.has(ArtifactKind.SAMPLE_SHEET, "sample_sheet"):
+            sheet = ds.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+
+        diversity_meta: dict = {}
+        if ds.has(R, "diversity"):
+            diversity_meta = ds.get(R, "diversity").metadata
         limitations = _limitations(ds, diversity_meta)
 
         ctx_vars: dict[str, object] = {
@@ -212,14 +248,12 @@ class ReportStage(Stage):
             "project": ctx.config.project_name,
             "generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
             "digest": ctx.config.digest()[:16],
-            "cohort_table": _cohort_table(sheet),
-            "pca_img": _b64(figures.pca_scatter(
-                pca_art.path, d / "pca.png",
-                explained_variance=pca_art.metadata.get("explained_variance_ratio"))),
-            "fst_img": _b64(figures.fst_heatmap(fst_art.path, d / "fst.png")),
-            "fst_table": pd.read_csv(fst_art.path, index_col=0).to_html(border=0),
-            "div_img": _b64(figures.diversity_bar(div_art.path, d / "diversity.png")),
-            "div_table": pd.read_csv(div_art.path).to_html(index=False, border=0),
+            "cohort_table": _cohort_table(sheet) if sheet is not None else "<p class='small'>No sample sheet in this recipe.</p>",
+            "pca_img": None,
+            "fst_img": None,
+            "fst_table": None,
+            "div_img": None,
+            "div_table": None,
             "diversity_note": diversity_meta.get("limitations"),
             "badges": _badges(ds, diversity_meta, cfg.exploratory),
             "limitations": limitations,
@@ -230,21 +264,40 @@ class ReportStage(Stage):
             "downloads": _downloads(ds, ctx.datastore.root / self.name),
             "manifest_path": str(ctx.run_dir / "manifest.json") if ctx.run_dir else "unavailable",
             "methods": _methods(ctx, diversity_meta),
-            "pca_svg": _pca_svg(pca_art.path),
+            "pca_svg": None,
             "sources_table": _sources_table(ds),
+            "citations_table": _citations_table(cfg, ctx),
         }
+
+        if ds.has(R, "pca"):
+            pca_art = ds.get(R, "pca")
+            ctx_vars["pca_img"] = _b64(figures.pca_scatter(
+                pca_art.path, d / "pca.png",
+                explained_variance=pca_art.metadata.get("explained_variance_ratio")))
+            ctx_vars["pca_svg"] = _pca_svg(pca_art.path)
+        if ds.has(R, "fst"):
+            fst_art = ds.get(R, "fst")
+            ctx_vars["fst_img"] = _b64(figures.fst_heatmap(fst_art.path, d / "fst.png"))
+            ctx_vars["fst_table"] = pd.read_csv(fst_art.path, index_col=0).to_html(border=0)
+        if ds.has(R, "diversity"):
+            div_art = ds.get(R, "diversity")
+            ctx_vars["div_img"] = _b64(figures.diversity_bar(div_art.path, d / "diversity.png"))
+            ctx_vars["div_table"] = pd.read_csv(div_art.path).to_html(index=False, border=0)
 
         self._add_admixture(ds, d, ctx_vars)
         self._add_clustering(ds, d, ctx_vars)
-        self._add_phylogeny(ds, d, ctx_vars, sheet)
+        if sheet is not None:
+            self._add_phylogeny(ds, d, ctx_vars, sheet)
         self._add_introgression(ds, d, ctx_vars)
         self._add_local_ancestry(ds, d, ctx_vars)
         self._add_selection(ds, ctx_vars)
         self._add_demography(ds, ctx_vars)
+        self._add_hybrid(ds, ctx_vars)
         self._add_roh(ds, d, ctx_vars)
         self._add_geography(ds, d, ctx_vars)
         self._add_qc(ds, ctx_vars)
         self._add_harmonization(ds, ctx_vars)
+
 
         html = _TEMPLATE.render(**ctx_vars)
         out = d / "report.html"
@@ -324,7 +377,48 @@ class ReportStage(Stage):
             v["demography_table"] = pd.read_csv(
                 ds.get(R, "demography").path).to_html(index=False, border=0)
 
+    def _add_hybrid(self, ds, v: dict) -> None:
+        R = ArtifactKind.ANALYSIS_RESULT
+        if ds.has(R, "reference_mixture"):
+            art = ds.get(R, "reference_mixture")
+            df = pd.read_csv(art.path)
+            if not df.empty:
+                v["mixture_table"] = df.to_html(index=False, border=0)
+            passed = art.metadata.get("validation_passed")
+            if passed is True:
+                v["mixture_verdict"] = "Pedigree-style validation: PASSED."
+            elif passed is False:
+                v["mixture_verdict"] = "Pedigree-style validation: FAILED (see limitations)."
+            else:
+                v["mixture_verdict"] = "Dog fractions estimated; no pedigree criteria configured."
+        if ds.has(R, "breed_assign"):
+            art = ds.get(R, "breed_assign")
+            df = pd.read_csv(art.path)
+            if not df.empty:
+                v["breed_table"] = df.to_html(index=False, border=0)
+            cal = art.metadata.get("calibration") or {}
+            acc = cal.get("top1_accuracy")
+            if acc is not None:
+                v["breed_calibration"] = (
+                    f"Leave-one-out top-1 breed accuracy on reference dogs: "
+                    f"{acc:.3f} (n={cal.get('n_tested', '?')})."
+                )
+        if ds.has(R, "multiway_admixture"):
+            art = ds.get(R, "multiway_admixture")
+            df = pd.read_csv(art.path)
+            if not df.empty:
+                v["multiway_table"] = df.to_html(index=False, border=0)
+            gs = art.metadata.get("group_summary") or {}
+            ew = (gs.get("eastern_dog_fraction") or {}).get("mean")
+            ww = (gs.get("western_dog_fraction") or {}).get("mean")
+            if ew is not None and ww is not None:
+                v["multiway_summary"] = (
+                    f"Mean dog fraction: eastern={ew}, western control={ww} "
+                    f"(bridge-locus ML mixture)."
+                )
+
     def _add_roh(self, ds, d: Path, v: dict) -> None:
+
         if ds.has(ArtifactKind.ANALYSIS_RESULT, "roh"):
             art = ds.get(ArtifactKind.ANALYSIS_RESULT, "roh")
             v["roh_img"] = _b64(figures.roh_barplot(art.path, d / "roh.png"))
@@ -395,6 +489,20 @@ def _badges(ds, diversity_metadata: dict, exploratory: bool) -> list[dict[str, s
             "kind": "warn", "label": "Panel-relative diversity",
             "detail": "Selected SNPs are not a whole-genome callable-site denominator.",
         })
+    elif diversity_metadata.get("scope") == "callable_sites":
+        badges.append({
+            "kind": "ok", "label": "Callable-site denominator supplied",
+            "detail": "Diversity output uses an explicit callable-site denominator.",
+        })
+    R = ArtifactKind.ANALYSIS_RESULT
+    if any(ds.has(R, role) for role in (
+        "reference_mixture", "breed_assign", "multiway_admixture"
+    )):
+        badges.append({
+            "kind": "warn",
+            "label": "Hybrid bridge-locus diagnostic",
+            "detail": "Not whole-genome ancestry; see the hybrid diagnostics section.",
+        })
     if ds.has(ArtifactKind.QC_TABLE, "analysis_readiness"):
         readiness = ds.get(ArtifactKind.QC_TABLE, "analysis_readiness")
         status = str(readiness.metadata.get("status", "unknown"))
@@ -403,11 +511,7 @@ def _badges(ds, diversity_metadata: dict, exploratory: bool) -> list[dict[str, s
             "label": f"Analysis readiness: {status}",
             "detail": "Autosome, LD, population-size, duplicate, and ascertainment checks.",
         })
-    else:
-        badges.append({
-            "kind": "ok", "label": "Callable-site denominator supplied",
-            "detail": "Diversity output uses an explicit callable-site denominator.",
-        })
+
     if ds.has(ArtifactKind.QC_TABLE, "qc_exclusions"):
         exclusions = pd.read_csv(ds.get(ArtifactKind.QC_TABLE, "qc_exclusions").path)
         if len(exclusions):
@@ -431,11 +535,20 @@ def _limitations(ds, diversity_metadata: dict) -> list[str]:
     values = [
         "Exploratory analysis: this package is not a substitute for preregistered, "
         "independently replicated publication analyses.",
-        str(diversity_metadata.get("limitations", "Diversity scope was not declared.")),
     ]
-    if ds.has(ArtifactKind.ANALYSIS_RESULT, "demography"):
-        demo = ds.get(ArtifactKind.ANALYSIS_RESULT, "demography")
+    if diversity_metadata:
+        values.append(
+            str(diversity_metadata.get("limitations", "Diversity scope was not declared."))
+        )
+    R = ArtifactKind.ANALYSIS_RESULT
+    if ds.has(R, "demography"):
+        demo = ds.get(R, "demography")
         values.append(str(demo.metadata.get("limitations", "Demographic limitations unavailable.")))
+    for role in ("reference_mixture", "breed_assign", "multiway_admixture"):
+        if ds.has(R, role):
+            art = ds.get(R, role)
+            for item in art.metadata.get("limitations", []) or []:
+                values.append(str(item))
     if ds.has(ArtifactKind.QC_TABLE, "harmonization_diagnostics"):
         values.append(
             "Harmonization is limited to pre-called VCFs on a common verified build; "
@@ -464,13 +577,33 @@ def _executive_summary(ds, diversity_metadata: dict) -> str:
             f"The analysis contains {meta.get('n_samples', '?')} included samples and "
             f"{meta.get('n_variants', '?')} retained variants."
         )
-    if ds.has(ArtifactKind.ANALYSIS_RESULT, "dstats"):
+    R = ArtifactKind.ANALYSIS_RESULT
+    if ds.has(R, "reference_mixture"):
+        art = ds.get(R, "reference_mixture")
+        parts.append(
+            f"Two-source mixture diagnostics cover {art.metadata.get('n_queries', '?')} "
+            "query samples on a bridge-locus panel."
+        )
+        if art.metadata.get("validation_passed") is True:
+            parts.append("Configured pedigree-style checks passed.")
+        elif art.metadata.get("validation_passed") is False:
+            parts.append("Configured pedigree-style checks did not pass.")
+    if ds.has(R, "breed_assign"):
+        parts.append("Dog-component breed panels were scored against the WGS reference set.")
+    if ds.has(R, "multiway_admixture"):
+        art = ds.get(R, "multiway_admixture")
+        parts.append(
+            f"Three-way coyote/wolf/dog mixtures were fit for "
+            f"{art.metadata.get('n_queries', '?')} queries."
+        )
+    if ds.has(R, "dstats"):
         parts.append("D-statistics were calculated with uncertainty reported in the introgression section.")
-    if ds.has(ArtifactKind.ANALYSIS_RESULT, "local_ancestry"):
+    if ds.has(R, "local_ancestry"):
         parts.append("Chromosome-reset local ancestry calls are included where source panels were configured.")
     if diversity_metadata.get("scope") == "panel_relative":
         parts.append("Diversity values are panel-relative, not per-base whole-genome estimates.")
     return " ".join(parts) or "The configured analyses completed; inspect each section and its limits."
+
 
 
 def _run_status(ctx: RunContext) -> str:
@@ -503,6 +636,25 @@ def _methods(ctx: RunContext, diversity_metadata: dict) -> str:
         f"{ctx.config.digest()[:16]}. Source accessions and source paths are retained in the "
         "artifact manifest."
     )
+
+
+def _citations_table(cfg: ReportConfig, ctx: RunContext) -> str:
+    """Render the configured citation bundles, linking each source where possible."""
+    if not cfg.citations:
+        return ""
+    bundles = load_citation_bundles(
+        [Path(entry) for entry in cfg.citations], ctx.config.paths.root
+    )
+    rows = citation_rows(bundles)
+    if not rows:
+        return ""
+    for row in rows:
+        link = row.pop("link")
+        if link:
+            row["source"] = (
+                f'<a href="{html.escape(link)}">{html.escape(row["source"])}</a>'
+            )
+    return pd.DataFrame(rows).to_html(index=False, border=0, escape=False)
 
 
 def _sources_table(ds) -> str:

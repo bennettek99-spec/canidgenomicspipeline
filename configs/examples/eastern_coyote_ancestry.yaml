@@ -1,0 +1,37 @@
+# Eastern coyote three-way (coyote/wolf/dog) mixture on the bridge panel.
+#
+# Prerequisites:
+#   data/eastern_coyote_wgs_bridge/eastern_coyote_wgs_bridge_1000.vcf.gz
+#   data/nyc_coydog_breeds/all_sample_genotypes.json
+#
+# Run:
+#   canidae run -c configs/examples/eastern_coyote_ancestry.yaml `
+#     -c configs/profiles/laptop.yaml
+#
+# Arizona coyotes (Coyote001–012) are the western negative control.
+
+project_name: eastern-coyote-ancestry
+seed: 20260816
+
+paths:
+  root: .
+
+pipeline:
+  - multiway_admixture
+  - report
+
+stages:
+  multiway_admixture:
+    bridge_vcf: data/eastern_coyote_wgs_bridge/eastern_coyote_wgs_bridge_1000.vcf.gz
+    wgs_genotypes: data/nyc_coydog_breeds/all_sample_genotypes.json
+    western_id_prefix: Coyote
+    western_id_range: [1, 12]
+    seed: 20260816
+    bootstrap_n: 200
+    min_group: 3
+    top_k: 5
+    exclude_bridge_wgs_bug_ids: true
+  report:
+    title: "Eastern coyote wolf/dog admixture (bridge-locus diagnostic)"
+    exploratory: true
+    citations: [nhgri_722g_wgs, eastern_coyote_radseq]

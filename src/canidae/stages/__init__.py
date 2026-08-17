@@ -6,9 +6,8 @@ Each subpackage here implements one pipeline module as one or more
 invoked and the *only* place analysis logic lives; they communicate exclusively through
 typed artifacts in the datastore.
 
-Implemented (Phase 1): acquisition · qc · popgen · reporting
-Planned: processing · phylogenetics · introgression · comparative · geographic
-Future: selection · demography · ancient · sv
+Implemented: acquisition · qc · popgen · phylogenetics · introgression ·
+local_ancestry · hybrid · reporting, plus selection/demography/ancient/sv stubs.
 """
 
 from __future__ import annotations
@@ -30,6 +29,7 @@ _BUILTIN_PACKAGES = (
     "canidae.stages.phylogenetics",
     "canidae.stages.introgression",
     "canidae.stages.local_ancestry",
+    "canidae.stages.hybrid",
     "canidae.stages.selection",
     "canidae.stages.demography",
     "canidae.stages.ancient",

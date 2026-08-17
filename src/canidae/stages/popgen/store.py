@@ -9,6 +9,7 @@ scale — same contract (load once, analyse many), different backing format.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +17,10 @@ import allel
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import pdist, squareform
+
+# Variants per block for the chunk-iterating API. Sized so one chunk of a
+# few-hundred-sample cohort stays in the low tens of megabytes.
+DEFAULT_CHUNK_VARIANTS = 50_000
 
 
 @dataclass(slots=True)
@@ -90,6 +95,121 @@ def load_genotypes(path: Path) -> Genotypes:
             chrom=data["chrom"].astype(str),
             samples=data["samples"].astype(str),
         )
+
+
+@dataclass(slots=True)
+class GenotypeChunk:
+    """A contiguous block of variants, with the coordinates that describe it.
+
+    ``start``/``stop`` are indices into the full variant axis, so a caller can
+    write results back into a whole-cohort array without tracking its own offset.
+    """
+
+    start: int
+    stop: int
+    calls: allel.GenotypeArray   # (stop - start, n_samples, ploidy)
+    pos: np.ndarray
+    chrom: np.ndarray
+    samples: np.ndarray
+
+    @property
+    def n_variants(self) -> int:
+        return self.stop - self.start
+
+
+def iter_genotype_chunks(
+    source: Path | str | Genotypes,
+    *,
+    chunk_variants: int = DEFAULT_CHUNK_VARIANTS,
+) -> Iterator[GenotypeChunk]:
+    """Yield blocks of variants without holding the whole matrix in memory.
+
+    For the ``npy_mmap`` backend each block is read from the memory map on
+    demand, so peak resident memory scales with ``chunk_variants`` rather than
+    with the cohort. NPZ archives cannot be memory-mapped, so that path decodes
+    once and then slices; the iteration contract is identical either way.
+
+    This is for algorithms that only need a variant window at a time — allele
+    counts, per-site diversity, windowed scans. Whole-matrix methods (PCA,
+    distance, NMF admixture) still use :func:`load_genotypes`.
+    """
+    if chunk_variants < 1:
+        raise ValueError(f"chunk_variants must be positive, got {chunk_variants}")
+
+    if isinstance(source, Genotypes):
+        gt, pos, chrom, samples = (
+            source.calls, source.pos, source.chrom, source.samples
+        )
+    else:
+        path = Path(source)
+        if path.is_dir():
+            gt = np.load(path / "gt.npy", mmap_mode="r")
+            pos = np.load(path / "pos.npy", mmap_mode="r")
+            chrom = np.load(path / "chrom.npy", mmap_mode="r")
+            samples = np.load(path / "samples.npy", mmap_mode="r").astype(str)
+        else:
+            genotypes = load_genotypes(path)
+            gt, pos, chrom, samples = (
+                genotypes.calls, genotypes.pos, genotypes.chrom, genotypes.samples
+            )
+
+    n_variants = gt.shape[0]
+    for start in range(0, n_variants, chunk_variants):
+        stop = min(start + chunk_variants, n_variants)
+        yield GenotypeChunk(
+            start=start,
+            stop=stop,
+            calls=allel.GenotypeArray(np.asarray(gt[start:stop])),
+            pos=np.asarray(pos[start:stop]),
+            chrom=np.asarray(chrom[start:stop]).astype(str),
+            samples=np.asarray(samples).astype(str),
+        )
+
+
+def chunked_allele_counts(
+    source: Path | str | Genotypes,
+    *,
+    subpop: list[int] | None = None,
+    chunk_variants: int = DEFAULT_CHUNK_VARIANTS,
+) -> allel.AlleleCountsArray:
+    """Allele counts over all variants, accumulated one chunk at a time.
+
+    Equivalent to ``load_genotypes(path).allele_counts(subpop)`` but never holds
+    more than ``chunk_variants`` rows of the genotype matrix at once.
+    """
+    blocks = [
+        np.asarray(chunk.calls.count_alleles(subpop=subpop))
+        for chunk in iter_genotype_chunks(source, chunk_variants=chunk_variants)
+    ]
+    if not blocks:
+        return allel.AlleleCountsArray(np.empty((0, 2), dtype="i4"))
+    width = max(block.shape[1] for block in blocks)
+    padded = [
+        block
+        if block.shape[1] == width
+        else np.pad(block, ((0, 0), (0, width - block.shape[1])))
+        for block in blocks
+    ]
+    return allel.AlleleCountsArray(np.concatenate(padded, axis=0))
+
+
+def chunked_alt_frequency(
+    source: Path | str | Genotypes,
+    *,
+    subpop: list[int] | None = None,
+    chunk_variants: int = DEFAULT_CHUNK_VARIANTS,
+) -> np.ndarray:
+    """Per-variant ALT allele frequency; NaN where no allele was called."""
+    counts = np.asarray(chunked_allele_counts(
+        source, subpop=subpop, chunk_variants=chunk_variants
+    ))
+    if counts.size == 0:
+        return np.empty(0, dtype=float)
+    total = counts.sum(axis=1)
+    alt = counts[:, 1:].sum(axis=1)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        freqs = np.where(total > 0, alt / total, np.nan)
+    return freqs.astype(float)
 
 
 def allele_difference_matrix(gn: np.ndarray) -> np.ndarray:

@@ -1,0 +1,41 @@
+# Eastern-coyote and NYC coydog RADseq sources.
+#
+# These are the query samples in the hybrid-canid diagnostic recipes. They are a
+# different platform from the WGS reference panel, which is exactly why those
+# recipes are labelled bridge-locus diagnostics rather than ancestry estimates.
+#
+# `doi:` is left empty where this repository does not record one. Fill it in
+# from the source publication before citing in a manuscript.
+
+id: eastern_coyote_radseq
+label: Eastern coyote / NYC coydog RADseq
+description: >-
+  Reduced-representation (RADseq) genotypes for eastern and western coyotes and
+  for the New York City coydog pedigree, intersected with the NHGRI WGS panel at
+  shared bridge loci.
+
+sources:
+  - key: PRJNA857904
+    label: New York City coydog RADseq BioProject
+    accession: PRJNA857904
+    accession_kind: bioproject
+    doi: ""
+    used_for: >-
+      Query samples T211, NY01, NY04, and NY05 in the NYC pedigree validation
+      and breed-assignment recipes.
+    access: Public NCBI BioProject; no access restrictions recorded.
+
+  - key: heppenheimer2018
+    label: Eastern coyote RADseq genotypes (Dryad PED/MAP)
+    study: Heppenheimer et al., Ecology and Evolution
+    year: 2018
+    doi: 10.5061/dryad.7f9q2cd
+    url: https://datadryad.org/dataset/doi:10.5061/dryad.7f9q2cd
+    accession_kind: other
+    used_for: >-
+      Ontario and Arizona coyote RADseq genotype calls, and the western versus
+      eastern sample assignments used as the negative control in the three-way
+      admixture recipe.
+    access: >-
+      Public Dryad deposit. Checksums for the retrieved PED/MAP files are
+      recorded in the local derived-callset manifest.

@@ -66,3 +66,4 @@ stages:
     mutation_rate: 4.5e-9
   report:
     title: "Red wolf ancestry — real genomes, laptop cohort (9 canids)"
+    citations: [redwolf_shortread]

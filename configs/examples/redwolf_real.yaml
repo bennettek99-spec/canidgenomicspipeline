@@ -76,3 +76,4 @@ stages:
     mutation_rate: 4.5e-9      # canid per-bp per-generation estimate
   report:
     title: "Red wolf ancestry — real public genomes (vonHoldt 2016 + Rougeux 2023)"
+    citations: [redwolf_shortread]

@@ -1,0 +1,5 @@
+sample_id,taxon,population,region,country,source_study,accession
+T211,coyote,nyc_coyote,new_york,USA,PRJNA857904,SRR20089555
+NY01,other,nyc_coydog_f1,new_york,USA,PRJNA857904,SRR20089561
+NY04,other,nyc_coydog_bc,new_york,USA,PRJNA857904,SRR20089560
+NY05,other,nyc_coydog_bc,new_york,USA,PRJNA857904,SRR20089559
