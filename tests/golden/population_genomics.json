@@ -1,0 +1,161 @@
+{
+  "distance": {
+    "n_sites": 9650,
+    "mean_pairwise": 0.199938
+  },
+  "fst": {
+    "coyote__dog": 0.451182,
+    "coyote__wolf": 0.422423,
+    "dog__wolf": 0.093801
+  },
+  "pca": {
+    "explained_variance_ratio": [
+      0.30381,
+      0.06748,
+      0.06657,
+      0.06427,
+      0.05423,
+      0.0515
+    ],
+    "population_pc1": {
+      "coyote": 115.565308,
+      "dog": -59.28415,
+      "wolf": -56.280842
+    }
+  },
+  "diversity": {
+    "coyote": {
+      "pi": 0.17384915,
+      "mean_heterozygosity": 0.169378
+    },
+    "dog": {
+      "pi": 0.13664466,
+      "mean_heterozygosity": 0.132352
+    },
+    "wolf": {
+      "pi": 0.15263609,
+      "mean_heterozygosity": 0.159673
+    }
+  },
+  "admixture": {
+    "best_k": 3,
+    "population_q": {
+      "coyote": [
+        0.002556,
+        0.986256,
+        0.011189
+      ],
+      "dog": [
+        0.868007,
+        0.010048,
+        0.121945
+      ],
+      "wolf": [
+        0.096127,
+        0.008942,
+        0.894931
+      ]
+    }
+  },
+  "cluster": {
+    "best_k": 2,
+    "silhouette": 0.5079,
+    "adjusted_rand_index": 0.5405
+  },
+  "roh": {
+    "COYOTE01": {
+      "n_roh_segments": 1,
+      "total_roh_bp": 200000,
+      "froh": 0.100003
+    },
+    "COYOTE02": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "COYOTE03": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "COYOTE04": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "COYOTE05": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "COYOTE06": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "DOG01": {
+      "n_roh_segments": 1,
+      "total_roh_bp": 599939,
+      "froh": 0.299979
+    },
+    "DOG02": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "DOG03": {
+      "n_roh_segments": 1,
+      "total_roh_bp": 300000,
+      "froh": 0.150005
+    },
+    "DOG04": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "DOG05": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "DOG06": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "WOLF01": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "WOLF02": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "WOLF03": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "WOLF04": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "WOLF05": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    },
+    "WOLF06": {
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
+    }
+  },
+  "geography": {
+    "n_localities": 18,
+    "mantel_r": 0.8679
+  }
+}

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import allel
 import numpy as np
+import pytest
 
 from canidae.stages.geographic.distance import haversine_matrix, mantel_test
 from canidae.stages.popgen.ancestry_nmf import (
@@ -12,7 +13,9 @@ from canidae.stages.popgen.ancestry_nmf import (
     select_k,
     weighted_nmf,
 )
+from canidae.stages.popgen.fst import _hudson_fst
 from canidae.stages.popgen.plink import decode_bed, write_plink_bed
+from canidae.stages.popgen.roh import RohConfig, _sample_roh
 from canidae.stages.popgen.store import Genotypes
 
 # -- ancestry NMF ----------------------------------------------------------------------
@@ -71,6 +74,21 @@ def test_plink_bed_roundtrip(tmp_path: Path) -> None:
     decoded = decode_bed(fileset, n_samples=4)
     expected = np.asarray(geno.calls.to_n_alt(fill=-1))
     np.testing.assert_array_equal(decoded, expected)
+
+
+def test_hudson_fst_matches_hand_calculated_count_ratio() -> None:
+    # Two sites: one fixed difference contributes 1/1, one shared het contributes 0/0.
+    first = allel.AlleleCountsArray([[2, 0], [1, 1]])
+    second = allel.AlleleCountsArray([[0, 2], [1, 1]])
+    assert _hudson_fst(first, second) == pytest.approx(1 / 3)
+
+
+def test_roh_merges_homozygous_windows_and_excludes_short_runs() -> None:
+    chrom = np.array(["1"] * 6)
+    pos = np.array([0, 100, 200, 300, 400, 500])
+    het = np.array([False, False, False, True, False, False])
+    config = RohConfig(window_bp=100, max_window_heterozygosity=0.0, min_segment_bp=200)
+    assert _sample_roh(chrom, pos, het, config) == (300, 1)
 
 
 # -- geographic distance + Mantel ------------------------------------------------------
