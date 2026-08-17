@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: "CANIS: laptop-safe comparative canid genomics"
+type: software
+message: "If you use CANIS, please cite the software and the source datasets listed in the run report."
+authors:
+  - family-names: Kuhn
+    given-names: Bennett
+    affiliation: Independent Researcher
+version: 0.3.0
+date-released: 2026-08-17
+repository-code: "https://github.com/bennettek99-spec/canidgenomicspipeline"
+url: "https://github.com/bennettek99-spec/canidgenomicspipeline"
+license: MIT
+abstract: >-
+  CANIS is a configuration-driven comparative evolutionary-genomics pipeline for
+  canids. It emphasizes reproducible provenance, enforced quality control,
+  laptop-safe execution, and explicit limitations for exploratory analyses.
+keywords:
+  - canids
+  - comparative genomics
+  - population genetics
+  - introgression
+  - reproducible research

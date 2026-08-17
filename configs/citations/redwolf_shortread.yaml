@@ -2,8 +2,8 @@
 #
 # Sources for the laptop red-wolf recipes, as recorded in docs/REAL_DATA_REDWOLF.md.
 #
-# `doi:` is left empty where this repository does not record one. Fill it in
-# from the source publication before citing in a manuscript.
+# `doi:` remains empty only for an accession record without a verified
+# publication DOI.
 
 id: redwolf_shortread
 label: Red wolf comparative short-read panel
@@ -18,7 +18,7 @@ sources:
     year: 2016
     accession: SRR7976417
     accession_kind: sra_run
-    doi: ""
+    doi: 10.1126/sciadv.1501714
     used_for: Red wolf query genomes (SRR7976417, SRR7976418, SRR7976419).
     access: Public NCBI SRA runs; no access restrictions recorded.
 
@@ -40,6 +40,6 @@ sources:
     year: 2015
     accession: SRR2149876
     accession_kind: sra_run
-    doi: ""
+    doi: 10.1016/j.cub.2015.06.060
     used_for: Outgroup for D-statistics and rooting in the red-wolf recipes.
     access: Public NCBI SRA run; no access restrictions recorded.

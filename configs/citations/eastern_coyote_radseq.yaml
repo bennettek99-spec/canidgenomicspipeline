@@ -4,8 +4,8 @@
 # different platform from the WGS reference panel, which is exactly why those
 # recipes are labelled bridge-locus diagnostics rather than ancestry estimates.
 #
-# `doi:` is left empty where this repository does not record one. Fill it in
-# from the source publication before citing in a manuscript.
+# `doi:` remains empty only for an accession record without a verified
+# publication DOI.
 
 id: eastern_coyote_radseq
 label: Eastern coyote / NYC coydog RADseq
@@ -19,7 +19,7 @@ sources:
     label: New York City coydog RADseq BioProject
     accession: PRJNA857904
     accession_kind: bioproject
-    doi: ""
+    doi: 10.3390/genes13091661
     used_for: >-
       Query samples T211, NY01, NY04, and NY05 in the NYC pedigree validation
       and breed-assignment recipes.
