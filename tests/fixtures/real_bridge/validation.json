@@ -1,0 +1,81 @@
+{
+  "created_utc": "2026-07-13T17:05:12+00:00",
+  "sources": {
+    "nyc_radseq_bioproject": "PRJNA857904",
+    "nyc_runs": {
+      "T211": "SRR20089555",
+      "NY05": "SRR20089559",
+      "NY04": "SRR20089560",
+      "NY01": "SRR20089561"
+    },
+    "wgs_bioproject": "PRJNA448733",
+    "wgs_reference_samples": [
+      "Coyote01",
+      "Coyote02",
+      "Coyote03",
+      "Beagle01",
+      "Beagle02",
+      "Chihuahua01",
+      "Chihuahua03",
+      "GermanShepherd01",
+      "GermanShepherd02",
+      "GoldenRetriever01",
+      "GoldenRetriever02",
+      "LabradorRetriever01",
+      "LabradorRetriever02"
+    ],
+    "bridge_vcf": "data\\eastern_coyote_wgs_bridge\\eastern_coyote_wgs_bridge_1000.vcf.gz"
+  },
+  "transfer": {
+    "n_ranges": 337,
+    "estimated_wgs_bytes": 666863371,
+    "downloaded_wgs_bytes": 670215174,
+    "retained_reference_sites": 252,
+    "conservative_nyc_sra_bytes_upper_bound": 149000000,
+    "hard_limit_bytes": 9000000000
+  },
+  "results": [
+    {
+      "sample_id": "T211",
+      "run": "SRR20089555",
+      "dog_fraction": 0.2353740918553766,
+      "diagnostic_sites_called": 21,
+      "mean_depth": 7.6,
+      "residual_rmse": 0.24103104868829275
+    },
+    {
+      "sample_id": "NY05",
+      "run": "SRR20089559",
+      "dog_fraction": 0.3342047144724388,
+      "diagnostic_sites_called": 28,
+      "mean_depth": 9.75,
+      "residual_rmse": 0.27716936695799943
+    },
+    {
+      "sample_id": "NY04",
+      "run": "SRR20089560",
+      "dog_fraction": null,
+      "diagnostic_sites_called": 7,
+      "mean_depth": 5.77,
+      "residual_rmse": null
+    },
+    {
+      "sample_id": "NY01",
+      "run": "SRR20089561",
+      "dog_fraction": 0.40184799347767014,
+      "diagnostic_sites_called": 32,
+      "mean_depth": 10.14,
+      "residual_rmse": 0.26820861983869004
+    }
+  ],
+  "validation": {
+    "passed": false,
+    "criterion": "at least 20 diagnostic calls per sample; NY01 near the published 46% dog ancestry (within 0.20), T211 <= 0.20, and both offspring between 0.08 and 0.45 and below NY01",
+    "interpretation": "Pass supports the expected F1 coyote-dog plus coyote-backcross pattern on this independent cross-platform bridge panel. It is not a replacement for a full local-ancestry analysis."
+  },
+  "limitations": [
+    "267 cross-platform bridge loci rather than a jointly called whole genome.",
+    "Dog ancestry is relative to a broad 10-dog reference set, not a local NYC dog panel.",
+    "Use as a reproducible phenotype/pedigree check, not a legal, veterinary, or management diagnosis."
+  ]
+}

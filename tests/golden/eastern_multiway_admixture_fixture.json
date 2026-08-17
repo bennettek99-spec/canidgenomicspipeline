@@ -1,0 +1,183 @@
+{
+  "queries": {
+    "n_queries": 36,
+    "n_eastern": 25,
+    "n_western": 11
+  },
+  "references": {
+    "coyote_n": 3,
+    "gray_wolf_n": 4,
+    "eastern_wolf_n": 3,
+    "dogs_n": 21,
+    "loci_total": 252,
+    "loci_informative": 124
+  },
+  "group_summary": {
+    "eastern_wolf_fraction": {
+      "mean": 0.005,
+      "min": 0.0,
+      "max": 0.07
+    },
+    "western_wolf_fraction": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "eastern_dog_fraction": {
+      "mean": 0.027,
+      "min": 0.0,
+      "max": 0.17
+    },
+    "western_dog_fraction": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    }
+  },
+  "per_sample": {
+    "Coyote001": [
+      0.0,
+      0.0
+    ],
+    "Coyote002": [
+      0.0,
+      0.0
+    ],
+    "Coyote003": [
+      0.0,
+      0.0
+    ],
+    "Coyote004": [
+      0.0,
+      0.0
+    ],
+    "Coyote005": [
+      0.0,
+      0.0
+    ],
+    "Coyote006": [
+      0.0,
+      0.0
+    ],
+    "Coyote007": [
+      0.0,
+      0.0
+    ],
+    "Coyote008": [
+      0.0,
+      0.0
+    ],
+    "Coyote009": [
+      0.0,
+      0.0
+    ],
+    "Coyote010": [
+      0.0,
+      0.0
+    ],
+    "Coyote012": [
+      0.0,
+      0.0
+    ],
+    "Coyote168": [
+      0.07,
+      0.0
+    ],
+    "Coyote169": [
+      0.0,
+      0.05
+    ],
+    "Coyote170": [
+      0.0,
+      0.0
+    ],
+    "Coyote171": [
+      0.0,
+      0.0
+    ],
+    "Coyote172": [
+      0.0,
+      0.0
+    ],
+    "Coyote173": [
+      0.0,
+      0.0
+    ],
+    "Coyote174": [
+      0.0,
+      0.0
+    ],
+    "Coyote175": [
+      0.0,
+      0.08
+    ],
+    "Coyote176": [
+      0.0,
+      0.0
+    ],
+    "Coyote177": [
+      0.0,
+      0.0
+    ],
+    "Coyote178": [
+      0.0,
+      0.15
+    ],
+    "Coyote179": [
+      0.0,
+      0.01
+    ],
+    "Coyote180": [
+      0.0,
+      0.0
+    ],
+    "Coyote181": [
+      0.0,
+      0.01
+    ],
+    "Coyote182": [
+      0.0,
+      0.0
+    ],
+    "Coyote183": [
+      0.0,
+      0.06
+    ],
+    "Coyote184": [
+      0.01,
+      0.06
+    ],
+    "Coyote185": [
+      0.0,
+      0.0
+    ],
+    "Coyote186": [
+      0.0,
+      0.17
+    ],
+    "Coyote187": [
+      0.0,
+      0.0
+    ],
+    "Coyote189": [
+      0.0,
+      0.0
+    ],
+    "Coyote190": [
+      0.0,
+      0.0
+    ],
+    "Coyote191": [
+      0.05,
+      0.0
+    ],
+    "Coyote192": [
+      0.0,
+      0.03
+    ],
+    "Coyote193": [
+      0.0,
+      0.06
+    ]
+  }
+}

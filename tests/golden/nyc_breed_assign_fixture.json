@@ -1,0 +1,32 @@
+{
+  "calibration": {
+    "n_tested": 24,
+    "top1_correct": 3,
+    "top1_accuracy": 0.125
+  },
+  "sources": {
+    "n_wgs_samples": 31,
+    "n_candidate_groups": 7,
+    "loci": 252
+  },
+  "results": {
+    "NY01": {
+      "best_breed": "VillageDog(all regions)",
+      "single_breed_gap": -2.14,
+      "single_breed_supported": false,
+      "loci_used": 161
+    },
+    "NY05": {
+      "best_breed": "VillageDog(all regions)",
+      "single_breed_gap": -3.2,
+      "single_breed_supported": false,
+      "loci_used": 153
+    },
+    "T211": {
+      "best_breed": "VillageDog(all regions)",
+      "single_breed_gap": -1.57,
+      "single_breed_supported": false,
+      "loci_used": 112
+    }
+  }
+}
