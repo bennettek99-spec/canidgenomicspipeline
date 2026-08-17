@@ -103,7 +103,9 @@ def _request(url: str, budget: TransferBudget, byte_range: tuple[int, int] | Non
                 flush=True,
             )
             time.sleep(delay)
-    raise RuntimeError(f"transfer failed after {MAX_TRANSFER_ATTEMPTS} attempts for {url}: {last_error}")
+    raise RuntimeError(
+        f"transfer failed after {MAX_TRANSFER_ATTEMPTS} attempts for {url}: {last_error}"
+    )
 
 
 def _download_small(url: str, path: Path, budget: TransferBudget) -> bytes:
