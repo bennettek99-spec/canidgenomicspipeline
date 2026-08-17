@@ -38,3 +38,25 @@ jobs:
 
       - name: Test
         run: pytest --cov=canidae --cov-report=term-missing
+
+  parity:
+    name: external parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up parity environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment-parity.yml
+          environment-name: canis-parity
+          cache-environment: true
+          init-shell: bash
+
+      - name: Install CANIS
+        shell: bash -el {0}
+        run: micromamba run -n canis-parity pip install -e ".[dev,analysis]"
+
+      - name: Run external parity tests
+        shell: bash -el {0}
+        run: micromamba run -n canis-parity pytest tests/integration/test_external_parity.py -m integration -v

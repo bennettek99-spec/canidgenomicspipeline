@@ -13,6 +13,7 @@ Run them explicitly with::
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -29,6 +30,7 @@ from canidae.core.model import ArtifactKind
 from canidae.pipeline import run_pipeline
 from canidae.stages.popgen.plink import write_plink_bed
 from canidae.stages.popgen.store import Genotypes, chunked_alt_frequency
+from canidae.stages.processing.vcf_io import write_minimal_vcf
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "simulated"))
 from make_cohort import simulate_introgression_cohort
@@ -37,9 +39,11 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 PLINK2 = shutil.which("plink2")
 DSUITE = shutil.which("Dsuite") or shutil.which("dsuite")
+BCFTOOLS = shutil.which("bcftools")
 
 requires_plink2 = pytest.mark.skipif(PLINK2 is None, reason="plink2 not on PATH")
 requires_dsuite = pytest.mark.skipif(DSUITE is None, reason="Dsuite not on PATH")
+requires_bcftools = pytest.mark.skipif(BCFTOOLS is None, reason="bcftools not on PATH")
 
 
 def _demo_cohort(n_variants: int = 400, n_samples: int = 12, seed: int = 5) -> Genotypes:
@@ -103,6 +107,45 @@ def test_plink2_agrees_on_per_sample_missingness(tmp_path: Path) -> None:
     report = pd.read_csv(tmp_path / "miss.smiss", sep="\t").set_index("IID")
     assert int(report.loc[geno.samples[0], "MISSING_CT"]) == 20
     assert int(report.loc[geno.samples[1], "MISSING_CT"]) == 0
+
+
+@requires_plink2
+def test_plink2_pca_agrees_on_first_component(tmp_path: Path) -> None:
+    """PLINK2 and scikit-allel must recover the same leading genotype axis."""
+    geno = _demo_cohort(n_variants=500, n_samples=12)
+    write_plink_bed(geno, tmp_path / "cohort")
+    subprocess.run(
+        [PLINK2, "--bfile", str(tmp_path / "cohort"), "--pca", "2",
+         "--allow-extra-chr", "--out", str(tmp_path / "pca")],
+        check=True, capture_output=True, text=True,
+    )
+    theirs = pd.read_csv(tmp_path / "pca.eigenvec", sep=r"\s+")
+    ours, _model = allel.pca(
+        np.asarray(geno.calls.to_n_alt(), dtype=np.float32),
+        n_components=2,
+        scaler="patterson",
+    )
+    order = {str(sample): index for index, sample in enumerate(geno.samples)}
+    theirs_pc1 = np.array([float(value) for value in theirs["PC1"]])
+    ours_pc1 = np.array([ours[order[str(sample)], 0] for sample in theirs["IID"]])
+    assert abs(float(np.corrcoef(theirs_pc1, ours_pc1)[0, 1])) > 0.9
+
+
+@requires_bcftools
+def test_bcftools_stats_agrees_on_snp_count(tmp_path: Path) -> None:
+    """The external callset summary must see the same biallelic SNP count as CANIS."""
+    geno = _demo_cohort(n_variants=200, n_samples=8)
+    vcf = write_minimal_vcf(
+        tmp_path / "cohort.vcf", geno.chrom, geno.pos,
+        np.full(geno.n_variants, "A"), np.full(geno.n_variants, "G"),
+        geno.samples, np.asarray(geno.calls),
+    )
+    result = subprocess.run(
+        [BCFTOOLS, "stats", str(vcf)], check=True, capture_output=True, text=True,
+    )
+    match = re.search(r"^SN\t[^\n]*number of SNPs:\t(\d+)", result.stdout, re.MULTILINE)
+    assert match, result.stdout
+    assert int(match.group(1)) == geno.n_variants
 
 
 # -- Dsuite --------------------------------------------------------------------------

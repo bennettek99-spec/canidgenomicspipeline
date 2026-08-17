@@ -1,0 +1,10 @@
+name: canis-parity
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12
+  - pip
+  - bcftools
+  - dsuite
+  - plink2
