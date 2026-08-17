@@ -1,0 +1,67 @@
+{
+  "MIX_KerryBlueTerrier_Beagle01": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -0.59,
+    "single_breed_supported": false
+  },
+  "MixedBreed06": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": 4.44,
+    "single_breed_supported": false
+  },
+  "MixedBreed07": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -7.23,
+    "single_breed_supported": false
+  },
+  "UnknownBreed02": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -8.35,
+    "single_breed_supported": false
+  },
+  "UnknownBreed03": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -4.78,
+    "single_breed_supported": false
+  },
+  "UnknownBreed04": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": 4.43,
+    "single_breed_supported": false
+  },
+  "UnknownBreed05": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -7.9,
+    "single_breed_supported": false
+  },
+  "UnknownBreed07": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -8.85,
+    "single_breed_supported": false
+  },
+  "UnknownBreed09": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -3.91,
+    "single_breed_supported": false
+  },
+  "UnknownBreed10": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -6.85,
+    "single_breed_supported": false
+  },
+  "UnknownBreed11": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -7.5,
+    "single_breed_supported": false
+  },
+  "UnknownBreed12": {
+    "best_breed": "VillageDog(all regions)",
+    "single_breed_gap": -8.79,
+    "single_breed_supported": false
+  },
+  "UnknownBreed13": {
+    "best_breed": "GermanShepherd",
+    "single_breed_gap": 14.14,
+    "single_breed_supported": true
+  }
+}

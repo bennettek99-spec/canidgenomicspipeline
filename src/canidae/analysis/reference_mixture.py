@@ -145,6 +145,61 @@ def leave_one_out(
     return rows, summary
 
 
+def score_breed_candidates(
+    keys: Sequence[tuple[str, int]],
+    records: Mapping[tuple[str, int], Sequence[str | None]],
+    sample_index: int,
+    samples: Sequence[str],
+    panels: Mapping[str, np.ndarray],
+    any_dog_panel: np.ndarray,
+    *,
+    top_k: int = 5,
+    single_breed_gap: float = SINGLE_BREED_GAP,
+) -> dict[str, object]:
+    """Score one hold-out dog sample against each breed panel + pooled any-dog.
+
+    Returns the ranked candidate breeds, the pooled any-dog baseline, and whether
+    any single breed is distinguishable. This is the engine behind the
+    mixed-breed sensitivity check: a true 50:50 (or otherwise mixed) dog should
+    come back with ``single_breed_supported == False`` because no single panel
+    explains its dog alleles better than the pooled any-dog panel.
+    """
+    scored: list[tuple[float, str]] = []
+    for breed, panel in panels.items():
+        ll, used = log_likelihood(keys, records, sample_index, panel)
+        if used < 0.9 * len(keys):
+            continue
+        scored.append((ll, breed))
+    any_ll, any_used = log_likelihood(keys, records, sample_index, any_dog_panel)
+    if not scored:
+        return {
+            "sample_id": samples[sample_index],
+            "best_breed": "",
+            "best_log_likelihood": None,
+            "any_dog_log_likelihood": round(any_ll, 2),
+            "single_breed_gap": None,
+            "single_breed_supported": None,
+            "loci_used": any_used,
+            "ranking": [],
+        }
+    scored.sort(reverse=True)
+    best_ll, best_breed = scored[0]
+    gap = best_ll - any_ll
+    return {
+        "sample_id": samples[sample_index],
+        "best_breed": best_breed,
+        "best_log_likelihood": round(best_ll, 2),
+        "any_dog_log_likelihood": round(any_ll, 2),
+        "single_breed_gap": round(gap, 2),
+        "single_breed_supported": bool(gap > single_breed_gap),
+        "loci_used": any_used,
+        "ranking": [
+            {"rank": rank, "breed": breed, "log_likelihood": round(ll, 2)}
+            for rank, (ll, breed) in enumerate(scored[:top_k], start=1)
+        ],
+    }
+
+
 def infer_dog_fraction(
     calls: Mapping[tuple[str, int], tuple[str | None, int, int, int]],
     reference: Mapping[tuple[str, int], Sequence[str]],

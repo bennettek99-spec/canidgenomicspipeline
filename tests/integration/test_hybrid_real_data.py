@@ -15,11 +15,21 @@ from __future__ import annotations
 
 import json
 import os
+from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from canidae.analysis.breed_panel import (
+    INFERRED_VILLAGE_CODES,
+    breed_of,
+    classify_group,
+)
+from canidae.analysis.reference_mixture import (
+    allele_frequencies,
+    score_breed_candidates,
+)
 from canidae.core.config import GlobalConfig
 from canidae.core.datastore import DataStore
 from canidae.core.executor import build_context
@@ -184,3 +194,76 @@ def test_western_controls_carry_no_wolf_or_dog_ancestry(eastern_multiway) -> Non
     assert not western.empty
     assert western["f_wolf"].max() < 0.05
     assert western["f_dog"].max() < 0.05
+
+
+def _breed_mix_sensitivity() -> dict:
+    """Score every declared mixed/unknown dog as a hold-out, like the NYC coydogs."""
+    payload = json.loads(BREED_PANEL.read_text(encoding="utf-8"))
+    samples = list(payload["samples"])
+    records = {
+        (key.rsplit(":", 1)[0], int(key.rsplit(":", 1)[1])): list(values)
+        for key, values in payload["loci"].items()
+    }
+    keys = sorted(records, key=lambda item: (int(item[0].removeprefix("chr")), item[1]))
+    groups: dict[str, list[int]] = defaultdict(list)
+    for index, sample in enumerate(samples):
+        groups[breed_of(sample)].append(index)
+    categories = {group: classify_group(group) for group in groups}
+    candidates = {
+        group: indices
+        for group, indices in groups.items()
+        if categories[group] == "breed" and len(indices) >= 3
+    }
+    village = [
+        index
+        for group, indices in groups.items()
+        if categories[group] == "village"
+        for index in indices
+    ]
+    if len(village) >= 3:
+        candidates["VillageDog(all regions)"] = village
+    for code, region in INFERRED_VILLAGE_CODES.items():
+        if len(groups.get(code, [])) >= 3:
+            candidates[f"VillageDog({region}, inferred)"] = groups[code]
+    pooled = [
+        index
+        for group, indices in groups.items()
+        if categories[group] != "wild"
+        for index in indices
+    ]
+    panels = {
+        group: allele_frequencies(keys, records, indices)
+        for group, indices in candidates.items()
+    }
+    mixed = [
+        index for index, sample in enumerate(samples)
+        if classify_group(breed_of(sample)) == "mixed"
+    ]
+    return {
+        samples[index]: score_breed_candidates(
+            keys, records, index, samples, panels,
+            allele_frequencies(keys, records, [i for i in pooled if i != index]),
+        )
+        for index in mixed
+    }
+
+
+def test_breed_assignment_rejects_true_mixes() -> None:
+    """The declared 50:50 cross and other mixes must not get a single-breed call."""
+    sensitivity = _breed_mix_sensitivity()
+    observed = {
+        sample: {
+            "best_breed": info["best_breed"],
+            "single_breed_gap": _round(info["single_breed_gap"], 2),
+            "single_breed_supported": info["single_breed_supported"],
+        }
+        for sample, info in sorted(sensitivity.items())
+    }
+    _check("nyc_breed_mix_sensitivity.json", observed)
+    # The named 50:50 cross is the headline sensitivity check.
+    assert observed["MIX_KerryBlueTerrier_Beagle01"]["single_breed_supported"] is False
+    assert not any(
+        info["single_breed_supported"]
+        for sample, info in observed.items()
+        if sample != "UnknownBreed13"  # a confident, likely-purebreed sample
+    )

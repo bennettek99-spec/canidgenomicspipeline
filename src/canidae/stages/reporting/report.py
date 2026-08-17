@@ -114,12 +114,16 @@ _TEMPLATE = Template(
    Interpret with the limitations listed below.</p>
 {% if mixture_table %}<h3>Two-source mixture (coyote vs dog)</h3>
 {% if mixture_verdict %}<p class="stat">{{ mixture_verdict }}</p>{% endif %}
+{% if mixture_img %}<img src="data:image/png;base64,{{ mixture_img }}" alt="dog fraction barplot">{% endif %}
 {{ mixture_table }}{% endif %}
 {% if breed_table %}<h3>Breed assignment of dog component</h3>
 {% if breed_calibration %}<p class="stat">{{ breed_calibration }}</p>{% endif %}
+{% if breed_ranking_img %}<img src="data:image/png;base64,{{ breed_ranking_img }}" alt="breed ranking">{% endif %}
+{% if breed_img %}<img src="data:image/png;base64,{{ breed_img }}" alt="breed gap barplot">{% endif %}
 {{ breed_table }}{% endif %}
 {% if multiway_table %}<h3>Three-way coyote / wolf / dog admixture</h3>
 {% if multiway_summary %}<p class="stat">{{ multiway_summary }}</p>{% endif %}
+{% if multiway_img %}<img src="data:image/png;base64,{{ multiway_img }}" alt="admixture scatter">{% endif %}
 {{ multiway_table }}{% endif %}
 {% endif %}
 
@@ -267,6 +271,10 @@ class ReportStage(Stage):
             "pca_svg": None,
             "sources_table": _sources_table(ds),
             "citations_table": _citations_table(cfg, ctx),
+            "mixture_img": None,
+            "breed_img": None,
+            "breed_ranking_img": None,
+            "multiway_img": None,
         }
 
         if ds.has(R, "pca"):
@@ -292,7 +300,7 @@ class ReportStage(Stage):
         self._add_local_ancestry(ds, d, ctx_vars)
         self._add_selection(ds, ctx_vars)
         self._add_demography(ds, ctx_vars)
-        self._add_hybrid(ds, ctx_vars)
+        self._add_hybrid(ds, d, ctx_vars)
         self._add_roh(ds, d, ctx_vars)
         self._add_geography(ds, d, ctx_vars)
         self._add_qc(ds, ctx_vars)
@@ -377,13 +385,16 @@ class ReportStage(Stage):
             v["demography_table"] = pd.read_csv(
                 ds.get(R, "demography").path).to_html(index=False, border=0)
 
-    def _add_hybrid(self, ds, v: dict) -> None:
+    def _add_hybrid(self, ds, d: Path, v: dict) -> None:
         R = ArtifactKind.ANALYSIS_RESULT
         if ds.has(R, "reference_mixture"):
             art = ds.get(R, "reference_mixture")
             df = pd.read_csv(art.path)
             if not df.empty:
                 v["mixture_table"] = df.to_html(index=False, border=0)
+            if "dog_fraction" in df and df["dog_fraction"].notna().any():
+                v["mixture_img"] = _b64(figures.dog_fraction_barplot(
+                    art.path, d / "mixture.png"))
             passed = art.metadata.get("validation_passed")
             if passed is True:
                 v["mixture_verdict"] = "Pedigree-style validation: PASSED."
@@ -396,6 +407,13 @@ class ReportStage(Stage):
             df = pd.read_csv(art.path)
             if not df.empty:
                 v["breed_table"] = df.to_html(index=False, border=0)
+            if "single_breed_gap" in df and df["single_breed_gap"].notna().any():
+                v["breed_img"] = _b64(figures.breed_gap_barplot(
+                    art.path, d / "breed_gap.png"))
+            scores_csv = art.metadata.get("scores_csv")
+            if scores_csv and Path(scores_csv).exists() and not df.empty:
+                v["breed_ranking_img"] = _b64(figures.breed_ranking_barplot(
+                    Path(scores_csv), art.path, d / "breed_ranking.png"))
             cal = art.metadata.get("calibration") or {}
             acc = cal.get("top1_accuracy")
             if acc is not None:
@@ -408,6 +426,9 @@ class ReportStage(Stage):
             df = pd.read_csv(art.path)
             if not df.empty:
                 v["multiway_table"] = df.to_html(index=False, border=0)
+            if not df.empty and {"f_wolf", "f_dog"}.issubset(df.columns):
+                v["multiway_img"] = _b64(figures.admixture_scatter(
+                    art.path, d / "multiway_scatter.png"))
             gs = art.metadata.get("group_summary") or {}
             ew = (gs.get("eastern_dog_fraction") or {}).get("mean")
             ww = (gs.get("western_dog_fraction") or {}).get("mean")

@@ -273,3 +273,165 @@ def diversity_bar(diversity_csv: Path, out_png: Path) -> Path:
         fig.savefig(out_png)
         plt.close(fig)
     return out_png
+
+
+def dog_fraction_barplot(mixture_csv: Path, out_png: Path) -> Path:
+    """Bar plot of the two-source (coyote vs dog) dog fraction per query sample."""
+    df = pd.read_csv(mixture_csv)
+    if "dog_fraction" not in df.columns:
+        df["dog_fraction"] = np.nan
+    df = df[df["dog_fraction"].notna()].reset_index(drop=True)
+    sites = df.get("diagnostic_sites_called")
+    with plt.rc_context(_RC):
+        fig, ax = plt.subplots(figsize=(max(6.0, 0.6 * max(len(df), 1)), 4.0))
+        if not df.empty:
+            samples = df["sample_id"].astype(str).tolist()
+            colors = _color_map(samples)
+            bars = ax.bar(samples, df["dog_fraction"], color=[colors[s] for s in samples])
+            ax.set_ylim(0.0, 1.0)
+            for rect, value, called in zip(
+                bars,
+                df["dog_fraction"].to_numpy(),
+                sites.to_numpy() if sites is not None else [np.nan] * len(df),
+                strict=False,
+            ):
+                label = f"{float(value):.2f}"
+                if called == called:  # not NaN
+                    label += f" ({int(called)} sites)"
+                ax.text(rect.get_x() + rect.get_width() / 2, value, label,
+                        ha="center", va="bottom", fontsize=8)
+        else:
+            ax.text(0.5, 0.5, "no estimable dog fractions", ha="center", va="center",
+                    transform=ax.transAxes)
+        ax.set_xlabel("sample")
+        ax.set_ylabel("dog ancestry fraction")
+        ax.set_title("Two-source mixture (coyote vs dog)")
+        ax.tick_params(axis="x", rotation=30)
+        fig.savefig(out_png)
+        plt.close(fig)
+    return out_png
+
+
+def breed_gap_barplot(breed_csv: Path, out_png: Path, *,
+                      threshold: float | None = None) -> Path:
+    """Bar plot of the best-breed vs any-dog log-likelihood gap per query sample."""
+    df = pd.read_csv(breed_csv)
+    df = df.dropna(subset=["single_breed_gap"]).reset_index(drop=True)
+    supported = (
+        df["single_breed_supported"].astype(bool).to_numpy()
+        if "single_breed_supported" in df
+        else np.zeros(len(df), dtype=bool)
+    )
+    with plt.rc_context(_RC):
+        fig, ax = plt.subplots(figsize=(max(6.0, 0.6 * max(len(df), 1)), 4.0))
+        if not df.empty:
+            ax.bar(df["sample_id"].astype(str), df["single_breed_gap"],
+                   color=["#009E73" if ok else "#999999" for ok in supported])
+        ax.axhline(0.0, color="#888", linewidth=0.8)
+        if threshold is not None:
+            ax.axhline(threshold, color="#D55E00", linewidth=1.0, linestyle="--",
+                       label=f"single-breed threshold ({threshold:g})")
+        ax.set_ylabel("best breed vs any-dog (log-likelihood)")
+        ax.set_title("Breed assignment of dog component")
+        ax.tick_params(axis="x", rotation=30)
+        if threshold is not None:
+            ax.legend(fontsize=8, frameon=False)
+        fig.savefig(out_png)
+        plt.close(fig)
+    return out_png
+
+
+def breed_ranking_barplot(scores_csv: Path, breed_csv: Path, out_png: Path, *,
+                          top_k: int = 5) -> Path:
+    """Ranked breed log-likelihoods per query, with the pooled any-dog baseline.
+
+    One horizontal panel per sample shows the top-``top_k`` candidate breeds (by
+    mixture log-likelihood) alongside the pooled any-dog model, so the likeliest
+    breed for a coydog's dog component is visible at a glance. Bars share one
+    log-likelihood axis, so a small gap between the top breed and any-dog is the
+    honest "mixed or unpanelled parent" signal rather than a confident call.
+    """
+    scores = pd.read_csv(scores_csv)
+    primary = pd.read_csv(breed_csv)
+    if scores.empty or "sample_id" not in scores or "breed" not in scores:
+        with plt.rc_context(_RC):
+            fig, ax = plt.subplots(figsize=(6.4, 2.6))
+            ax.text(0.5, 0.5, "no breed scores available", ha="center", va="center",
+                    transform=ax.transAxes)
+            ax.set_title("Breed assignment of dog component")
+            fig.savefig(out_png)
+            plt.close(fig)
+        return out_png
+
+    any_dog: dict[str, float] = {}
+    if not primary.empty and "any_dog_log_likelihood" in primary:
+        any_dog = {
+            str(row.sample_id): float(row.any_dog_log_likelihood)
+            for row in primary.itertuples(index=False)
+            if row.any_dog_log_likelihood == row.any_dog_log_likelihood
+        }
+
+    samples = sorted(scores["sample_id"].astype(str).unique())
+    with plt.rc_context(_RC):
+        fig, axes = plt.subplots(
+            len(samples), 1, figsize=(7.5, 1.7 * len(samples)), squeeze=False
+        )
+        for ax, sample in zip(axes.flat, samples, strict=True):
+            sub = scores[scores["sample_id"].astype(str) == sample].sort_values("rank")
+            sub = sub.head(top_k)
+            breeds = sub["breed"].astype(str).tolist()
+            values = sub["log_likelihood"].astype(float).tolist()
+            labels = list(breeds)
+            colors = [_PALETTE[i % len(_PALETTE)] for i in range(len(breeds))]
+            if sample in any_dog:
+                labels.append("any dog (pooled)")
+                values.append(any_dog[sample])
+                colors.append("#555555")
+            y = np.arange(len(labels))
+            ax.barh(y, values, color=colors)
+            ax.set_yticks(y, labels, fontsize=8)
+            ax.invert_yaxis()
+            ax.set_title(sample, loc="left", fontsize=10)
+            ax.set_xlabel("log-likelihood")
+            for pos, value in zip(y, values, strict=True):
+                ax.text(value, pos, f" {value:.1f}", va="center", ha="left", fontsize=8)
+        fig.tight_layout()
+        fig.savefig(out_png)
+        plt.close(fig)
+    return out_png
+
+
+def admixture_scatter(multiway_csv: Path, out_png: Path) -> Path:
+    """Wolf/dog ancestry scatter for the three-way mixture, with bootstrap error bars."""
+    df = pd.read_csv(multiway_csv)
+    with plt.rc_context(_RC):
+        fig, ax = plt.subplots(figsize=(6.4, 5.2))
+        if not df.empty and "region" in df:
+            regions = sorted(df["region"].astype(str).unique())
+            colors = _color_map(regions)
+            for region in regions:
+                sub = df[df["region"].astype(str) == region]
+                x = sub["f_dog"].to_numpy(dtype=float)
+                y = sub["f_wolf"].to_numpy(dtype=float)
+                xerr = yerr = None
+                if {"f_dog_ci_lo", "f_dog_ci_hi"}.issubset(sub.columns):
+                    xerr = [x - sub["f_dog_ci_lo"].to_numpy(dtype=float),
+                            sub["f_dog_ci_hi"].to_numpy(dtype=float) - x]
+                if {"f_wolf_ci_lo", "f_wolf_ci_hi"}.issubset(sub.columns):
+                    yerr = [y - sub["f_wolf_ci_lo"].to_numpy(dtype=float),
+                            sub["f_wolf_ci_hi"].to_numpy(dtype=float) - y]
+                ax.errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o", ms=5, alpha=0.8,
+                            color=colors[region], ecolor=colors[region], capsize=2,
+                            label=region, linewidth=0.8)
+        ax.plot([0.0, 1.0], [1.0, 0.0], color="#888", linewidth=1.0, linestyle=":")
+        ax.set_xlim(0.0, 1.0)
+        ax.set_ylim(0.0, 1.0)
+        ax.set_xlabel("dog ancestry fraction")
+        ax.set_ylabel("wolf ancestry fraction")
+        ax.set_title("Three-way coyote / wolf / dog admixture")
+        ax.set_aspect("equal", adjustable="box")
+        if not df.empty and "region" in df:
+            ax.legend(title="region", fontsize=8, frameon=False)
+        fig.savefig(out_png)
+        plt.close(fig)
+    return out_png

@@ -134,6 +134,10 @@ def test_report_renders_the_hybrid_sections(nyc_run) -> None:
     assert "Two-source mixture" in html
     assert "Breed assignment of dog component" in html
     assert "Pedigree-style validation: PASSED." in html
+    # Figures are auto-generated from the hybrid result tables.
+    assert "dog fraction barplot" in html
+    assert "breed gap barplot" in html
+    assert "breed ranking" in html
     # The honest-labelling requirement: never present this as WGS ancestry.
     assert "not whole-genome ancestry" in html.lower()
     # A hybrid-only recipe has no PCA/FST/diversity artifacts to plot.
@@ -249,3 +253,4 @@ def test_eastern_report_renders_the_multiway_section(eastern_run) -> None:
     html = _store(cfg).get(ArtifactKind.REPORT, "html").path.read_text(encoding="utf-8")
     assert "Three-way coyote / wolf / dog admixture" in html
     assert "Hybrid-canid diagnostics" in html
+    assert "admixture scatter" in html
