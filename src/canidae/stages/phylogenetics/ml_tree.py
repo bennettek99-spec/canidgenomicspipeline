@@ -19,7 +19,7 @@ from canidae.core.stage import ArtifactSpec, RunContext, Stage, StageConfig, Sta
 from canidae.stages.popgen.store import Genotypes, load_genotypes
 
 _IQTREE = ToolSpec(name="iqtree2", version_args=("--version",))
-# alt-dosage -> IUPAC: 0=hom ref (A), 2=hom alt (T), 1=het (W = A/T), missing=N
+# ALT allele count -> IUPAC: 0=hom ref (A), 2=hom alt (T), 1=het (W = A/T), missing=N
 _IUPAC = np.array(["A", "W", "T"], dtype="U1")
 
 

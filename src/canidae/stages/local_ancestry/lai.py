@@ -66,14 +66,14 @@ class LocalAncestryStage(Stage):
             s: np.where(np.isfinite(f), f, 0.5)
             for s, f in fstats.allele_frequencies(geno, {s: groups[s] for s in sources}).items()
         }
-        dosage = geno.calls.to_n_alt(fill=-1)  # (n_sites, n_samples)
+        n_alt = geno.calls.to_n_alt(fill=-1)  # ALT allele counts, (n_sites, n_samples)
 
         window_rows, summary_rows = [], []
         for pop in targets:
             for idx in groups[pop]:
                 sample = str(geno.samples[idx])
                 calls = infer_local_ancestry(
-                    dosage[:, idx], geno.chrom, geno.pos, source_freqs,
+                    n_alt[:, idx], geno.chrom, geno.pos, source_freqs,
                     window_bp=cfg.window_bp, switch_prob=cfg.switch_prob,
                     min_sites=cfg.min_sites)
                 for c in calls:

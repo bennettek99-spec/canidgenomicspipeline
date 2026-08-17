@@ -202,7 +202,7 @@ def _ld_prune(
     window_bp: int,
     r2_threshold: float,
 ) -> np.ndarray:
-    dosage = np.asarray(geno.calls.to_n_alt(fill=-1), dtype=np.float32)
+    n_alt = np.asarray(geno.calls.to_n_alt(fill=-1), dtype=np.float32)
     retained: list[int] = []
     for index in candidates:
         chrom = str(geno.chrom[index])
@@ -211,7 +211,7 @@ def _ld_prune(
             prior for prior in reversed(retained)
             if str(geno.chrom[prior]) == chrom and position - int(geno.pos[prior]) <= window_bp
         ]
-        if any(_r2(dosage[index], dosage[prior]) >= r2_threshold for prior in recent):
+        if any(_r2(n_alt[index], n_alt[prior]) >= r2_threshold for prior in recent):
             continue
         retained.append(int(index))
     return np.asarray(retained, dtype=int)
@@ -226,14 +226,14 @@ def _r2(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def _near_duplicates(geno: Genotypes, threshold: float) -> list[tuple[str, str, float]]:
-    dosage = np.asarray(geno.calls.to_n_alt(fill=-1))
+    n_alt = np.asarray(geno.calls.to_n_alt(fill=-1))
     values: list[tuple[str, str, float]] = []
     for left in range(geno.n_samples):
         for right in range(left + 1, geno.n_samples):
-            called = (dosage[:, left] >= 0) & (dosage[:, right] >= 0)
+            called = (n_alt[:, left] >= 0) & (n_alt[:, right] >= 0)
             if called.sum() < 100:
                 continue
-            concordance = float(np.mean(dosage[called, left] == dosage[called, right]))
+            concordance = float(np.mean(n_alt[called, left] == n_alt[called, right]))
             if concordance >= threshold:
                 values.append((str(geno.samples[left]), str(geno.samples[right]), concordance))
     return values

@@ -213,10 +213,10 @@ def chunked_alt_frequency(
 
 
 def allele_difference_matrix(gn: np.ndarray) -> np.ndarray:
-    """Pairwise allele-difference distance in [0, 1] from an alt-dosage matrix.
+    """Pairwise allele-difference distance in [0, 1] from an ALT-count matrix.
 
     ``gn`` is (n_sites, n_samples); returns an (n_samples, n_samples) matrix equal to the
-    mean per-site absolute dosage difference divided by 2.
+    mean per-site absolute ALT-count difference divided by 2.
     """
     X = np.asarray(gn, dtype=float).T
     n_sites = max(X.shape[1], 1)

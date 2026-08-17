@@ -16,23 +16,23 @@ import numpy as np
 _EPS = 1e-6
 
 
-def genotype_loglik(dosage: np.ndarray, freq: np.ndarray) -> np.ndarray:
+def genotype_loglik(n_alt: np.ndarray, freq: np.ndarray) -> np.ndarray:
     """Per-site log P(genotype | source allele frequency) under HWE.
 
-    ``dosage`` in {0,1,2} (alt-allele count), -1 for missing (contributes 0). The
+    ``n_alt`` in {0,1,2} (ALT-allele count), -1 for missing (contributes 0). The
     binomial coefficient is dropped as it is constant across sources.
     """
     p = np.clip(freq, _EPS, 1 - _EPS)
     ll = np.select(
-        [dosage == 0, dosage == 1, dosage == 2],
+        [n_alt == 0, n_alt == 1, n_alt == 2],
         [2 * np.log(1 - p), np.log(2) + np.log(p) + np.log(1 - p), 2 * np.log(p)],
         default=0.0,
     )
-    return np.where(dosage < 0, 0.0, ll)
+    return np.where(n_alt < 0, 0.0, ll)
 
 
 def window_emissions(
-    dosage: np.ndarray,
+    n_alt: np.ndarray,
     chrom: np.ndarray,
     pos: np.ndarray,
     source_freqs: dict[str, np.ndarray],
@@ -46,7 +46,7 @@ def window_emissions(
     n_sources)).
     """
     sources = list(source_freqs)
-    per_site = {s: genotype_loglik(dosage, source_freqs[s]) for s in sources}
+    per_site = {s: genotype_loglik(n_alt, source_freqs[s]) for s in sources}
     windows: list[tuple[str, int, int]] = []
     rows: list[list[float]] = []
     for contig in dict.fromkeys(chrom):
@@ -89,7 +89,7 @@ def viterbi(emissions: np.ndarray, switch_prob: float) -> np.ndarray:
 
 
 def infer_local_ancestry(
-    dosage: np.ndarray,
+    n_alt: np.ndarray,
     chrom: np.ndarray,
     pos: np.ndarray,
     source_freqs: dict[str, np.ndarray],
@@ -104,28 +104,28 @@ def infer_local_ancestry(
     at the end of one chromosome has no biological transition relationship to the next one.
     Processing is also bounded to a single chromosome's emission matrix at a time.
     """
-    dosage_arr = np.asarray(dosage)
+    n_alt_arr = np.asarray(n_alt)
     chrom_arr = np.asarray(chrom, dtype=str)
     pos_arr = np.asarray(pos, dtype=np.int64)
-    if dosage_arr.ndim != 1:
-        raise ValueError("dosage must be one-dimensional")
+    if n_alt_arr.ndim != 1:
+        raise ValueError("n_alt must be one-dimensional")
     if chrom_arr.ndim != 1 or pos_arr.ndim != 1:
         raise ValueError("chrom and pos must be one-dimensional")
-    if chrom_arr.size != dosage_arr.size or pos_arr.size != dosage_arr.size:
-        raise ValueError("dosage, chrom, and pos must have matching lengths")
+    if chrom_arr.size != n_alt_arr.size or pos_arr.size != n_alt_arr.size:
+        raise ValueError("n_alt, chrom, and pos must have matching lengths")
     if not source_freqs:
         raise ValueError("at least one source population is required")
 
     frequencies = {name: np.asarray(freq, dtype=float) for name, freq in source_freqs.items()}
-    if any(freq.ndim != 1 or freq.size != dosage_arr.size for freq in frequencies.values()):
-        raise ValueError("source frequency vectors must match dosage length")
+    if any(freq.ndim != 1 or freq.size != n_alt_arr.size for freq in frequencies.values()):
+        raise ValueError("source frequency vectors must match n_alt length")
 
     calls: list[dict[str, object]] = []
     for contig in dict.fromkeys(chrom_arr.tolist()):
         on_contig = chrom_arr == contig
         contig_freqs = {name: freq[on_contig] for name, freq in frequencies.items()}
         sources, windows, emissions = window_emissions(
-            dosage_arr[on_contig],
+            n_alt_arr[on_contig],
             chrom_arr[on_contig],
             pos_arr[on_contig],
             contig_freqs,

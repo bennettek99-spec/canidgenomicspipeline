@@ -7,9 +7,9 @@ from canidae.stages.selection.scans import _pbs
 
 
 def test_genotype_loglik_prefers_matching_frequency() -> None:
-    dosage = np.array([2])          # homozygous alt
-    high = genotype_loglik(dosage, np.array([0.9]))[0]
-    low = genotype_loglik(dosage, np.array([0.1]))[0]
+    n_alt = np.array([2])           # homozygous ALT
+    high = genotype_loglik(n_alt, np.array([0.9]))[0]
+    low = genotype_loglik(n_alt, np.array([0.1]))[0]
     assert high > low
     # missing contributes zero
     assert genotype_loglik(np.array([-1]), np.array([0.5]))[0] == 0.0
@@ -34,7 +34,7 @@ def test_local_ancestry_restarts_hmm_at_each_chromosome() -> None:
     # allowed across the boundary, the high switch penalty would incorrectly retain "low"
     # on chromosome 2. Independent chromosome runs select the locally preferred source.
     calls = infer_local_ancestry(
-        dosage=np.array([0, 2]),
+        n_alt=np.array([0, 2]),
         chrom=np.array(["1", "2"]),
         pos=np.array([100, 100]),
         source_freqs={

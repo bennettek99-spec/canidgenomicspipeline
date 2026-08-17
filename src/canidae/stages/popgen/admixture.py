@@ -107,7 +107,7 @@ class AdmixtureStage(Stage):
     # -- backends ----------------------------------------------------------------------
 
     def _run_nmf(self, cfg, ctx, geno: Genotypes, k_values):
-        X = self._dosage_matrix(geno, cfg, seed=ctx.config.seed)
+        X = self._allele_count_matrix(geno, cfg, seed=ctx.config.seed)
         replicate_cv = [
             ancestry_nmf.cross_validate_k(
                 X, k_values, holdout=cfg.cv_holdout, n_iter=cfg.n_iter,
@@ -176,11 +176,11 @@ class AdmixtureStage(Stage):
                 f"invalid K range for {n_samples} samples (k_min={cfg.k_min}, k_max={cfg.k_max})")
         return list(range(lo, hi + 1))
 
-    def _dosage_matrix(self, geno: Genotypes, cfg: AdmixtureConfig,
-                       *, seed: int) -> np.ndarray:
+    def _allele_count_matrix(self, geno: Genotypes, cfg: AdmixtureConfig,
+                             *, seed: int) -> np.ndarray:
         ac = geno.calls.count_alleles()
         seg = ac.is_segregating()
-        X = geno.calls.to_n_alt().T[:, seg].astype(float)  # (n_samples, n_seg_sites)
+        X = geno.calls.to_n_alt().T[:, seg].astype(float)  # ALT counts, (n_samples, n_seg_sites)
         if X.shape[1] == 0:
             raise StageInputError("no segregating sites available for admixture")
         if cfg.max_sites and X.shape[1] > cfg.max_sites:

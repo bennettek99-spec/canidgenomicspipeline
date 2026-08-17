@@ -5,7 +5,7 @@ fileset) without depending on the ``plink`` executable to produce it. Implements
 SNP-major .bed layout: a 3-byte magic header then, per variant, 2 bits per sample packed
 4-samples-per-byte, LSB first.
 
-Genotype (alt-dosage) encoding:  0 -> 00 (A1/A1), 1 -> 10 (het), 2 -> 11 (A2/A2),
+Genotype ALT-count encoding:  0 -> 00 (A1/A1), 1 -> 10 (het), 2 -> 11 (A2/A2),
 missing -> 01. A2 is the ALT allele.
 """
 
@@ -19,7 +19,7 @@ import numpy as np
 from canidae.stages.popgen.store import Genotypes
 
 _MAGIC = bytes([0x6C, 0x1B, 0x01])  # PLINK .bed magic + SNP-major mode
-# alt-dosage -> 2-bit code
+# ALT allele count -> 2-bit code
 _ENCODE = {0: 0b00, 1: 0b10, 2: 0b11, -1: 0b01}
 
 
@@ -86,7 +86,7 @@ def _numeric_chrom(chrom: np.ndarray) -> list[int]:
 
 
 def decode_bed(fileset: PlinkFileset, n_samples: int) -> np.ndarray:
-    """Decode a .bed back to an alt-dosage matrix (n_variants, n_samples). For testing."""
+    """Decode a .bed back to an ALT-count matrix (n_variants, n_samples). For testing."""
     raw = fileset.bed.read_bytes()
     if raw[:3] != _MAGIC:
         raise ValueError("not a SNP-major PLINK .bed")

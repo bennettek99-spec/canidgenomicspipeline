@@ -1,8 +1,8 @@
 """sNMF-style admixture estimation by weighted non-negative matrix factorization.
 
-Model-based ancestry estimators (ADMIXTURE, sNMF) factor the genotype dosage matrix
+Model-based ancestry estimators (ADMIXTURE, sNMF) factor the ALT allele-count matrix
 ``X`` (samples x sites, entries in {0,1,2}) into ancestry proportions ``Q`` (samples x K)
-and component allele dosages ``F`` (K x sites). This module provides a dependency-light,
+and component ALT frequencies ``F`` (K x sites). This module provides a dependency-light,
 fully in-Python estimator using weighted multiplicative-update NMF, plus a Wold-style
 entrywise cross-validation to choose K. It is the default backend so admixture runs
 anywhere; the ADMIXTURE binary is available as an alternative backend where installed.
@@ -63,7 +63,7 @@ def _normalize_rows(W: np.ndarray) -> np.ndarray:
 
 def fit_admixture(X: np.ndarray, K: int, *, seed: int = 0,
                   n_iter: int = 250) -> AdmixtureFit:
-    """Fit ancestry proportions Q and component dosages F at a given K."""
+    """Fit ancestry proportions Q and component ALT frequencies F at a given K."""
     mask = np.ones_like(X, dtype=float)
     W, H = weighted_nmf(X, mask, K, n_iter=n_iter, seed=seed)
     err = float(np.sqrt(np.mean((X - W @ H) ** 2)))

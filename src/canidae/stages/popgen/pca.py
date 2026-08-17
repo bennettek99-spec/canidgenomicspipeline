@@ -49,14 +49,14 @@ class PCAStage(Stage):
                 ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
         )
 
-        # Restrict to segregating sites and convert to alt-allele dosage (n_variants, n_samples).
+        # Restrict to segregating sites and retain ALT allele counts (n_variants, n_samples).
         ac = geno.calls.count_alleles()
         seg = ac.is_segregating()
-        gn = geno.calls.to_n_alt()[seg]
-        if gn.shape[0] < 2:
+        n_alt = geno.calls.to_n_alt()[seg]
+        if n_alt.shape[0] < 2:
             raise StageInputError("PCA needs at least 2 segregating sites")
 
-        max_components = int(min(cfg.n_components, geno.n_samples - 1, gn.shape[0] - 1))
+        max_components = int(min(cfg.n_components, geno.n_samples - 1, n_alt.shape[0] - 1))
         if max_components < 2:
             raise StageInputError(
                 f"too few samples/sites for PCA (got n_components={max_components})"
@@ -65,7 +65,7 @@ class PCAStage(Stage):
         scaler = None if cfg.scaler.lower() in {"none", ""} else cfg.scaler
         # SciPy is removing float16 SVD support; float32 is stable and still laptop-friendly.
         coords, model = allel.pca(
-            np.asarray(gn, dtype=np.float32), n_components=max_components, scaler=scaler
+            np.asarray(n_alt, dtype=np.float32), n_components=max_components, scaler=scaler
         )
 
         pc_cols = [f"PC{i + 1}" for i in range(max_components)]
@@ -84,13 +84,13 @@ class PCAStage(Stage):
             metadata={
                 "analysis": "pca",
                 "n_components": max_components,
-                "n_sites_used": int(gn.shape[0]),
+                "n_sites_used": int(n_alt.shape[0]),
                 "explained_variance_ratio": evr,
                 "pc_columns": pc_cols,
             },
         )
         return StageResult(
             artifacts=[art],
-            metrics={"n_components": max_components, "n_sites_used": int(gn.shape[0]),
+            metrics={"n_components": max_components, "n_sites_used": int(n_alt.shape[0]),
                      "pc1_variance": evr[0] if evr else None},
         )

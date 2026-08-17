@@ -1,7 +1,7 @@
 """Pairwise genetic-distance matrix between individuals.
 
-Computes an allele-difference distance: the mean per-site absolute difference in alt-allele
-dosage, scaled to [0, 1] (0 = identical, 1 = maximally different). This feeds clustering,
+Computes an allele-difference distance: the mean per-site absolute difference in ALT-allele
+count, normalized by two to [0, 1] (0 = identical, 1 = maximally different). This feeds clustering,
 neighbor-joining trees (Phase 3), and isolation-by-distance (geographic module).
 """
 
@@ -42,11 +42,11 @@ class DistanceStage(Stage):
         ) else "genotypes"
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         ac = geno.calls.count_alleles()
-        gn = geno.calls.to_n_alt()[ac.is_segregating()]  # (n_seg_sites, n_samples)
-        if gn.shape[0] < 1:
+        n_alt = geno.calls.to_n_alt()[ac.is_segregating()]  # (n_seg_sites, n_samples)
+        if n_alt.shape[0] < 1:
             raise StageInputError("no segregating sites for distance computation")
 
-        dmatrix = allele_difference_matrix(gn)  # mean per-site allele diff / 2 -> [0, 1]
+        dmatrix = allele_difference_matrix(n_alt)  # mean ALT-count difference / 2 -> [0, 1]
         matrix = pd.DataFrame(dmatrix, index=geno.samples, columns=geno.samples)
 
         out = ctx.datastore.path_for(self.name, "distance_matrix.csv")
@@ -55,7 +55,7 @@ class DistanceStage(Stage):
             ArtifactKind.ANALYSIS_RESULT, "distance", out, fmt=FileFormat.CSV,
             produced_by=self.name,
             metadata={"analysis": "distance", "metric": cfg.metric,
-                      "n_sites": int(gn.shape[0])},
+                       "n_sites": int(n_alt.shape[0])},
         )
         iu = np.triu_indices(dmatrix.shape[0], k=1)
         return StageResult(

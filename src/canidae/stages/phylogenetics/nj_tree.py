@@ -47,12 +47,12 @@ class NjTreeStage(Stage):
 
         ac = geno.calls.count_alleles()
         segregating = ac.is_segregating()
-        gn = geno.calls.to_n_alt()[segregating]  # (n_sites, n_samples)
+        n_alt = geno.calls.to_n_alt()[segregating]  # ALT counts, (n_sites, n_samples)
         blocks = geno.chrom[segregating] if cfg.bootstrap_mode == "chromosome" else None
         labels = [str(s) for s in geno.samples]
 
         tree, support = bootstrap_support(
-            gn, labels, allele_difference_matrix,
+            n_alt, labels, allele_difference_matrix,
             n_boot=cfg.n_bootstrap, seed=ctx.config.seed, blocks=blocks)
         newick = to_newick(tree, support)
 
@@ -63,7 +63,7 @@ class NjTreeStage(Stage):
             metadata={
                 "method": "neighbor_joining",
                 "n_bootstrap": cfg.n_bootstrap,
-                "n_sites": int(gn.shape[0]),
+                "n_sites": int(n_alt.shape[0]),
                 "n_tips": geno.n_samples,
                 "max_support": round(max(support.values()), 3) if support else None,
                 "bootstrap_mode": cfg.bootstrap_mode,
@@ -72,5 +72,5 @@ class NjTreeStage(Stage):
         )
         return StageResult(
             artifacts=[art],
-            metrics={"n_tips": geno.n_samples, "n_sites": int(gn.shape[0])},
+            metrics={"n_tips": geno.n_samples, "n_sites": int(n_alt.shape[0])},
         )
