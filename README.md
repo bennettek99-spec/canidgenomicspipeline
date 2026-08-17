@@ -130,6 +130,10 @@ src/canidae/
 tests/                           unit, simulated, and integration validation
 ```
 
+The shipped executor is the bounded local backend. Scheduler/container/GPU execution,
+automatic liftover, and large raw-read calling are future extension points rather than
+current default capabilities; see [the implementation boundary](docs/ARCHITECTURE.md#current-implementation-boundary).
+
 ## Data and statistical scope
 
 Use a sample sheet with at least `sample_id`, `taxon`, and `population`. For full-genome demographic estimates, provide a defensible callable-site denominator with `stages.diversity.callable_sites` and/or `stages.demography.callable_sites`. Without it, the report deliberately presents selected-SNP panel-relative values only.

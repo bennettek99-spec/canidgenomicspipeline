@@ -17,6 +17,11 @@ CANIS is intentionally laptop-first. The roadmap is not a promise to automatical
 - Analysis-readiness filtering/audits, explicit outgroups, block-aware uncertainty, and multiple-testing output.
 - Memory-mapped genotype artifacts with automatic size-based selection.
 - Resolved-config snapshots, interrupted-run recovery, and blocking incremental type checks in CI.
+- Numerical estimator goldens, hand-calculated statistic checks, and a CI parity job for PLINK2,
+  bcftools, and Dsuite.
+- A small public real-data bridge fixture so hybrid-study regressions run in CI without fetching
+  the full source panels.
+- Verified publication DOIs where the source study is identifiable, plus `CITATION.cff`.
 
 ## Delivered hybrid-canid diagnostics (v0.4 path)
 
@@ -27,6 +32,7 @@ CANIS is intentionally laptop-first. The roadmap is not a promise to automatical
 - Deterministic synthetic bridge panel with known mixture fractions, backing unit, stage-DAG, and golden-snapshot tests.
 - Golden snapshots for both the synthetic fixture (runs in CI) and the real study panels (skipped where `data/` is absent).
 - Source citation bundles under `configs/citations/`, referenced by every public preset and rendered in the report.
+- Verified source DOIs are recorded where available; accession-only records remain explicitly unrecorded.
 - Chunk-iterating genotype API over the memory-mapped backend.
 - Optional PLINK2 / Dsuite parity tests, and an opt-in `network` marker for live-source transport tests.
 - Remaining: optional `bridge_panel` acquisition stage to replace ad-hoc data prep paths.
@@ -35,9 +41,10 @@ CANIS is intentionally laptop-first. The roadmap is not a promise to automatical
 
 1. Expand report interactivity with optional self-contained SVG/Canvas views without making Plotly or a web service mandatory.
 2. Add input-specific QC modules for coverage/read quality when the user intentionally chooses a raw-read workflow.
-3. Extend executable parity coverage to bcftools, and run the existing PLINK2/Dsuite parity tests in a CI job that installs those binaries.
+3. Extend executable parity coverage to additional independent diversity and ancestry tools.
 4. Move the remaining whole-matrix stages onto the chunk-iterating API where the algorithm allows it.
-5. Fill the `doi:` fields in `configs/citations/` that this repository does not yet record, so every source resolves to a publication.
+5. Publish a tagged release to Zenodo and add its DOI to `CITATION.cff`; keep accession-only
+   records explicitly marked as having no verified publication DOI.
 
 
 ## Deliberately external preparation steps

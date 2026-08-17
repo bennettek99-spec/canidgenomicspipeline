@@ -3,11 +3,11 @@
 > Working repo name: `canid-genomics` · importable package: `canidae` · codename: **CANIS**
 > (Canid Ancestry, Networks, Introgression & Selection)
 
-A standalone, publication-quality computational genomics platform for comparative
-evolutionary analysis of *Canis* and related genera. Independent codebase; may reuse
-*ideas* and utility patterns from the human archaeogenomics work but shares no code by
-default. Designed to scale from a handful to **thousands** of whole genomes across
-**dozens** of published datasets.
+A standalone computational genomics platform for comparative evolutionary analysis of
+*Canis* and related genera. Independent codebase; may reuse *ideas* and utility patterns
+from the human archaeogenomics work but shares no code by default. Scaling from a handful
+to **thousands** of whole genomes across **dozens** of published datasets is a long-term
+design target, not the current laptop execution guarantee.
 
 Scope: comparative evolutionary genomics only. **Not** for veterinary diagnostics or
 conservation-management decisions.
@@ -16,6 +16,29 @@ conservation-management decisions.
 > executor, bounded workers/memory/disk, sequential chromosome analysis, metadata-only safe
 > resume, and reduced-panel/same-build VCF entry points. Cluster, automatic liftover, and
 > large raw-read workflows are not default execution paths; see [Laptop operations](LAPTOP_OPERATIONS.md).
+
+### Current implementation boundary
+
+The repository currently implements the local executor, typed stage/artifact contracts,
+configuration validation, provenance and cache integrity, VCF/reduced-panel acquisition,
+quality-control gates, population-genomics analyses, introgression/tree analyses,
+hybrid-canid bridge diagnostics, and self-contained HTML reporting. The supported input
+boundary is a local or indexed same-build VCF, with raw-read acquisition retained as a
+guarded preparation path.
+
+Snakemake/Nextflow scheduling, containers, GPU execution, automatic liftover, large-scale
+raw-read calling, and the future selection/demography/ancient/SV extensions remain design
+directions or narrow wrappers, not the default production backend. They are listed below
+to preserve intended extension points without implying that they are already shipped.
+
+### Genotype scale conventions
+
+CANIS uses ALT allele counts `{0, 1, 2}` for genotype matrices, likelihoods, frequencies,
+PCA, admixture, and local-ancestry calculations. Missing calls are `-1` or `NaN` as
+appropriate to the storage layer. The explicit `canidae.analysis.genotypes.dosage()` helper
+returns a normalized `[0, 1]` value only for the reference-mixture estimator, where query
+and reference means are intentionally compared on that same normalized scale. Stage code
+uses `n_alt`/`allele_count` names to keep these representations from being confused.
 
 ---
 
@@ -47,8 +70,8 @@ conservation-management decisions.
 ## 2. Layered architecture
 
 ```
-Interfaces        CLI (Typer) · Python API · Notebooks · HTML/PDF reports
-Orchestration     Workflow DAG · Snakemake/Nextflow backend · executors (local/SLURM/cloud) · GPU
+Interfaces        CLI (Typer) · Python API · HTML reports · examples
+Orchestration     Workflow DAG · local executor · future Snakemake/Nextflow backends · future GPU
 Pipeline modules  (1) acquisition (2) qc (3) processing (4) popgen
                   (5) phylogenetics (6) introgression (7) comparative (8) geographic (9) reporting
 Core foundation   config · provenance/logging · domain model · tool runners · datastore · registry
@@ -66,8 +89,8 @@ The layer every module depends on and that depends on no module.
 | `core.provenance` | `ProvenanceRecord` dataclass; captures tool versions, argv, input/output hashes, config snapshot, container digest, git SHA, seeds, timing, host. Writes a `manifest.json` (and human-readable `manifest.md`) per run. |
 | `core.model` | The domain model (§4): `Sample`, `Individual`, `Population`, `Taxon`, `Dataset`, `Cohort`, `ReferenceGenome`, `GenomicInterval`, `Artifact`, `Callset`, `AnalysisResult`. Dataclasses + Pydantic validation. |
 | `core.datastore` | Content-addressable workspace. Typed `Artifact` handles for FASTQ/CRAM/BCF/PLINK/Zarr; path layout; caching + skip-if-exists; integrity (md5/sha256, `.done` sentinels). |
-| `core.runtime` | `ToolRunner` abstraction: run an external command locally, in a container (Apptainer/Docker), or as a scheduler job (SLURM). Declares CPU/mem/GPU/time; captures stdout/stderr; retries; dry-run. `ToolSpec` records the required binary + version constraint. |
-| `core.registry` | Plugin registry (`register_stage`, `register_dataset`, `register_reference`, `register_analysis`) using Python entry points so third parties / future modules self-register. |
+| `core.runtime` | Local external-command runner with resource declarations, stdout/stderr capture, retries, dry-run support, and `ToolSpec` version requirements. Container and scheduler runners are future backends. |
+| `core.registry` | Built-in registry for stages and analyses. Third-party entry-point plugins are a future extension. |
 | `core.errors` | Typed exception hierarchy (`ConfigError`, `MissingToolError`, `IntegrityError`, `StageInputError`, `ExternalToolError`). |
 | `core.parallel` | Thin helpers over `concurrent.futures` and Dask; scatter/gather by `GenomicInterval`; bounded worker pools; progress. |
 
@@ -261,8 +284,8 @@ published VCFs — modules 4–9 run without ever touching raw reads.
 
 ## 6. Recommended libraries & tools
 
-**Python core:** pydantic, typer (CLI), rich, PyYAML/tomllib, structlog, joblib,
-pandas + pandera, numpy/scipy, attrs/dataclasses.
+**Python core:** pydantic, typer (CLI), rich, PyYAML, logging, concurrent.futures,
+pandas, numpy/scipy, dataclasses.
 **Genomics in Python:** cyvcf2 & pysam (htslib bindings), scikit-allel, **sgkit**
 (xarray/Dask/Zarr — the scalable backbone), msprime/tskit/demes (simulation & validation),
 DendroPy / ete3 / Bio.Phylo (trees), pyd4/mosdepth wrappers.
@@ -273,8 +296,9 @@ Jinja2, WeasyPrint / Quarto.
 samtools/bcftools/htslib, samblaster/Picard, GATK4, GLnexus, DeepVariant, PLINK2,
 vcftools, pixy, ADMIXTURE, PCAngsd, ANGSD, Dsuite, ADMIXTOOLS 2 (R), TreeMix, IQ-TREE 2,
 RAxML-NG, RFMix/Loter, FEEMS, selscan (future), SMC++/MSMC2 (future).
-**Orchestration:** Snakemake (Python-native, recommended default) or Nextflow/nf-core
-(sarek for calling) as an execution backend behind `core.runtime`.
+**Future orchestration:** Snakemake (Python-native) or Nextflow/nf-core (sarek for
+calling) may be added as execution backends behind `core.runtime`; the shipped backend is
+the local native executor.
 **Reproducibility:** conda/mamba + lockfiles, Apptainer/Docker images, per-tool version
 pins, optional DVC for large-artifact tracking.
 **Dev/test/CI:** pytest + hypothesis, coverage, ruff + black + mypy, pre-commit,
@@ -305,13 +329,13 @@ DeepVariant (calling) and cuML (PCA/clustering/UMAP) where it pays off.
 
 ---
 
-## 8. Repository structure
+## 8. Conceptual repository structure
 
 ```
 canid-genomics/
 ├── pyproject.toml                # PEP 621, src-layout, ruff/black/mypy/pytest config
 ├── README.md  LICENSE  CITATION.cff  CHANGELOG.md
-├── environment.yml  conda-lock.yml
+├── environment.yml  environment-parity.yml
 ├── docs/                         # mkdocs-material: architecture, module guides, tutorials
 │   ├── ARCHITECTURE.md  ROADMAP.md  index.md
 ├── configs/
@@ -342,6 +366,22 @@ canid-genomics/
 
 ---
 
+### 8.1 Current repository structure
+
+The shipped tree is smaller than the conceptual target above:
+
+```text
+configs/{examples,profiles,citations}/
+docs/
+examples/  scripts/
+src/canidae/{analysis,core,io,stages}/
+tests/{unit,integration,fixtures,golden,simulated}/
+data/  (gitignored local inputs and outputs)
+```
+
+Containers, scheduler workflows, notebooks, and dataset-plugin packages are future
+extensions, not current directories or execution guarantees.
+
 ## 9. Phased roadmap (MVP → publication platform)
 
 **Phase 0 — Foundation & scaffolding.** src-layout package, `core.config/logging/
@@ -365,16 +405,16 @@ TreeMix) and `introgression` (Dsuite/ADMIXTOOLS2 D & f-stats, f-branch, window s
 Validate against the Phase-0 simulated truth. *Exit:* recovers known simulated gene flow;
 runs D-stats on real wolf/coyote/dog data.
 
-**Phase 4 — Raw-read processing & scale.** `processing` (bwa-mem2 → CRAM → DeepVariant/GATK
+**Future Phase 4 — Raw-read processing & scale.** `processing` (bwa-mem2 → CRAM → DeepVariant/GATK
 → GLnexus) with Snakemake/Nextflow backend; **cross-study harmonization**; scale-out to
 thousands via sgkit/Zarr + Dask + SLURM/cloud. *Exit:* end-to-end FASTQ→report on a cluster
 for a multi-hundred-genome cohort.
 
-**Phase 5 — Advanced introgression & GPU.** Local-ancestry inference; genome-wide
+**Future Phase 5 — Advanced introgression & GPU.** Local-ancestry inference; genome-wide
 introgression maps; GPU acceleration (DeepVariant, cuML PCA/UMAP). *Exit:* per-individual
 ancestry karyograms; GPU path benchmarked.
 
-**Phase 6 — Future modules & publication packaging.** `selection`, `demography`, `ancient`,
+**Future Phase 6 — Future modules & publication packaging.** `selection`, `demography`, `ancient`,
 `sv`; full docs site, tutorials, Zenodo DOI, CITATION.cff, and a reproducible
 "paper-in-a-repo" demonstrating a real comparative-genomics result. *Exit:* external user
 reproduces a figure from a single config + `canidae run`.
