@@ -40,8 +40,9 @@ def test_real_command_records_provenance(tmp_path) -> None:
     spec = ToolSpec(name="python", binary=sys.executable, version_args=("--version",))
     prov = ProvenanceWriter(tmp_path, config_digest="d", seed=1)
     record = prov.start("demo")
-    result = runner.run(spec, ["-c", "print('hello')"], record=record,
-                        resources=ResourceSpec(cpus=1))
+    result = runner.run(
+        spec, ["-c", "print('hello')"], record=record, resources=ResourceSpec(cpus=1)
+    )
     assert result.ok and "hello" in result.stdout
     prov.finish(record)
     assert record.tools and record.tools[0].tool == "python"

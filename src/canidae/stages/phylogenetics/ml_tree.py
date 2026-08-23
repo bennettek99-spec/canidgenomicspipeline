@@ -24,8 +24,8 @@ _IUPAC = np.array(["A", "W", "T"], dtype="U1")
 
 
 class MlTreeConfig(StageConfig):
-    model: str = "MFP"          # ModelFinder Plus
-    ufboot: int = 1000          # ultrafast bootstrap replicates
+    model: str = "MFP"  # ModelFinder Plus
+    ufboot: int = 1000  # ultrafast bootstrap replicates
     segregating_only: bool = True
 
 
@@ -46,9 +46,11 @@ class MlTreeStage(Stage):
     def run(self, ctx: RunContext) -> StageResult:
         cfg: MlTreeConfig = self.config  # type: ignore[assignment]
         ctx.runner.ensure(_IQTREE)
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         stage_dir = ctx.datastore.stage_dir(self.name)
         aln = stage_dir / "alignment.phy"
@@ -58,15 +60,21 @@ class MlTreeStage(Stage):
             _IQTREE,
             ["-s", aln.name, "-m", cfg.model, "-B", str(cfg.ufboot), "-redo"],
             resources=ResourceSpec(cpus=ctx.config.resources.cpus),
-            record=ctx.scratch.get("_record"), cwd=stage_dir,
+            record=ctx.scratch.get("_record"),
+            cwd=stage_dir,
             expect_outputs=[stage_dir / "alignment.phy.treefile"],
         )
         treefile = stage_dir / "alignment.phy.treefile"
         out = ctx.datastore.path_for(self.name, "ml_tree.nwk")
         out.write_text(treefile.read_text(encoding="utf-8"), encoding="utf-8")
         art = ctx.datastore.add(
-            ArtifactKind.TREE, "ml", out, fmt=FileFormat.NEWICK, produced_by=self.name,
-            metadata={"method": "iqtree2", "model": cfg.model, "ufboot": cfg.ufboot})
+            ArtifactKind.TREE,
+            "ml",
+            out,
+            fmt=FileFormat.NEWICK,
+            produced_by=self.name,
+            metadata={"method": "iqtree2", "model": cfg.model, "ufboot": cfg.ufboot},
+        )
         return StageResult(artifacts=[art], metrics={"n_tips": geno.n_samples})
 
 

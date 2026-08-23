@@ -47,28 +47,34 @@ class GeographyStage(Stage):
         ds = ctx.datastore
         stage_dir = ds.stage_dir(self.name)
 
-        genetic = pd.read_csv(
-            ds.get(ArtifactKind.ANALYSIS_RESULT, "distance").path, index_col=0)
-        sheet = pd.read_csv(ds.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path,
-                            dtype=str)
+        genetic = pd.read_csv(ds.get(ArtifactKind.ANALYSIS_RESULT, "distance").path, index_col=0)
+        sheet = pd.read_csv(ds.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path, dtype=str)
         localities = _localities(sheet, list(genetic.index))
         localities.to_csv(stage_dir / "localities.csv", index=False)
 
         mantel_r, mantel_p, n_loc = self._isolation_by_distance(
-            genetic, localities, stage_dir, cfg, seed=ctx.config.seed)
+            genetic, localities, stage_dir, cfg, seed=ctx.config.seed
+        )
         regions = self._regional_ancestry(ds, localities, stage_dir)
 
-        summary = pd.DataFrame([{
-            "n_localities": n_loc,
-            "mantel_r": None if mantel_r != mantel_r else round(mantel_r, 4),
-            "mantel_p": None if mantel_p != mantel_p else round(mantel_p, 4),
-            "n_regions": 0 if regions is None else len(regions),
-        }])
+        summary = pd.DataFrame(
+            [
+                {
+                    "n_localities": n_loc,
+                    "mantel_r": None if mantel_r != mantel_r else round(mantel_r, 4),
+                    "mantel_p": None if mantel_p != mantel_p else round(mantel_p, 4),
+                    "n_regions": 0 if regions is None else len(regions),
+                }
+            ]
+        )
         out = stage_dir / "geography_summary.csv"
         summary.to_csv(out, index=False)
 
         art = ds.add(
-            ArtifactKind.ANALYSIS_RESULT, "geography", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "geography",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
             metadata={
                 "analysis": "geography",
@@ -80,20 +86,22 @@ class GeographyStage(Stage):
         )
         return StageResult(
             artifacts=[art],
-            metrics={"n_localities": n_loc,
-                     "mantel_r": None if mantel_r != mantel_r else round(mantel_r, 4)},
+            metrics={
+                "n_localities": n_loc,
+                "mantel_r": None if mantel_r != mantel_r else round(mantel_r, 4),
+            },
         )
 
-    def _isolation_by_distance(self, genetic: pd.DataFrame, localities: pd.DataFrame,
-                               stage_dir, cfg, *, seed: int) -> tuple[float, float, int]:
+    def _isolation_by_distance(
+        self, genetic: pd.DataFrame, localities: pd.DataFrame, stage_dir, cfg, *, seed: int
+    ) -> tuple[float, float, int]:
         loc = localities.dropna(subset=["latitude", "longitude"])
         ids = [s for s in genetic.index if s in set(loc["sample_id"])]
         if len(ids) < 3:
             return float("nan"), float("nan"), len(ids)
 
         loc = loc.set_index("sample_id").loc[ids]
-        geo = haversine_matrix(loc["latitude"].to_numpy(float),
-                               loc["longitude"].to_numpy(float))
+        geo = haversine_matrix(loc["latitude"].to_numpy(float), loc["longitude"].to_numpy(float))
         gen = genetic.loc[ids, ids].to_numpy(float)
         r, p = mantel_test(gen, geo, permutations=cfg.permutations, seed=seed)
 

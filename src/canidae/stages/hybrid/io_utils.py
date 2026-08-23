@@ -77,8 +77,6 @@ def load_wgs_panel_json(
 ) -> tuple[list[str], dict[tuple[str, int], list[str | None]], list[tuple[str, int]]]:
     payload = load_json(path)
     samples = list(payload["samples"])
-    records = {
-        parse_locus_key(key): list(values) for key, values in payload["loci"].items()
-    }
+    records = {parse_locus_key(key): list(values) for key, values in payload["loci"].items()}
     keys = sorted(records, key=lambda item: (int(item[0].removeprefix("chr")), item[1]))
     return samples, records, keys

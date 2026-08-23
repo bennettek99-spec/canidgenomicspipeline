@@ -36,8 +36,9 @@ class MissingToolError(CanidaeError):
 class ExternalToolError(CanidaeError):
     """An external command exited non-zero or failed to produce its declared outputs."""
 
-    def __init__(self, message: str, *, returncode: int | None = None,
-                 stderr: str | None = None) -> None:
+    def __init__(
+        self, message: str, *, returncode: int | None = None, stderr: str | None = None
+    ) -> None:
         super().__init__(message)
         self.returncode = returncode
         self.stderr = stderr

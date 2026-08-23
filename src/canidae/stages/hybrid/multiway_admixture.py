@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 from pydantic import Field
@@ -118,9 +119,7 @@ class MultiwayAdmixtureStage(Stage):
             index for group in ("Wolf", "AlaskanWolf") for index in groups.get(group, [])
         ]
         eastern_wolf_indices = [
-            index
-            for group in ("AlgonquinWolf", "QuebecWolf")
-            for index in groups.get(group, [])
+            index for group in ("AlgonquinWolf", "QuebecWolf") for index in groups.get(group, [])
         ]
         pooled_dogs = [
             index
@@ -156,15 +155,18 @@ class MultiwayAdmixtureStage(Stage):
         p_gray = panel_frequencies(matrix, gray_wolf_indices, pooled_prior)
         p_dog = panel_frequencies(matrix, pooled_dogs, pooled_prior)
         informative = (
-            (np.abs(raw["gray_wolf"] - raw["coyote"]) >= cfg.min_panel_separation)
-            | (np.abs(raw["dog"] - raw["coyote"]) >= cfg.min_panel_separation)
-            | (np.abs(raw["eastern_wolf"] - raw["coyote"]) >= cfg.min_panel_separation)
-        ) & np.isfinite(p_coyote) & np.isfinite(p_gray) & np.isfinite(p_dog)
+            (
+                (np.abs(raw["gray_wolf"] - raw["coyote"]) >= cfg.min_panel_separation)
+                | (np.abs(raw["dog"] - raw["coyote"]) >= cfg.min_panel_separation)
+                | (np.abs(raw["eastern_wolf"] - raw["coyote"]) >= cfg.min_panel_separation)
+            )
+            & np.isfinite(p_coyote)
+            & np.isfinite(p_gray)
+            & np.isfinite(p_dog)
+        )
         keep = np.where(informative)[0]
         if len(keep) < 10:
-            raise StageInputError(
-                f"only {len(keep)} informative loci after separation filter"
-            )
+            raise StageInputError(f"only {len(keep)} informative loci after separation filter")
         kept_keys = [keys[i] for i in keep]
         p_coyote_k, p_gray_k, p_dog_k = p_coyote[keep], p_gray[keep], p_dog[keep]
 
@@ -174,9 +176,7 @@ class MultiwayAdmixtureStage(Stage):
             for s in bridge_samples
             if s not in wgs_samples
             and not (
-                cfg.exclude_bridge_wgs_bug_ids
-                and BRIDGE_WGS_COLUMNS_BUG
-                and s in BRIDGE_WGS_IDS
+                cfg.exclude_bridge_wgs_bug_ids and BRIDGE_WGS_COLUMNS_BUG and s in BRIDGE_WGS_IDS
             )
         ]
         if not radseq_ids:
@@ -234,16 +234,12 @@ class MultiwayAdmixtureStage(Stage):
             if f_dog >= cfg.min_dog_fraction_for_breed and breed_panels:
                 entries = [
                     (
-                        calls_mixture_loglik(
-                            counts, p_coyote_k, p_gray_k, panel, f_wolf, f_dog
-                        ),
+                        calls_mixture_loglik(counts, p_coyote_k, p_gray_k, panel, f_wolf, f_dog),
                         breed,
                     )
                     for breed, panel in breed_panels.items()
                 ]
-                any_dog = calls_mixture_loglik(
-                    counts, p_coyote_k, p_gray_k, p_dog_k, f_wolf, f_dog
-                )
+                any_dog = calls_mixture_loglik(counts, p_coyote_k, p_gray_k, p_dog_k, f_wolf, f_dog)
                 entries.sort(reverse=True)
                 for rank, (score, breed) in enumerate(entries[: cfg.top_k], start=1):
                     breed_rows.append(
@@ -259,9 +255,7 @@ class MultiwayAdmixtureStage(Stage):
         out_csv = ctx.datastore.path_for(self.name, "multiway_admixture.csv")
         write_csv_dicts(out_csv, rows)
         if breed_rows:
-            write_csv_dicts(
-                ctx.datastore.path_for(self.name, "breed_scores.csv"), breed_rows
-            )
+            write_csv_dicts(ctx.datastore.path_for(self.name, "breed_scores.csv"), breed_rows)
 
         eastern = [r for r in rows if r["region"] == "eastern"]
         western = [r for r in rows if r["region"] == "western"]
@@ -295,12 +289,8 @@ class MultiwayAdmixtureStage(Stage):
                 "n_samples": len(sample_ids),
                 "f_wolf": round(f_wolf, 3),
                 "f_dog": round(f_dog, 3),
-                "f_wolf_ci": [
-                    round(v, 3) for v in np.percentile(draws_arr[:, 0], [2.5, 97.5])
-                ],
-                "f_dog_ci": [
-                    round(v, 3) for v in np.percentile(draws_arr[:, 1], [2.5, 97.5])
-                ],
+                "f_wolf_ci": [round(v, 3) for v in np.percentile(draws_arr[:, 0], [2.5, 97.5])],
+                "f_dog_ci": [round(v, 3) for v in np.percentile(draws_arr[:, 1], [2.5, 97.5])],
                 "loglik": round(ll, 1),
             }
 
@@ -310,10 +300,7 @@ class MultiwayAdmixtureStage(Stage):
         discrimination: dict[str, object] = {}
         if eastern:
             stacked = np.vstack(
-                [
-                    allele_count_vector(kept_keys, bridge_calls, str(r["sample_id"]))
-                    for r in eastern
-                ]
+                [allele_count_vector(kept_keys, bridge_calls, str(r["sample_id"])) for r in eastern]
             )
             alt_e = np.nansum(stacked, axis=0)
             chrom_e = 2 * np.sum(~np.isnan(stacked), axis=0)
@@ -338,10 +325,10 @@ class MultiwayAdmixtureStage(Stage):
             }
 
         group_summary = {
-            "eastern_wolf_fraction": _stats([float(r["f_wolf"]) for r in eastern]),
-            "western_wolf_fraction": _stats([float(r["f_wolf"]) for r in western]),
-            "eastern_dog_fraction": _stats([float(r["f_dog"]) for r in eastern]),
-            "western_dog_fraction": _stats([float(r["f_dog"]) for r in western]),
+            "eastern_wolf_fraction": _stats([cast(float, r["f_wolf"]) for r in eastern]),
+            "western_wolf_fraction": _stats([cast(float, r["f_wolf"]) for r in western]),
+            "eastern_dog_fraction": _stats([cast(float, r["f_dog"]) for r in eastern]),
+            "western_dog_fraction": _stats([cast(float, r["f_dog"]) for r in western]),
         }
         manifest = {
             "queries": {

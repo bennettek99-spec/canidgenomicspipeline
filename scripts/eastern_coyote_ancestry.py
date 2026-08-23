@@ -93,9 +93,7 @@ def main() -> None:
         index for group in ("Wolf", "AlaskanWolf") for index in groups.get(group, [])
     ]
     eastern_wolf_indices = [
-        index
-        for group in ("AlgonquinWolf", "QuebecWolf")
-        for index in groups.get(group, [])
+        index for group in ("AlgonquinWolf", "QuebecWolf") for index in groups.get(group, [])
     ]
     pooled_dogs = [
         index
@@ -123,9 +121,7 @@ def main() -> None:
         freqs[called == 0] = np.nan
         raw[name] = freqs
     pooled_prior = np.nanmean(
-        np.vstack(
-            [raw["coyote"], raw["gray_wolf"], raw["eastern_wolf"], raw["dog"]]
-        ),
+        np.vstack([raw["coyote"], raw["gray_wolf"], raw["eastern_wolf"], raw["dog"]]),
         axis=0,
     )
     p_coyote = panel_frequencies(matrix, coyote_indices, pooled_prior)
@@ -137,10 +133,15 @@ def main() -> None:
     )
     p_dog = panel_frequencies(matrix, pooled_dogs, pooled_prior)
     informative = (
-        (np.abs(raw["gray_wolf"] - raw["coyote"]) >= MIN_PANEL_SEPARATION)
-        | (np.abs(raw["dog"] - raw["coyote"]) >= MIN_PANEL_SEPARATION)
-        | (np.abs(raw["eastern_wolf"] - raw["coyote"]) >= MIN_PANEL_SEPARATION)
-    ) & np.isfinite(p_coyote) & np.isfinite(p_gray) & np.isfinite(p_dog)
+        (
+            (np.abs(raw["gray_wolf"] - raw["coyote"]) >= MIN_PANEL_SEPARATION)
+            | (np.abs(raw["dog"] - raw["coyote"]) >= MIN_PANEL_SEPARATION)
+            | (np.abs(raw["eastern_wolf"] - raw["coyote"]) >= MIN_PANEL_SEPARATION)
+        )
+        & np.isfinite(p_coyote)
+        & np.isfinite(p_gray)
+        & np.isfinite(p_dog)
+    )
     keep = np.where(informative)[0]
     kept_keys = [keys[i] for i in keep]
     print(
@@ -176,9 +177,7 @@ def main() -> None:
         )
         print(f"  {sample}: wolf {f_wolf:.2f} dog {f_dog:.2f}", flush=True)
     coyote_controls = [r for r in platform_rows if str(r["sample_id"]).startswith("Coyote")]
-    wolf_control = next(
-        (r for r in platform_rows if r["sample_id"] == "AlaskanWolf"), None
-    )
+    wolf_control = next((r for r in platform_rows if r["sample_id"] == "AlaskanWolf"), None)
     validation_passed = bool(
         wolf_control is not None
         and float(wolf_control["f_wolf"]) >= 0.5
@@ -195,8 +194,7 @@ def main() -> None:
     radseq_ids = [
         s
         for s in bridge_samples
-        if s not in wgs_samples
-        and not (BRIDGE_WGS_COLUMNS_BUG and s in BRIDGE_WGS_IDS)
+        if s not in wgs_samples and not (BRIDGE_WGS_COLUMNS_BUG and s in BRIDGE_WGS_IDS)
     ]
     print(f"Queries: {len(radseq_ids)} RADseq coyotes at {len(keep)} loci", flush=True)
 
@@ -253,13 +251,9 @@ def main() -> None:
         if f_dog >= MIN_DOG_FRACTION_FOR_BREED:
             entries = []
             for breed, panel in breed_panels.items():
-                score = calls_mixture_loglik(
-                    dosages, p_coyote_k, p_gray_k, panel, f_wolf, f_dog
-                )
+                score = calls_mixture_loglik(dosages, p_coyote_k, p_gray_k, panel, f_wolf, f_dog)
                 entries.append((score, breed))
-            any_dog = calls_mixture_loglik(
-                dosages, p_coyote_k, p_gray_k, p_dog_k, f_wolf, f_dog
-            )
+            any_dog = calls_mixture_loglik(dosages, p_coyote_k, p_gray_k, p_dog_k, f_wolf, f_dog)
             entries.sort(reverse=True)
             for rank, (score, breed) in enumerate(entries[: args.top_k], start=1):
                 breed_rows.append(
@@ -285,9 +279,7 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(rows)
     if breed_rows:
-        with (args.out_dir / "breed_scores.csv").open(
-            "w", newline="", encoding="utf-8"
-        ) as handle:
+        with (args.out_dir / "breed_scores.csv").open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(breed_rows[0]))
             writer.writeheader()
             writer.writerows(breed_rows)
@@ -326,17 +318,13 @@ def main() -> None:
         print(f"Cohort {label}: {result}", flush=True)
         return result
 
-    cohort_eastern = cohort_fit(
-        [str(row["sample_id"]) for row in eastern], "eastern (Ontario)"
-    )
+    cohort_eastern = cohort_fit([str(row["sample_id"]) for row in eastern], "eastern (Ontario)")
     cohort_western = cohort_fit(
         [str(row["sample_id"]) for row in western], "western (Arizona, control)"
     )
 
     def cohort_alt_chrom(sample_ids: list[str]) -> tuple[np.ndarray, np.ndarray]:
-        stacked = np.vstack(
-            [allele_count_vector(kept_keys, bridge_calls, s) for s in sample_ids]
-        )
+        stacked = np.vstack([allele_count_vector(kept_keys, bridge_calls, s) for s in sample_ids])
         return np.nansum(stacked, axis=0), 2 * np.sum(~np.isnan(stacked), axis=0)
 
     alt_e, chrom_e = cohort_alt_chrom([str(row["sample_id"]) for row in eastern])

@@ -51,11 +51,11 @@ class ToolSpec:
     """Declares an external tool and how to check its version."""
 
     name: str
-    binary: str | None = None                 # defaults to ``name``
+    binary: str | None = None  # defaults to ``name``
     version_args: tuple[str, ...] = ("--version",)
     version_regex: str = r"(\d+\.\d+(?:\.\d+)?)"
     min_version: str | None = None
-    container_image: str | None = None        # image name/URI when containerized
+    container_image: str | None = None  # image name/URI when containerized
 
     @property
     def executable(self) -> str:
@@ -192,9 +192,7 @@ class LocalRunner(_BaseRunner):
         self.ensure(spec)
         _log.debug("exec: %s", " ".join(argv))
         started = time.monotonic()
-        proc = subprocess.run(
-            argv, capture_output=True, text=True, cwd=str(cwd) if cwd else None
-        )
+        proc = subprocess.run(argv, capture_output=True, text=True, cwd=str(cwd) if cwd else None)
         return self._finalize(spec, argv, proc, started, expect_outputs, record, check)
 
 
@@ -213,7 +211,7 @@ class ContainerRunner(_BaseRunner):
             )
         binds: list[str] = []
         for b in self.config.bind_paths:
-            binds += (["--bind", b] if self.config.engine == "apptainer" else ["-v", b])
+            binds += ["--bind", b] if self.config.engine == "apptainer" else ["-v", b]
         if self.config.engine == "apptainer":
             return ["apptainer", "exec", *binds, image, *argv]
         return ["docker", "run", "--rm", *binds, image, *argv]
@@ -236,9 +234,7 @@ class ContainerRunner(_BaseRunner):
             _log.info("[dry-run] %s", " ".join(argv))
             return CommandResult(argv, 0, "", "", 0.0)
         started = time.monotonic()
-        proc = subprocess.run(
-            argv, capture_output=True, text=True, cwd=str(cwd) if cwd else None
-        )
+        proc = subprocess.run(argv, capture_output=True, text=True, cwd=str(cwd) if cwd else None)
         return self._finalize(spec, argv, proc, started, expect_outputs, record, check)
 
 

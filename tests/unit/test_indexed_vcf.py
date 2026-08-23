@@ -35,17 +35,26 @@ def make_bgzf_block(payload: bytes) -> bytes:
     total = 18 + len(body) + 8
     header = struct.pack(
         "<BBBBIBBHBBHH",
-        0x1F, 0x8B, 8, 4,  # magic, deflate, FEXTRA
-        0, 0, 0xFF,        # mtime, xfl, os
-        6, 66, 67, 2,      # XLEN, SI1='B', SI2='C', SLEN
-        total - 1,         # BSIZE at byte offset 16
+        0x1F,
+        0x8B,
+        8,
+        4,  # magic, deflate, FEXTRA
+        0,
+        0,
+        0xFF,  # mtime, xfl, os
+        6,
+        66,
+        67,
+        2,  # XLEN, SI1='B', SI2='C', SLEN
+        total - 1,  # BSIZE at byte offset 16
     )
     trailer = struct.pack("<II", zlib.crc32(payload) & 0xFFFFFFFF, len(payload))
     return header + body + trailer
 
 
-def make_tabix(names: list[str], bins: dict[int, list[tuple[int, int]]],
-               linear: list[int]) -> bytes:
+def make_tabix(
+    names: list[str], bins: dict[int, list[tuple[int, int]]], linear: list[int]
+) -> bytes:
     """A minimal single-reference TBI index, gzip-compressed as tabix stores it."""
     raw = bytearray(b"TBI\x01")
     raw += struct.pack("<i", len(names))
@@ -153,10 +162,10 @@ def test_merge_chunks_joins_adjacent_ranges_and_splits_distant_ones() -> None:
 def test_genotype_accepts_biallelic_calls_only() -> None:
     assert genotype("0/1:30:99", 0) == "0/1"
     assert genotype("1|1", 0) == "1|1"
-    assert genotype("./.", 0) is None       # missing
-    assert genotype("0/2", 0) is None       # multiallelic
-    assert genotype("0", 0) is None         # haploid
-    assert genotype("30:99", 5) is None     # GT column absent
+    assert genotype("./.", 0) is None  # missing
+    assert genotype("0/2", 0) is None  # multiallelic
+    assert genotype("0", 0) is None  # haploid
+    assert genotype("30:99", 5) is None  # GT column absent
 
 
 # -- live source (opt-in) --------------------------------------------------------------
@@ -169,7 +178,15 @@ def test_live_source_header_is_range_fetched_within_budget() -> None:
     budget = TransferBudget(limit=32 * 1024 * 1024)
     meta, columns = source_header(SOURCE_VCF_URL, budget)
     assert columns[:9] == [
-        "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT",
+        "#CHROM",
+        "POS",
+        "ID",
+        "REF",
+        "ALT",
+        "QUAL",
+        "FILTER",
+        "INFO",
+        "FORMAT",
     ]
     assert len(columns) - 9 == 722  # the 722-genome panel
     assert any(line.startswith("##fileformat=VCF") for line in meta)

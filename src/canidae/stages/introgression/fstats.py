@@ -54,8 +54,9 @@ def _finite_mask(*arrays: np.ndarray) -> np.ndarray:
     return mask
 
 
-def _abba_baba(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray,
-               po: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _abba_baba(
+    p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, po: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     abba = (1 - p1) * p2 * p3 * (1 - po) + p1 * (1 - p2) * (1 - p3) * po
     baba = p1 * (1 - p2) * p3 * (1 - po) + (1 - p1) * p2 * (1 - p3) * po
     return abba, baba
@@ -219,11 +220,15 @@ def f_d_windows(
             w = (cp >= w0) & (cp < w0 + window_bp)
             if int(w.sum()) < min_sites:
                 continue
-            out.append({
-                "chrom": str(contig), "start": w0, "end": w0 + window_bp,
-                "n_sites": int(w.sum()),
-                "f_d": _f_d(i1[w], i2[w], i3[w], io[w]),
-            })
+            out.append(
+                {
+                    "chrom": str(contig),
+                    "start": w0,
+                    "end": w0 + window_bp,
+                    "n_sites": int(w.sum()),
+                    "f_d": _f_d(i1[w], i2[w], i3[w], io[w]),
+                }
+            )
     return out
 
 
@@ -329,8 +334,7 @@ def _validate_coordinates(
             raise ValueError("positions must be positive and 1-based")
 
 
-def _jackknife_ratio(num: np.ndarray, den: np.ndarray, *,
-                     n_blocks: int) -> JackknifeResult:
+def _jackknife_ratio(num: np.ndarray, den: np.ndarray, *, n_blocks: int) -> JackknifeResult:
     """Delete-one block jackknife for a ratio-of-sums estimator theta = Σnum / Σden."""
     n = num.shape[0]
     if n_blocks < 1:
@@ -350,8 +354,8 @@ def _jackknife_from_block_sums(
     n_sites: int,
 ) -> JackknifeResult:
     """Delete one chromosome/fixed block at a time from a ratio-of-sums statistic."""
-    numerator = np.asarray(block_num, dtype=float)
-    denominator = np.asarray(block_den, dtype=float)
+    numerator: np.ndarray = np.asarray(block_num, dtype=float)
+    denominator: np.ndarray = np.asarray(block_den, dtype=float)
     n_blocks = int(numerator.size)
     total_num = float(numerator.sum())
     total_den = float(denominator.sum())

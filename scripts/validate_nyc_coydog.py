@@ -20,7 +20,6 @@ import csv
 import json
 import re
 import subprocess
-import sys
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,7 +27,6 @@ from pathlib import Path
 import numpy as np
 
 from canidae.analysis.bridge_panel import bridge_sites
-from canidae.analysis.genotypes import dosage
 from canidae.analysis.reference_mixture import infer_dog_fraction as _infer_dog_fraction
 from canidae.io import indexed_vcf
 from canidae.io.indexed_vcf import (
@@ -92,9 +90,7 @@ def load_wgs_reference(
     for chrom, pos in sites:
         chunks.update(chunks_for(by_chrom[chrom], pos))
     merged = merge_chunks(chunks)
-    estimated_wgs = sum(
-        ((end >> 16) + BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged
-    )
+    estimated_wgs = sum(((end >> 16) + BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged)
     if budget.used + estimated_wgs + NYC_SRA_BYTES_UPPER_BOUND > max_bytes:
         raise RuntimeError(
             "conservative transfer preflight exceeds safety limit: "

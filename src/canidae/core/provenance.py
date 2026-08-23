@@ -194,14 +194,16 @@ class ProvenanceWriter:
         recovery: str | None = None,
         details: dict[str, Any] | None = None,
     ) -> None:
-        self.run_events.append({
-            "event": event,
-            "status": status,
-            "at": _now_iso(),
-            "error": error,
-            "recovery": recovery,
-            "details": details or {},
-        })
+        self.run_events.append(
+            {
+                "event": event,
+                "status": status,
+                "at": _now_iso(),
+                "error": error,
+                "recovery": recovery,
+                "details": details or {},
+            }
+        )
         self.flush()
 
     def flush(self) -> Path:
@@ -252,14 +254,16 @@ class ProvenanceWriter:
         self.run_metadata = payload.get("run_metadata", {}) or {}
         self.run_events = payload.get("run_events", []) or []
         if self.records:
-            self.run_events.append({
-                "event": "run_resumed",
-                "status": "succeeded",
-                "at": _now_iso(),
-                "error": None,
-                "recovery": None,
-                "details": {"prior_records": len(self.records)},
-            })
+            self.run_events.append(
+                {
+                    "event": "run_resumed",
+                    "status": "succeeded",
+                    "at": _now_iso(),
+                    "error": None,
+                    "recovery": None,
+                    "details": {"prior_records": len(self.records)},
+                }
+            )
         self._counter = len(self.records)
 
     def _render_markdown(self) -> str:
@@ -287,8 +291,7 @@ class ProvenanceWriter:
             if r.tools:
                 lines.append("- tools:")
                 lines += [
-                    f"    - `{t.tool}` ({t.version or 'n/a'}) rc={t.returncode}"
-                    for t in r.tools
+                    f"    - `{t.tool}` ({t.version or 'n/a'}) rc={t.returncode}" for t in r.tools
                 ]
             if r.outputs:
                 lines.append("- outputs:")

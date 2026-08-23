@@ -47,10 +47,7 @@ _genotype = genotype
 _download_small = download_small
 ReferenceIndex = indexed_vcf.ReferenceIndex
 
-PANEL_URL = (
-    "https://download.cncb.ac.cn/dogsd/dog10k/variations/"
-    "CFA31_IlluminaHD.vcf.gz"
-)
+PANEL_URL = "https://download.cncb.ac.cn/dogsd/dog10k/variations/CFA31_IlluminaHD.vcf.gz"
 PANEL_MD5 = "4a87088b17631fb6237210044ac099a6"
 SAMPLES = ("Wolf25", "Wolf26", "GoldenJackal01")
 

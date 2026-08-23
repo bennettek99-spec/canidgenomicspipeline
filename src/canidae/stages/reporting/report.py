@@ -226,7 +226,6 @@ class ReportStage(Stage):
             ArtifactSpec(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet", optional=True),
         ]
 
-
     def produced_outputs(self) -> list[ArtifactSpec]:
         return [ArtifactSpec(ArtifactKind.REPORT, "html")]
 
@@ -252,7 +251,9 @@ class ReportStage(Stage):
             "project": ctx.config.project_name,
             "generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
             "digest": ctx.config.digest()[:16],
-            "cohort_table": _cohort_table(sheet) if sheet is not None else "<p class='small'>No sample sheet in this recipe.</p>",
+            "cohort_table": _cohort_table(sheet)
+            if sheet is not None
+            else "<p class='small'>No sample sheet in this recipe.</p>",
             "pca_img": None,
             "fst_img": None,
             "fst_table": None,
@@ -279,9 +280,13 @@ class ReportStage(Stage):
 
         if ds.has(R, "pca"):
             pca_art = ds.get(R, "pca")
-            ctx_vars["pca_img"] = _b64(figures.pca_scatter(
-                pca_art.path, d / "pca.png",
-                explained_variance=pca_art.metadata.get("explained_variance_ratio")))
+            ctx_vars["pca_img"] = _b64(
+                figures.pca_scatter(
+                    pca_art.path,
+                    d / "pca.png",
+                    explained_variance=pca_art.metadata.get("explained_variance_ratio"),
+                )
+            )
             ctx_vars["pca_svg"] = _pca_svg(pca_art.path)
         if ds.has(R, "fst"):
             fst_art = ds.get(R, "fst")
@@ -306,14 +311,12 @@ class ReportStage(Stage):
         self._add_qc(ds, ctx_vars)
         self._add_harmonization(ds, ctx_vars)
 
-
         html = _TEMPLATE.render(**ctx_vars)
         out = d / "report.html"
         temporary = out.with_suffix(".html.tmp")
         temporary.write_text(html, encoding="utf-8")
         temporary.replace(out)
-        art = Artifact(ArtifactKind.REPORT, "html", out, fmt=FileFormat.HTML,
-                       produced_by=self.name)
+        art = Artifact(ArtifactKind.REPORT, "html", out, fmt=FileFormat.HTML, produced_by=self.name)
         return StageResult(artifacts=[art], metrics={"report": str(out)})
 
     # -- optional sections -------------------------------------------------------------
@@ -327,8 +330,10 @@ class ReportStage(Stage):
         v["admix_k"] = art.metadata.get("best_k", "?")
 
     def _add_clustering(self, ds, d: Path, v: dict) -> None:
-        if not (ds.has(ArtifactKind.ANALYSIS_RESULT, "cluster")
-                and ds.has(ArtifactKind.ANALYSIS_RESULT, "distance")):
+        if not (
+            ds.has(ArtifactKind.ANALYSIS_RESULT, "cluster")
+            and ds.has(ArtifactKind.ANALYSIS_RESULT, "distance")
+        ):
             return
         dist = ds.get(ArtifactKind.ANALYSIS_RESULT, "distance")
         meta = ds.get(ArtifactKind.ANALYSIS_RESULT, "cluster").metadata
@@ -341,8 +346,9 @@ class ReportStage(Stage):
         if not ds.has(ArtifactKind.TREE, "nj"):
             return
         newick = ds.get(ArtifactKind.TREE, "nj").path
-        v["tree_img"] = _b64(figures.nj_tree_figure(newick, d / "nj_tree.png",
-                                                     tip_colors=_tip_colors(sheet)))
+        v["tree_img"] = _b64(
+            figures.nj_tree_figure(newick, d / "nj_tree.png", tip_colors=_tip_colors(sheet))
+        )
 
     def _add_introgression(self, ds, d: Path, v: dict) -> None:
         R = ArtifactKind.ANALYSIS_RESULT
@@ -382,8 +388,9 @@ class ReportStage(Stage):
     def _add_demography(self, ds, v: dict) -> None:
         R = ArtifactKind.ANALYSIS_RESULT
         if ds.has(R, "demography"):
-            v["demography_table"] = pd.read_csv(
-                ds.get(R, "demography").path).to_html(index=False, border=0)
+            v["demography_table"] = pd.read_csv(ds.get(R, "demography").path).to_html(
+                index=False, border=0
+            )
 
     def _add_hybrid(self, ds, d: Path, v: dict) -> None:
         R = ArtifactKind.ANALYSIS_RESULT
@@ -393,8 +400,7 @@ class ReportStage(Stage):
             if not df.empty:
                 v["mixture_table"] = df.to_html(index=False, border=0)
             if "dog_fraction" in df and df["dog_fraction"].notna().any():
-                v["mixture_img"] = _b64(figures.dog_fraction_barplot(
-                    art.path, d / "mixture.png"))
+                v["mixture_img"] = _b64(figures.dog_fraction_barplot(art.path, d / "mixture.png"))
             passed = art.metadata.get("validation_passed")
             if passed is True:
                 v["mixture_verdict"] = "Pedigree-style validation: PASSED."
@@ -408,12 +414,14 @@ class ReportStage(Stage):
             if not df.empty:
                 v["breed_table"] = df.to_html(index=False, border=0)
             if "single_breed_gap" in df and df["single_breed_gap"].notna().any():
-                v["breed_img"] = _b64(figures.breed_gap_barplot(
-                    art.path, d / "breed_gap.png"))
+                v["breed_img"] = _b64(figures.breed_gap_barplot(art.path, d / "breed_gap.png"))
             scores_csv = art.metadata.get("scores_csv")
             if scores_csv and Path(scores_csv).exists() and not df.empty:
-                v["breed_ranking_img"] = _b64(figures.breed_ranking_barplot(
-                    Path(scores_csv), art.path, d / "breed_ranking.png"))
+                v["breed_ranking_img"] = _b64(
+                    figures.breed_ranking_barplot(
+                        Path(scores_csv), art.path, d / "breed_ranking.png"
+                    )
+                )
             cal = art.metadata.get("calibration") or {}
             acc = cal.get("top1_accuracy")
             if acc is not None:
@@ -427,8 +435,9 @@ class ReportStage(Stage):
             if not df.empty:
                 v["multiway_table"] = df.to_html(index=False, border=0)
             if not df.empty and {"f_wolf", "f_dog"}.issubset(df.columns):
-                v["multiway_img"] = _b64(figures.admixture_scatter(
-                    art.path, d / "multiway_scatter.png"))
+                v["multiway_img"] = _b64(
+                    figures.admixture_scatter(art.path, d / "multiway_scatter.png")
+                )
             gs = art.metadata.get("group_summary") or {}
             ew = (gs.get("eastern_dog_fraction") or {}).get("mean")
             ww = (gs.get("western_dog_fraction") or {}).get("mean")
@@ -456,13 +465,17 @@ class ReportStage(Stage):
         if localities.exists() and pd.read_csv(localities)["latitude"].notna().any():
             v["map_img"] = _b64(figures.locality_map(localities, d / "map.png"))
         if ibd.exists():
-            v["ibd_img"] = _b64(figures.ibd_scatter(
-                ibd, d / "ibd.png",
-                mantel_r=float(mantel_r) if mantel_r is not None else None))
+            v["ibd_img"] = _b64(
+                figures.ibd_scatter(
+                    ibd, d / "ibd.png", mantel_r=float(mantel_r) if mantel_r is not None else None
+                )
+            )
         if mantel_r is not None:
-            v["mantel_line"] = (f"Isolation by distance: Mantel r = {mantel_r}, "
-                                f"p = {art.metadata.get('mantel_p')} "
-                                f"({art.metadata.get('n_localities')} localities).")
+            v["mantel_line"] = (
+                f"Isolation by distance: Mantel r = {mantel_r}, "
+                f"p = {art.metadata.get('mantel_p')} "
+                f"({art.metadata.get('n_localities')} localities)."
+            )
         if regional.exists():
             v["regional_table"] = pd.read_csv(regional).to_html(index=False, border=0)
 
@@ -482,8 +495,12 @@ class ReportStage(Stage):
 
 def _cohort_table(sheet: Path) -> str:
     df = pd.read_csv(sheet)
-    return (df.groupby(["taxon", "population"]).size().reset_index(name="n_samples")
-            .to_html(index=False, border=0))
+    return (
+        df.groupby(["taxon", "population"])
+        .size()
+        .reset_index(name="n_samples")
+        .to_html(index=False, border=0)
+    )
 
 
 def _tip_colors(sheet: Path) -> dict[str, str]:
@@ -491,8 +508,9 @@ def _tip_colors(sheet: Path) -> dict[str, str]:
     df = pd.read_csv(sheet, dtype=str)
     pops = sorted(df["population"].dropna().unique())
     palette = {p: figures._PALETTE[i % len(figures._PALETTE)] for i, p in enumerate(pops)}
-    return {row.sample_id: palette.get(row.population, "#333333")
-            for row in df.itertuples(index=False)}
+    return {
+        row.sample_id: palette.get(row.population, "#333333") for row in df.itertuples(index=False)
+    }
 
 
 def _b64(png_path: Path) -> str:
@@ -500,55 +518,75 @@ def _b64(png_path: Path) -> str:
 
 
 def _badges(ds, diversity_metadata: dict, exploratory: bool) -> list[dict[str, str]]:
-    badges = [{
-        "kind": "warn" if exploratory else "ok",
-        "label": "Exploratory" if exploratory else "Publication workflow configured",
-        "detail": "Interpret alongside study design, callable-site definitions, and validation.",
-    }]
+    badges = [
+        {
+            "kind": "warn" if exploratory else "ok",
+            "label": "Exploratory" if exploratory else "Publication workflow configured",
+            "detail": "Interpret alongside study design, callable-site definitions, and validation.",
+        }
+    ]
     if diversity_metadata.get("scope") == "panel_relative":
-        badges.append({
-            "kind": "warn", "label": "Panel-relative diversity",
-            "detail": "Selected SNPs are not a whole-genome callable-site denominator.",
-        })
+        badges.append(
+            {
+                "kind": "warn",
+                "label": "Panel-relative diversity",
+                "detail": "Selected SNPs are not a whole-genome callable-site denominator.",
+            }
+        )
     elif diversity_metadata.get("scope") == "callable_sites":
-        badges.append({
-            "kind": "ok", "label": "Callable-site denominator supplied",
-            "detail": "Diversity output uses an explicit callable-site denominator.",
-        })
+        badges.append(
+            {
+                "kind": "ok",
+                "label": "Callable-site denominator supplied",
+                "detail": "Diversity output uses an explicit callable-site denominator.",
+            }
+        )
     R = ArtifactKind.ANALYSIS_RESULT
-    if any(ds.has(R, role) for role in (
-        "reference_mixture", "breed_assign", "multiway_admixture"
-    )):
-        badges.append({
-            "kind": "warn",
-            "label": "Hybrid bridge-locus diagnostic",
-            "detail": "Not whole-genome ancestry; see the hybrid diagnostics section.",
-        })
+    if any(ds.has(R, role) for role in ("reference_mixture", "breed_assign", "multiway_admixture")):
+        badges.append(
+            {
+                "kind": "warn",
+                "label": "Hybrid bridge-locus diagnostic",
+                "detail": "Not whole-genome ancestry; see the hybrid diagnostics section.",
+            }
+        )
     if ds.has(ArtifactKind.QC_TABLE, "analysis_readiness"):
         readiness = ds.get(ArtifactKind.QC_TABLE, "analysis_readiness")
         status = str(readiness.metadata.get("status", "unknown"))
-        badges.append({
-            "kind": "ok" if status == "ready" else "warn",
-            "label": f"Analysis readiness: {status}",
-            "detail": "Autosome, LD, population-size, duplicate, and ascertainment checks.",
-        })
+        badges.append(
+            {
+                "kind": "ok" if status == "ready" else "warn",
+                "label": f"Analysis readiness: {status}",
+                "detail": "Autosome, LD, population-size, duplicate, and ascertainment checks.",
+            }
+        )
 
     if ds.has(ArtifactKind.QC_TABLE, "qc_exclusions"):
         exclusions = pd.read_csv(ds.get(ArtifactKind.QC_TABLE, "qc_exclusions").path)
         if len(exclusions):
-            badges.append({
-                "kind": "warn", "label": f"QC excluded {len(exclusions)} records",
-                "detail": "See the included exclusion table for every reason.",
-            })
+            badges.append(
+                {
+                    "kind": "warn",
+                    "label": f"QC excluded {len(exclusions)} records",
+                    "detail": "See the included exclusion table for every reason.",
+                }
+            )
         else:
-            badges.append({
-                "kind": "ok", "label": "QC gate passed", "detail": "No samples or sites were excluded."
-            })
+            badges.append(
+                {
+                    "kind": "ok",
+                    "label": "QC gate passed",
+                    "detail": "No samples or sites were excluded.",
+                }
+            )
     else:
-        badges.append({
-            "kind": "info", "label": "QC not in this recipe",
-            "detail": "This report was produced without the enforced QC stage.",
-        })
+        badges.append(
+            {
+                "kind": "info",
+                "label": "QC not in this recipe",
+                "detail": "This report was produced without the enforced QC stage.",
+            }
+        )
     return badges
 
 
@@ -618,13 +656,18 @@ def _executive_summary(ds, diversity_metadata: dict) -> str:
             f"{art.metadata.get('n_queries', '?')} queries."
         )
     if ds.has(R, "dstats"):
-        parts.append("D-statistics were calculated with uncertainty reported in the introgression section.")
+        parts.append(
+            "D-statistics were calculated with uncertainty reported in the introgression section."
+        )
     if ds.has(R, "local_ancestry"):
-        parts.append("Chromosome-reset local ancestry calls are included where source panels were configured.")
+        parts.append(
+            "Chromosome-reset local ancestry calls are included where source panels were configured."
+        )
     if diversity_metadata.get("scope") == "panel_relative":
         parts.append("Diversity values are panel-relative, not per-base whole-genome estimates.")
-    return " ".join(parts) or "The configured analyses completed; inspect each section and its limits."
-
+    return (
+        " ".join(parts) or "The configured analyses completed; inspect each section and its limits."
+    )
 
 
 def _run_status(ctx: RunContext) -> str:
@@ -640,11 +683,13 @@ def _downloads(ds, report_dir: Path) -> list[dict[str, str]]:
             href = os.path.relpath(artifact.path, report_dir).replace("\\", "/")
         except ValueError:  # different Windows drive; retain a useful local path label
             href = str(artifact.path)
-        outputs.append({
-            "href": href,
-            "label": f"{artifact.role}: {artifact.path.name}",
-            "kind": artifact.kind.value,
-        })
+        outputs.append(
+            {
+                "href": href,
+                "label": f"{artifact.role}: {artifact.path.name}",
+                "kind": artifact.kind.value,
+            }
+        )
     return outputs
 
 
@@ -663,18 +708,14 @@ def _citations_table(cfg: ReportConfig, ctx: RunContext) -> str:
     """Render the configured citation bundles, linking each source where possible."""
     if not cfg.citations:
         return ""
-    bundles = load_citation_bundles(
-        [Path(entry) for entry in cfg.citations], ctx.config.paths.root
-    )
+    bundles = load_citation_bundles([Path(entry) for entry in cfg.citations], ctx.config.paths.root)
     rows = citation_rows(bundles)
     if not rows:
         return ""
     for row in rows:
         link = row.pop("link")
         if link:
-            row["source"] = (
-                f'<a href="{html.escape(link)}">{html.escape(row["source"])}</a>'
-            )
+            row["source"] = f'<a href="{html.escape(link)}">{html.escape(row["source"])}</a>'
     return pd.DataFrame(rows).to_html(index=False, border=0, escape=False)
 
 
@@ -684,13 +725,19 @@ def _sources_table(ds) -> str:
         if artifact.role == "qc_callset":
             continue  # filtered derivative; cite the original source callset instead
         metadata = artifact.metadata
-        rows.append({
-            "artifact_role": artifact.role,
-            "dataset_or_accession": metadata.get("dataset_id", "not supplied"),
-            "reference_build": metadata.get("reference_build", metadata.get("reference_id", "unknown")),
-            "source": metadata.get("source", metadata.get("vcf_url", str(artifact.path))),
-            "manifest_or_checksum": metadata.get("manifest", metadata.get("sha256", "see run manifest")),
-        })
+        rows.append(
+            {
+                "artifact_role": artifact.role,
+                "dataset_or_accession": metadata.get("dataset_id", "not supplied"),
+                "reference_build": metadata.get(
+                    "reference_build", metadata.get("reference_id", "unknown")
+                ),
+                "source": metadata.get("source", metadata.get("vcf_url", str(artifact.path))),
+                "manifest_or_checksum": metadata.get(
+                    "manifest", metadata.get("sha256", "see run manifest")
+                ),
+            }
+        )
     return pd.DataFrame(rows).to_html(index=False, border=0) if rows else ""
 
 
@@ -710,8 +757,10 @@ def _pca_svg(pca_csv: Path) -> str:
     ylow, yhigh = float(y.min()), float(y.max())
     xspan, yspan = max(xhigh - xlow, 1e-12), max(yhigh - ylow, 1e-12)
     populations = shown.get("population", pd.Series("unknown", index=shown.index)).astype(str)
-    palette = {p: figures._PALETTE[i % len(figures._PALETTE)]
-               for i, p in enumerate(sorted(populations.unique()))}
+    palette = {
+        p: figures._PALETTE[i % len(figures._PALETTE)]
+        for i, p in enumerate(sorted(populations.unique()))
+    }
     circles: list[str] = []
     for row, xv, yv, pop in zip(shown.itertuples(index=False), x, y, populations, strict=True):
         cx = pad + (float(xv) - xlow) / xspan * (width - 2 * pad)
@@ -724,7 +773,7 @@ def _pca_svg(pca_csv: Path) -> str:
         )
     legend = "".join(
         f'<text x="{pad + i * 125}" y="{height - 8}" fill="{color}" font-size="12">'
-        f'● {html.escape(pop)}</text>'
+        f"● {html.escape(pop)}</text>"
         for i, (pop, color) in enumerate(palette.items())
     )
     return (
@@ -732,5 +781,5 @@ def _pca_svg(pca_csv: Path) -> str:
         'aria-label="Interactive PCA scatterplot"><line x1="42" y1="358" x2="638" y2="358" '
         'stroke="#555"/><line x1="42" y1="42" x2="42" y2="358" stroke="#555"/>'
         f'<text x="300" y="392" font-size="13">PC1</text><text x="8" y="30" font-size="13">PC2</text>'
-        f'{"".join(circles)}{legend}</svg>'
+        f"{''.join(circles)}{legend}</svg>"
     )

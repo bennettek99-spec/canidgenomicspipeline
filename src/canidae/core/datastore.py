@@ -60,8 +60,7 @@ class DataStore:
         producer wins, which is what re-running a stage should do.
         """
         stored = self.register_many([artifact], compute_checksum=compute_checksum)[0]
-        _log.debug("registered artifact %s:%s -> %s", stored.kind.value, stored.role,
-                   stored.path)
+        _log.debug("registered artifact %s:%s -> %s", stored.kind.value, stored.role, stored.path)
         return stored
 
     def register_many(
@@ -124,8 +123,13 @@ class DataStore:
     ) -> Artifact:
         """Convenience constructor + register."""
         artifact = Artifact(
-            kind=kind, role=role, path=Path(path), fmt=fmt, produced_by=produced_by,
-            provenance_id=provenance_id, metadata=metadata or {},
+            kind=kind,
+            role=role,
+            path=Path(path),
+            fmt=fmt,
+            produced_by=produced_by,
+            provenance_id=provenance_id,
+            metadata=metadata or {},
         )
         return self.register(artifact)
 
@@ -135,16 +139,12 @@ class DataStore:
         try:
             return self._artifacts[(kind, role)]
         except KeyError:
-            raise DataStoreError(
-                f"no artifact registered for {kind.value}:{role}"
-            ) from None
+            raise DataStoreError(f"no artifact registered for {kind.value}:{role}") from None
 
     def find(self, kind: ArtifactKind, role: str | None = None) -> list[Artifact]:
         """Return all artifacts of a kind, optionally filtered by role."""
         return [
-            a
-            for (k, r), a in self._artifacts.items()
-            if k == kind and (role is None or r == role)
+            a for (k, r), a in self._artifacts.items() if k == kind and (role is None or r == role)
         ]
 
     def has(self, kind: ArtifactKind, role: str) -> bool:
@@ -219,8 +219,7 @@ class DataStore:
         try:
             payload = json.loads(self._index_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise DataStoreError(f"corrupt artifact index at {self._index_path}: {exc}") \
-                from exc
+            raise DataStoreError(f"corrupt artifact index at {self._index_path}: {exc}") from exc
         for row in payload:
             artifact = Artifact(
                 kind=ArtifactKind(row["kind"]),

@@ -36,10 +36,10 @@ _ADMIXTURE = ToolSpec(name="admixture", version_args=("--version",))
 
 
 class AdmixtureConfig(StageConfig):
-    backend: str = "auto"           # auto | nmf | binary
+    backend: str = "auto"  # auto | nmf | binary
     k_min: int = 2
     k_max: int = 6
-    max_sites: int = 20000          # subsample sites above this (0 = use all)
+    max_sites: int = 20000  # subsample sites above this (0 = use all)
     cv_holdout: float = 0.1
     n_iter: int = 250
     n_replicates: int = 3
@@ -62,13 +62,16 @@ class AdmixtureStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: AdmixtureConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = align_labels(
-            geno, load_sample_labels(
-                ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path))
+            geno,
+            load_sample_labels(ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path),
+        )
 
         k_values = self._k_range(cfg, geno.n_samples)
         backend = self._resolve_backend(cfg, ctx)
@@ -87,7 +90,10 @@ class AdmixtureStage(Stage):
         out = ctx.datastore.path_for(self.name, "admixture_Q.csv")
         table.to_csv(out, index=False)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "admixture", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "admixture",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
             metadata={
                 "analysis": "admixture",
@@ -110,14 +116,15 @@ class AdmixtureStage(Stage):
         X = self._allele_count_matrix(geno, cfg, seed=ctx.config.seed)
         replicate_cv = [
             ancestry_nmf.cross_validate_k(
-                X, k_values, holdout=cfg.cv_holdout, n_iter=cfg.n_iter,
+                X,
+                k_values,
+                holdout=cfg.cv_holdout,
+                n_iter=cfg.n_iter,
                 seed=ctx.config.seed + replicate,
             )
             for replicate in range(cfg.n_replicates)
         ]
-        cv_errors = {
-            K: float(np.mean([values[K] for values in replicate_cv])) for K in k_values
-        }
+        cv_errors = {K: float(np.mean([values[K] for values in replicate_cv])) for K in k_values}
         best_k = ancestry_nmf.select_k(cv_errors)
         fits = [
             ancestry_nmf.fit_admixture(
@@ -130,8 +137,7 @@ class AdmixtureStage(Stage):
             "n_replicates": cfg.n_replicates,
             "reconstruction_errors": [round(value.reconstruction_error, 6) for value in fits],
             "cv_errors_by_replicate": [
-                {int(k): round(float(v), 6) for k, v in values.items()}
-                for values in replicate_cv
+                {int(k): round(float(v), 6) for k, v in values.items()} for values in replicate_cv
             ],
         }
         return best_k, fit.Q, cv_errors, diagnostics
@@ -146,18 +152,25 @@ class AdmixtureStage(Stage):
         q_by_k: dict[int, np.ndarray] = {}
         for K in k_values:
             result = runner.run(
-                _ADMIXTURE, ["--cv", fileset.bed.name, str(K)],
+                _ADMIXTURE,
+                ["--cv", fileset.bed.name, str(K)],
                 resources=ResourceSpec(cpus=ctx.config.resources.cpus),
-                record=record, cwd=stage_dir,
+                record=record,
+                cwd=stage_dir,
                 expect_outputs=[stage_dir / f"cohort.{K}.Q"],
             )
             cv_errors[K] = _parse_cv_error(result.stdout, K)
             q_by_k[K] = np.loadtxt(stage_dir / f"cohort.{K}.Q")
         best_k = min(cv_errors, key=lambda k: cv_errors[k])
-        return best_k, np.atleast_2d(q_by_k[best_k]), cv_errors, {
-            "n_replicates": 1,
-            "backend": "admixture_binary",
-        }
+        return (
+            best_k,
+            np.atleast_2d(q_by_k[best_k]),
+            cv_errors,
+            {
+                "n_replicates": 1,
+                "backend": "admixture_binary",
+            },
+        )
 
     # -- helpers -----------------------------------------------------------------------
 
@@ -173,11 +186,13 @@ class AdmixtureStage(Stage):
         lo = max(2, cfg.k_min)
         if hi < lo:
             raise StageInputError(
-                f"invalid K range for {n_samples} samples (k_min={cfg.k_min}, k_max={cfg.k_max})")
+                f"invalid K range for {n_samples} samples (k_min={cfg.k_min}, k_max={cfg.k_max})"
+            )
         return list(range(lo, hi + 1))
 
-    def _allele_count_matrix(self, geno: Genotypes, cfg: AdmixtureConfig,
-                             *, seed: int) -> np.ndarray:
+    def _allele_count_matrix(
+        self, geno: Genotypes, cfg: AdmixtureConfig, *, seed: int
+    ) -> np.ndarray:
         ac = geno.calls.count_alleles()
         seg = ac.is_segregating()
         X = geno.calls.to_n_alt().T[:, seg].astype(float)  # ALT counts, (n_samples, n_seg_sites)

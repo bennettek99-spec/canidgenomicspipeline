@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -37,7 +38,7 @@ def _round(value: object, places: int = 6) -> object:
         return None
     if isinstance(value, (bool, int, str)):
         return value
-    return round(float(value), places)
+    return round(cast(float, value), places)
 
 
 def _assert_golden(name: str, observed: dict) -> None:
@@ -51,7 +52,7 @@ def _assert_golden(name: str, observed: dict) -> None:
 
 def _run_stage(preset: str, stage_name: str, tmp_path: Path):
     load_builtin_stages()
-    overrides = {
+    overrides: dict[str, object] = {
         "paths.root": str(tmp_path),
         "logging.level": "ERROR",
         f"stages.{stage_name}.bridge_vcf": str(FIXTURE / "bridge.vcf.gz"),
@@ -69,15 +70,19 @@ def _run_stage(preset: str, stage_name: str, tmp_path: Path):
             "calls_dir": FIXTURE,
         }
         if stage_name == "reference_mixture":
-            values.update({
-                "reference_genotypes": FIXTURE / "reference_genotypes.json",
-            })
+            values.update(
+                {
+                    "reference_genotypes": FIXTURE / "reference_genotypes.json",
+                }
+            )
         else:
-            values.update({
-                "wgs_genotypes": FIXTURE / "wgs_genotypes.json",
-                "dog_fractions": FIXTURE / "validation.json",
-                "locus_filter_json": FIXTURE / "reference_genotypes.json",
-            })
+            values.update(
+                {
+                    "wgs_genotypes": FIXTURE / "wgs_genotypes.json",
+                    "dog_fractions": FIXTURE / "validation.json",
+                    "locus_filter_json": FIXTURE / "reference_genotypes.json",
+                }
+            )
         cfg = GlobalConfig.load(
             ROOT / "configs/examples" / preset,
             overrides={
@@ -118,12 +123,10 @@ def test_fixture_reference_mixture_matches_real_golden(real_fixture_runs) -> Non
     manifest = _manifest(result)
     observed = {
         "dog_fraction": {
-            sample: _round(table.loc[sample, "dog_fraction"])
-            for sample in table.index
+            sample: _round(table.loc[sample, "dog_fraction"]) for sample in table.index
         },
         "diagnostic_sites_called": {
-            sample: int(table.loc[sample, "diagnostic_sites_called"])
-            for sample in table.index
+            sample: int(table.loc[sample, "diagnostic_sites_called"]) for sample in table.index
         },
         "n_reference_loci": manifest["method"]["n_reference_loci"],
         "validation_passed": manifest["validation"]["passed"],

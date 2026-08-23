@@ -57,8 +57,7 @@ class StageCache:
             return False
 
         cached_outputs = {
-            (entry.get("kind"), entry.get("role")): entry
-            for entry in cached.get("outputs", [])
+            (entry.get("kind"), entry.get("role")): entry for entry in cached.get("outputs", [])
         }
         for spec in stage.produced_outputs():
             if not ctx.datastore.has(spec.kind, spec.role):
@@ -121,10 +120,15 @@ def _artifact_fingerprint(artifact: Artifact) -> dict[str, Any]:
     }
 
 
-def _code_fingerprint(stage: Stage) -> dict[str, str | None]:
+def _code_fingerprint(stage: Stage) -> dict[str, str | list[dict[str, str]] | None]:
     source = inspect.getsourcefile(type(stage))
     if source is None:
-        return {"module": type(stage).__module__, "path": None, "fingerprint": None}
+        return {
+            "module": type(stage).__module__,
+            "path": None,
+            "fingerprint": None,
+            "dependencies": [],
+        }
     path = Path(source)
     return {
         "module": type(stage).__module__,
@@ -156,10 +160,12 @@ def _dependency_fingerprints(source: Path) -> list[dict[str, str]]:
         if path in seen or not path.exists():
             continue
         seen.add(path)
-        entries.append({
-            "path": path.relative_to(package).as_posix(),
-            "fingerprint": hash_file(path, mode="full"),
-        })
+        entries.append(
+            {
+                "path": path.relative_to(package).as_posix(),
+                "fingerprint": hash_file(path, mode="full"),
+            }
+        )
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"))
         except (OSError, SyntaxError, UnicodeDecodeError):
@@ -188,27 +194,28 @@ def _imported_canidae_modules(tree: ast.AST) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             modules.update(alias.name for alias in node.names if alias.name.startswith("canidae"))
-        elif (
-            isinstance(node, ast.ImportFrom)
-            and node.module
-            and node.module.startswith("canidae")
-        ):
+        elif isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("canidae"):
             modules.add(node.module)
             modules.update(f"{node.module}.{alias.name}" for alias in node.names)
     return modules
 
 
 def _configured_path_fingerprints(stage: Stage, ctx: RunContext) -> list[dict[str, str | None]]:
-    paths = sorted({
-        _resolve_configured_path(value, ctx.config.paths.root)
-        for value in _walk_paths(stage.config.model_dump(mode="python"))
-    }, key=lambda path: str(path))
+    paths = sorted(
+        {
+            _resolve_configured_path(value, ctx.config.paths.root)
+            for value in _walk_paths(stage.config.model_dump(mode="python"))
+        },
+        key=lambda path: str(path),
+    )
     entries: list[dict[str, str | None]] = []
     for path in paths:
-        entries.append({
-            "path": str(path),
-            "fingerprint": hash_file(path) if path.exists() else None,
-        })
+        entries.append(
+            {
+                "path": str(path),
+                "fingerprint": hash_file(path) if path.exists() else None,
+            }
+        )
     return entries
 
 

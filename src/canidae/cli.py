@@ -47,10 +47,12 @@ def version() -> None:
 
 @app.command("config")
 def show_config(
-    config: list[Path] | None = typer.Option(None, "--config", "-c",
-                                                 help="YAML config file(s), merged in order."),
-    set_: list[str] | None = typer.Option(None, "--set", "-s",
-                                             help="Dotted override, e.g. executor.max_workers=8."),
+    config: list[Path] | None = typer.Option(
+        None, "--config", "-c", help="YAML config file(s), merged in order."
+    ),
+    set_: list[str] | None = typer.Option(
+        None, "--set", "-s", help="Dotted override, e.g. executor.max_workers=8."
+    ),
 ) -> None:
     """Resolve and print the effective configuration."""
     cfg = _load_config(config, set_)
@@ -79,12 +81,15 @@ def stages() -> None:
 
 @app.command()
 def run(
-    config: list[Path] | None = typer.Option(None, "--config", "-c",
-                                                 help="YAML config file(s), merged in order."),
-    set_: list[str] | None = typer.Option(None, "--set", "-s",
-                                             help="Dotted override, e.g. seed=7."),
-    dry_run: bool = typer.Option(False, "--dry-run",
-                                 help="Assemble and print the DAG without executing."),
+    config: list[Path] | None = typer.Option(
+        None, "--config", "-c", help="YAML config file(s), merged in order."
+    ),
+    set_: list[str] | None = typer.Option(
+        None, "--set", "-s", help="Dotted override, e.g. seed=7."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Assemble and print the DAG without executing."
+    ),
     run_id: str | None = typer.Option(None, "--run-id", help="Explicit run directory name."),
 ) -> None:
     """Run the configured pipeline (or preview its DAG with --dry-run)."""

@@ -30,8 +30,8 @@ _TREEMIX = ToolSpec(name="treemix", version_args=("--version",))
 
 class TreemixConfig(StageConfig):
     n_migrations: int = 2
-    block_size: int = 500       # SNPs per block (-k), for the covariance jackknife
-    root: str = ""              # optional outgroup population to root the tree
+    block_size: int = 500  # SNPs per block (-k), for the covariance jackknife
+    root: str = ""  # optional outgroup population to root the tree
 
 
 @STAGES.register("treemix")
@@ -52,12 +52,15 @@ class TreemixStage(Stage):
     def run(self, ctx: RunContext) -> StageResult:
         cfg: TreemixConfig = self.config  # type: ignore[assignment]
         ctx.runner.ensure(_TREEMIX)
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
         groups = population_indices(geno, labels)
         if len(groups) < 3:
             raise StageInputError("TreeMix needs >= 3 populations")
@@ -66,22 +69,39 @@ class TreemixStage(Stage):
         infile = stage_dir / "treemix_input.gz"
         write_treemix_input(geno, groups, infile)
 
-        args = ["-i", infile.name, "-m", str(cfg.n_migrations), "-k", str(cfg.block_size),
-                "-o", "treemix_out"]
+        args = [
+            "-i",
+            infile.name,
+            "-m",
+            str(cfg.n_migrations),
+            "-k",
+            str(cfg.block_size),
+            "-o",
+            "treemix_out",
+        ]
         if cfg.root:
             args += ["-root", cfg.root]
         ctx.runner.run(
-            _TREEMIX, args, resources=ResourceSpec(cpus=ctx.config.resources.cpus),
-            record=ctx.scratch.get("_record"), cwd=stage_dir,
-            expect_outputs=[stage_dir / "treemix_out.treeout.gz"])
+            _TREEMIX,
+            args,
+            resources=ResourceSpec(cpus=ctx.config.resources.cpus),
+            record=ctx.scratch.get("_record"),
+            cwd=stage_dir,
+            expect_outputs=[stage_dir / "treemix_out.treeout.gz"],
+        )
 
         with gzip.open(stage_dir / "treemix_out.treeout.gz", "rt") as fh:
             newick = fh.readline().strip()
         out = ctx.datastore.path_for(self.name, "treemix_tree.nwk")
         out.write_text(newick + "\n", encoding="utf-8")
         art = ctx.datastore.add(
-            ArtifactKind.TREE, "treemix", out, fmt=FileFormat.NEWICK, produced_by=self.name,
-            metadata={"method": "treemix", "n_migrations": cfg.n_migrations})
+            ArtifactKind.TREE,
+            "treemix",
+            out,
+            fmt=FileFormat.NEWICK,
+            produced_by=self.name,
+            metadata={"method": "treemix", "n_migrations": cfg.n_migrations},
+        )
         return StageResult(artifacts=[art], metrics={"n_populations": len(groups)})
 
 
@@ -92,8 +112,9 @@ def write_treemix_input(geno: Genotypes, groups: dict[str, list[int]], path: Pat
     counts = {}
     for pop, idx in groups.items():
         ac = geno.calls.count_alleles(subpop=idx)
-        counts[pop] = np.stack([ac[:, 0], ac[:, 1] if ac.shape[1] > 1
-                                else np.zeros(ac.shape[0], int)], axis=1)
+        counts[pop] = np.stack(
+            [ac[:, 0], ac[:, 1] if ac.shape[1] > 1 else np.zeros(ac.shape[0], int)], axis=1
+        )
     n_sites = geno.n_variants
     with gzip.open(path, "wt") as fh:
         fh.write(" ".join(pops) + "\n")

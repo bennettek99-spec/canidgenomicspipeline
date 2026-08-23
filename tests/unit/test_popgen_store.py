@@ -53,8 +53,7 @@ def test_memory_mapped_store_roundtrip(tmp_path: Path) -> None:
 def test_population_indices_aligns_to_matrix() -> None:
     geno = _demo_genotypes()
     labels = pd.DataFrame(
-        {"taxon": ["gray_wolf", "gray_wolf", "coyote"],
-         "population": ["wolf", "wolf", "coyote"]},
+        {"taxon": ["gray_wolf", "gray_wolf", "coyote"], "population": ["wolf", "wolf", "coyote"]},
         index=["A", "B", "C"],
     )
     labels.index.name = "sample_id"
@@ -64,9 +63,7 @@ def test_population_indices_aligns_to_matrix() -> None:
 
 def test_align_labels_fills_unknown() -> None:
     geno = _demo_genotypes()
-    labels = pd.DataFrame(
-        {"taxon": ["gray_wolf"], "population": ["wolf"]}, index=["A"]
-    )
+    labels = pd.DataFrame({"taxon": ["gray_wolf"], "population": ["wolf"]}, index=["A"])
     labels.index.name = "sample_id"
     aligned = align_labels(geno, labels)
     assert list(aligned["sample_id"]) == ["A", "B", "C"]

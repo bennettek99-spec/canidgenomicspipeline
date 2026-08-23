@@ -42,8 +42,7 @@ class TransferBudget:
     def reserve(self, amount: int) -> None:
         if amount < 0 or self.used + amount > self.limit:
             raise RuntimeError(
-                f"transfer would exceed safety limit: {self.used + amount:,} > "
-                f"{self.limit:,} bytes"
+                f"transfer would exceed safety limit: {self.used + amount:,} > {self.limit:,} bytes"
             )
 
     def add(self, amount: int) -> None:
@@ -167,7 +166,7 @@ def chunks_for(index: ReferenceIndex, pos_1based: int) -> list[tuple[int, int]]:
     start = pos_1based - 1
     linear_i = start >> 14
     min_offset = index.linear[linear_i] if linear_i < len(index.linear) else 0
-    chunks = []
+    chunks: list[tuple[int, int]] = []
     for bin_id in reg2bins(start, start + 1):
         chunks.extend(chunk for chunk in index.bins.get(bin_id, []) if chunk[1] > min_offset)
     return chunks

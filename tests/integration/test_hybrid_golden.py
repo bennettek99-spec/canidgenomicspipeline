@@ -17,6 +17,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -47,14 +48,21 @@ SEED = 20260817
 
 
 def _context(tmp_path: Path, pipeline: list[str]):
-    cfg = GlobalConfig.load(include_defaults=True, overrides={
-        "project_name": "hybrid-golden", "paths.root": str(tmp_path),
-        "pipeline": pipeline, "logging.level": "ERROR",
-    })
+    cfg = GlobalConfig.load(
+        include_defaults=True,
+        overrides={
+            "project_name": "hybrid-golden",
+            "paths.root": str(tmp_path),
+            "pipeline": pipeline,
+            "logging.level": "ERROR",
+        },
+    )
     run_dir = tmp_path / f"run-{pipeline[0]}"
     run_dir.mkdir(parents=True, exist_ok=True)
     return build_context(
-        cfg, DataStore(tmp_path / "store"), LocalRunner(),
+        cfg,
+        DataStore(tmp_path / "store"),
+        LocalRunner(),
         ProvenanceWriter(run_dir, config_digest=cfg.digest(), seed=SEED),
         run_dir=run_dir,
     )
@@ -65,44 +73,50 @@ def _round(value: object, places: int = 4) -> object:
         return None
     if isinstance(value, (int, bool, str)):
         return value
-    return round(float(value), places)
+    return round(cast(float, value), places)
 
 
 def _observed(tmp_path: Path) -> dict:
     panel = build_hybrid_panel(tmp_path / "panel")
     pedigree = [s for s in panel.two_source_query_ids() if s.startswith("NYFIXTURE")]
 
-    mixture = ReferenceMixtureStage(ReferenceMixtureConfig(
-        bridge_vcf=panel.bridge_vcf,
-        reference_genotypes=panel.reference_genotypes,
-        calls_dir=panel.calls_dir,
-        query_samples=pedigree,
-        wgs_samples=panel.reference_samples,
-        coyote_samples=panel.coyote_samples,
-    )).run(_context(tmp_path, ["reference_mixture"]))
+    mixture = ReferenceMixtureStage(
+        ReferenceMixtureConfig(
+            bridge_vcf=panel.bridge_vcf,
+            reference_genotypes=panel.reference_genotypes,
+            calls_dir=panel.calls_dir,
+            query_samples=pedigree,
+            wgs_samples=panel.reference_samples,
+            coyote_samples=panel.coyote_samples,
+        )
+    ).run(_context(tmp_path, ["reference_mixture"]))
     mixture_table = pd.read_csv(mixture.artifacts[0].path).set_index("sample_id")
 
-    breed = BreedAssignStage(BreedAssignConfig(
-        bridge_vcf=panel.bridge_vcf,
-        wgs_genotypes=panel.wgs_genotypes,
-        calls_dir=panel.calls_dir,
-        dog_fractions=panel.dog_fractions,
-        locus_filter_json=panel.reference_genotypes,
-        query_samples=pedigree,
-        min_group=3,
-    )).run(_context(tmp_path, ["breed_assign"]))
+    breed = BreedAssignStage(
+        BreedAssignConfig(
+            bridge_vcf=panel.bridge_vcf,
+            wgs_genotypes=panel.wgs_genotypes,
+            calls_dir=panel.calls_dir,
+            dog_fractions=panel.dog_fractions,
+            locus_filter_json=panel.reference_genotypes,
+            query_samples=pedigree,
+            min_group=3,
+        )
+    ).run(_context(tmp_path, ["breed_assign"]))
     breed_manifest = json.loads(
         Path(breed.artifacts[0].metadata["manifest"]).read_text(encoding="utf-8")
     )
 
-    multiway = MultiwayAdmixtureStage(MultiwayAdmixtureConfig(
-        bridge_vcf=panel.bridge_vcf,
-        wgs_genotypes=panel.wgs_genotypes,
-        western_ids=panel.query_ids(region="western"),
-        bootstrap_n=BOOTSTRAP_N,
-        seed=SEED,
-        min_group=3,
-    )).run(_context(tmp_path, ["multiway_admixture"]))
+    multiway = MultiwayAdmixtureStage(
+        MultiwayAdmixtureConfig(
+            bridge_vcf=panel.bridge_vcf,
+            wgs_genotypes=panel.wgs_genotypes,
+            western_ids=panel.query_ids(region="western"),
+            bootstrap_n=BOOTSTRAP_N,
+            seed=SEED,
+            min_group=3,
+        )
+    ).run(_context(tmp_path, ["multiway_admixture"]))
     multiway_table = pd.read_csv(multiway.artifacts[0].path).set_index("sample_id")
     multiway_manifest = json.loads(
         Path(multiway.artifacts[0].metadata["manifest"]).read_text(encoding="utf-8")
@@ -111,8 +125,7 @@ def _observed(tmp_path: Path) -> dict:
     return {
         "reference_mixture": {
             "dog_fraction": {
-                sample: _round(mixture_table.loc[sample, "dog_fraction"])
-                for sample in pedigree
+                sample: _round(mixture_table.loc[sample, "dog_fraction"]) for sample in pedigree
             },
             "diagnostic_sites_called": {
                 sample: int(mixture_table.loc[sample, "diagnostic_sites_called"])

@@ -77,7 +77,7 @@ def viterbi(emissions: np.ndarray, switch_prob: float) -> np.ndarray:
     v = emissions[0].copy()
     back = np.zeros((n, k), dtype=int)
     for t in range(1, n):
-        scores = v[:, None] + trans          # (prev, cur)
+        scores = v[:, None] + trans  # (prev, cur)
         best_prev = np.argmax(scores, axis=0)
         v = emissions[t] + scores[best_prev, np.arange(k)]
         back[t] = best_prev

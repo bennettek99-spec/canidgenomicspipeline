@@ -31,9 +31,7 @@ def neighbor_joining(dist: np.ndarray, labels: list[str]) -> Clade:
     n = len(labels)
     if n < 2:
         raise ValueError("neighbor_joining needs >= 2 taxa")
-    clades: list[Clade] = [
-        Clade(name=lab, length=0.0, tips=frozenset([lab])) for lab in labels
-    ]
+    clades: list[Clade] = [Clade(name=lab, length=0.0, tips=frozenset([lab])) for lab in labels]
     d: dict[int, dict[int, float]] = {i: {} for i in range(n)}
     for i in range(n):
         for j in range(n):
@@ -59,8 +57,12 @@ def neighbor_joining(dist: np.ndarray, labels: list[str]) -> Clade:
         clades[a].length = da
         clades[b].length = db
 
-        u = Clade(name=None, length=0.0, tips=clades[a].tips | clades[b].tips,
-                  children=[clades[a], clades[b]])
+        u = Clade(
+            name=None,
+            length=0.0,
+            tips=clades[a].tips | clades[b].tips,
+            children=[clades[a], clades[b]],
+        )
         uid = len(clades)
         clades.append(u)
         d[uid] = {}
@@ -77,8 +79,9 @@ def neighbor_joining(dist: np.ndarray, labels: list[str]) -> Clade:
     a, b = active
     d_ab = d[a][b]
     clades[a].length = clades[b].length = d_ab / 2
-    return Clade(name=None, length=0.0, tips=clades[a].tips | clades[b].tips,
-                 children=[clades[a], clades[b]])
+    return Clade(
+        name=None, length=0.0, tips=clades[a].tips | clades[b].tips, children=[clades[a], clades[b]]
+    )
 
 
 # --------------------------------------------------------------------------------------

@@ -23,8 +23,8 @@ from canidae.stages.popgen.store import Genotypes, save_genotypes
 
 class LoadGenotypesConfig(StageConfig):
     biallelic_snps_only: bool = True
-    min_maf: float = 0.0        # minor-allele-frequency floor (0 disables)
-    max_missing: float = 1.0    # max per-site missing fraction (1 disables)
+    min_maf: float = 0.0  # minor-allele-frequency floor (0 disables)
+    max_missing: float = 1.0  # max per-site missing fraction (1 disables)
     storage_backend: Literal["auto", "npz", "npy_mmap"] = "auto"
     mmap_threshold_mb: int = 256
 
@@ -57,8 +57,14 @@ class LoadGenotypesStage(Stage):
 
         callset = allel.read_vcf(
             str(vcf),
-            fields=["samples", "calldata/GT", "variants/CHROM", "variants/POS",
-                    "variants/REF", "variants/ALT"],
+            fields=[
+                "samples",
+                "calldata/GT",
+                "variants/CHROM",
+                "variants/POS",
+                "variants/REF",
+                "variants/ALT",
+            ],
         )
         if callset is None or "calldata/GT" not in callset:
             raise ExternalToolError(f"no genotypes found in callset {vcf}")
@@ -92,7 +98,9 @@ class LoadGenotypesStage(Stage):
         )
 
         art = Artifact(
-            ArtifactKind.GENOTYPES, "genotypes", out,
+            ArtifactKind.GENOTYPES,
+            "genotypes",
+            out,
             fmt=FileFormat.OTHER if backend == "npy_mmap" else FileFormat.NPZ,
             produced_by=self.name,
             metadata={
@@ -126,8 +134,7 @@ def _biallelic_snp_mask(callset: dict) -> np.ndarray:
     return (n_alt == 1) & ref_is_base & alt0_is_base
 
 
-def _site_filters(ga: allel.GenotypeArray, n_samples: int,
-                  cfg: LoadGenotypesConfig) -> np.ndarray:
+def _site_filters(ga: allel.GenotypeArray, n_samples: int, cfg: LoadGenotypesConfig) -> np.ndarray:
     mask = np.ones(ga.shape[0], dtype=bool)
     if cfg.max_missing < 1.0:
         call_rate = ga.is_called().sum(axis=1) / max(n_samples, 1)

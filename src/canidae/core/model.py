@@ -25,19 +25,19 @@ class CanidTaxon(StrEnum):
     """Canonical taxon labels. Free-form subspecies live on :class:`Taxon.subspecies`;
     this enum fixes the coarse label used for grouping, colouring, and QC checks."""
 
-    GRAY_WOLF = "gray_wolf"              # Canis lupus
-    DOMESTIC_DOG = "domestic_dog"        # Canis lupus familiaris
-    VILLAGE_DOG = "village_dog"          # free-breeding domestic dog
-    DINGO = "dingo"                      # Canis (lupus) dingo
-    COYOTE = "coyote"                    # Canis latrans
-    RED_WOLF = "red_wolf"                # Canis rufus
-    EASTERN_WOLF = "eastern_wolf"        # Canis lycaon / lupus lycaon
-    GOLDEN_JACKAL = "golden_jackal"      # Canis aureus
+    GRAY_WOLF = "gray_wolf"  # Canis lupus
+    DOMESTIC_DOG = "domestic_dog"  # Canis lupus familiaris
+    VILLAGE_DOG = "village_dog"  # free-breeding domestic dog
+    DINGO = "dingo"  # Canis (lupus) dingo
+    COYOTE = "coyote"  # Canis latrans
+    RED_WOLF = "red_wolf"  # Canis rufus
+    EASTERN_WOLF = "eastern_wolf"  # Canis lycaon / lupus lycaon
+    GOLDEN_JACKAL = "golden_jackal"  # Canis aureus
     AFRICAN_GOLDEN_WOLF = "african_golden_wolf"  # Canis lupaster
-    ETHIOPIAN_WOLF = "ethiopian_wolf"    # Canis simensis
+    ETHIOPIAN_WOLF = "ethiopian_wolf"  # Canis simensis
     BLACK_BACKED_JACKAL = "black_backed_jackal"  # Lupulella mesomelas
     SIDE_STRIPED_JACKAL = "side_striped_jackal"  # Lupulella adusta
-    DHOLE = "dhole"                      # Cuon alpinus
+    DHOLE = "dhole"  # Cuon alpinus
     AFRICAN_WILD_DOG = "african_wild_dog"  # Lycaon pictus (outgroup)
     OTHER = "other"
 
@@ -45,10 +45,16 @@ class CanidTaxon(StrEnum):
     def is_ingroup_canis(self) -> bool:
         """True for members of genus *Canis* commonly used as ingroup in canid studies."""
         return self in {
-            CanidTaxon.GRAY_WOLF, CanidTaxon.DOMESTIC_DOG, CanidTaxon.VILLAGE_DOG,
-            CanidTaxon.DINGO, CanidTaxon.COYOTE, CanidTaxon.RED_WOLF,
-            CanidTaxon.EASTERN_WOLF, CanidTaxon.GOLDEN_JACKAL,
-            CanidTaxon.AFRICAN_GOLDEN_WOLF, CanidTaxon.ETHIOPIAN_WOLF,
+            CanidTaxon.GRAY_WOLF,
+            CanidTaxon.DOMESTIC_DOG,
+            CanidTaxon.VILLAGE_DOG,
+            CanidTaxon.DINGO,
+            CanidTaxon.COYOTE,
+            CanidTaxon.RED_WOLF,
+            CanidTaxon.EASTERN_WOLF,
+            CanidTaxon.GOLDEN_JACKAL,
+            CanidTaxon.AFRICAN_GOLDEN_WOLF,
+            CanidTaxon.ETHIOPIAN_WOLF,
         }
 
 
@@ -75,20 +81,20 @@ class ArtifactKind(StrEnum):
     """The typed 'ports' modules connect through. New kinds may be appended freely;
     existing values must never be renumbered/renamed (they persist in run manifests)."""
 
-    RAW_READS = "raw_reads"            # FASTQ (possibly gzipped)
-    ALIGNMENT = "alignment"            # CRAM/BAM
-    GVCF = "gvcf"                      # per-sample gVCF
-    JOINT_VCF = "joint_vcf"            # multi-sample joint-genotyped VCF/BCF
-    CALLSET = "callset"               # harmonized, analysis-ready variant set (VCF/BCF)
-    SAMPLE_SHEET = "sample_sheet"     # validated per-sample metadata table
-    PLINK = "plink"                   # PLINK1/2 fileset (bed/bim/fam or pgen)
-    ZARR = "zarr"                     # chunked genotype array (sgkit/xarray)
-    GENOTYPES = "genotypes"           # materialized genotype matrix (npz/zarr) for analysis
-    QC_TABLE = "qc_table"             # per-sample/site QC metrics
+    RAW_READS = "raw_reads"  # FASTQ (possibly gzipped)
+    ALIGNMENT = "alignment"  # CRAM/BAM
+    GVCF = "gvcf"  # per-sample gVCF
+    JOINT_VCF = "joint_vcf"  # multi-sample joint-genotyped VCF/BCF
+    CALLSET = "callset"  # harmonized, analysis-ready variant set (VCF/BCF)
+    SAMPLE_SHEET = "sample_sheet"  # validated per-sample metadata table
+    PLINK = "plink"  # PLINK1/2 fileset (bed/bim/fam or pgen)
+    ZARR = "zarr"  # chunked genotype array (sgkit/xarray)
+    GENOTYPES = "genotypes"  # materialized genotype matrix (npz/zarr) for analysis
+    QC_TABLE = "qc_table"  # per-sample/site QC metrics
     ANALYSIS_RESULT = "analysis_result"  # any tabular/figure result envelope
-    TREE = "tree"                     # Newick phylogeny
-    REPORT = "report"                 # rendered HTML/PDF/MD report
-    REFERENCE = "reference"           # reference genome FASTA + indices
+    TREE = "tree"  # Newick phylogeny
+    REPORT = "report"  # rendered HTML/PDF/MD report
+    REFERENCE = "reference"  # reference genome FASTA + indices
 
 
 class FileFormat(StrEnum):
@@ -164,7 +170,7 @@ class Individual:
     population: str | None = None
     sex: Sex = Sex.UNKNOWN
     locality: GeoLocality = field(default_factory=GeoLocality)
-    source_study: str | None = None       # DOI or short citation key
+    source_study: str | None = None  # DOI or short citation key
     dataset_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -179,7 +185,7 @@ class Sample:
 
     id: str
     individual_id: str
-    accession: str | None = None                     # e.g. SRR/ERR/DRR
+    accession: str | None = None  # e.g. SRR/ERR/DRR
     platform: SequencingPlatform = SequencingPlatform.UNKNOWN
     layout: LibraryLayout = LibraryLayout.PAIRED
     reported_coverage: float | None = None
@@ -216,11 +222,11 @@ class GenomicInterval:
 class ReferenceGenome:
     """A reference assembly and its coordinate context."""
 
-    id: str                             # e.g. "UU_Cfam_GSD_1.0"
+    id: str  # e.g. "UU_Cfam_GSD_1.0"
     assembly: str
     fasta: Path
     species: str = "Canis lupus familiaris"
-    chrom_style: str = "ncbi"           # "ucsc" (chr1) | "ncbi" (1/NC_...) etc.
+    chrom_style: str = "ncbi"  # "ucsc" (chr1) | "ncbi" (1/NC_...) etc.
     autosomes: tuple[str, ...] = ()
     liftover_chains: dict[str, Path] = field(default_factory=dict)  # target_id -> chain
 
@@ -236,7 +242,7 @@ class Dataset:
     id: str
     version: str
     doi: str | None = None
-    fetcher: str = "ena"               # name of a registered DatasetFetcher
+    fetcher: str = "ena"  # name of a registered DatasetFetcher
     description: str = ""
     sample_ids: tuple[str, ...] = ()
     checksums: dict[str, str] = field(default_factory=dict)  # relpath -> sha256/md5
@@ -290,12 +296,12 @@ class Artifact:
     dependency resolution. This is the *only* thing that crosses between modules."""
 
     kind: ArtifactKind
-    role: str                            # semantic role, e.g. "harmonized_callset"
+    role: str  # semantic role, e.g. "harmonized_callset"
     path: Path
     fmt: FileFormat = FileFormat.OTHER
-    checksum: str | None = None          # sha256 of the file (or manifest of a dir)
-    produced_by: str | None = None       # stage name
-    provenance_id: str | None = None     # links to a ProvenanceRecord
+    checksum: str | None = None  # sha256 of the file (or manifest of a dir)
+    produced_by: str | None = None  # stage name
+    provenance_id: str | None = None  # links to a ProvenanceRecord
     schema_version: int = 1
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -314,7 +320,7 @@ class AnalysisResult:
 
     name: str
     parameters: dict[str, Any] = field(default_factory=dict)
-    table: Path | None = None            # tabular payload (CSV/Parquet)
+    table: Path | None = None  # tabular payload (CSV/Parquet)
     figures: tuple[Path, ...] = ()
     summary: dict[str, Any] = field(default_factory=dict)
     provenance_id: str | None = None
@@ -329,10 +335,10 @@ class Callset:
     sample_ids: tuple[str, ...]
     n_sites: int | None = None
     biallelic_snps_only: bool = True
-    variants: Artifact | None = None     # BCF/VCF handle
-    plink: Artifact | None = None        # PLINK fileset handle
-    zarr: Artifact | None = None         # chunked array handle
-    filter_lineage: tuple[str, ...] = () # ordered list of filters applied
+    variants: Artifact | None = None  # BCF/VCF handle
+    plink: Artifact | None = None  # PLINK fileset handle
+    zarr: Artifact | None = None  # chunked array handle
+    filter_lineage: tuple[str, ...] = ()  # ordered list of filters applied
 
     @property
     def n_samples(self) -> int:

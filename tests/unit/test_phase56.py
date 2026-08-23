@@ -7,7 +7,7 @@ from canidae.stages.selection.scans import _pbs
 
 
 def test_genotype_loglik_prefers_matching_frequency() -> None:
-    n_alt = np.array([2])           # homozygous ALT
+    n_alt = np.array([2])  # homozygous ALT
     high = genotype_loglik(n_alt, np.array([0.9]))[0]
     low = genotype_loglik(n_alt, np.array([0.1]))[0]
     assert high > low

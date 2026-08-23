@@ -35,7 +35,7 @@ class WorkflowGraph:
     """A resolved DAG of stages."""
 
     stages: dict[str, Stage]
-    edges: dict[str, set[str]]          # producer -> {consumers}
+    edges: dict[str, set[str]]  # producer -> {consumers}
     external_inputs: set[tuple[str, str]]  # (kind, role) not produced by any stage
 
     @classmethod
@@ -213,9 +213,7 @@ class NativeExecutor:
             if not stages_to_run:
                 continue
 
-            batches, limit_stop = self._batches_with_limits(
-                stages_to_run, ctx, report, manager
-            )
+            batches, limit_stop = self._batches_with_limits(stages_to_run, ctx, report, manager)
             if limit_stop:
                 if self.fail_fast:
                     break
@@ -293,10 +291,10 @@ class NativeExecutor:
                         fingerprints.get(stage.name, {}).get("fingerprint"),
                     )
                     try:
-                        fingerprint = fingerprints.get(stage.name)
-                        if fingerprint is None:
-                            fingerprint = cache.fingerprint(stage, ctx, stage.gather_inputs(ctx))
-                        cache_path = cache.store(stage, fingerprint, stamped)
+                        stored = fingerprints.get(stage.name)
+                        if stored is None:
+                            stored = cache.fingerprint(stage, ctx, stage.gather_inputs(ctx))
+                        cache_path = cache.store(stage, stored, stamped)
                         result.metrics["cache_metadata"] = str(cache_path)
                     # Output correctness takes priority over cache convenience.
                     except Exception as exc:
@@ -358,9 +356,7 @@ class NativeExecutor:
         saw_limit = False
         while remaining:
             try:
-                batches = manager.batches(
-                    remaining, ctx, requested_workers=self.max_workers
-                )
+                batches = manager.batches(remaining, ctx, requested_workers=self.max_workers)
                 return batches, saw_limit
             except ResourceLimitError as exc:
                 saw_limit = True
@@ -407,7 +403,9 @@ class NativeExecutor:
             ctx.provenance.record_inputs(record, inputs)
             stage_ctx = replace(
                 ctx,
-                datastore=staged,
+                # StagedDataStore mirrors DataStore's interface; stages only see that view
+                # until the executor promotes the staged directory.
+                datastore=staged,  # type: ignore[arg-type]
                 scratch={**ctx.scratch, "_record": record},
             )
             result = stage.run(stage_ctx)
@@ -429,8 +427,7 @@ class NativeExecutor:
         promoted = staged.promote(handles)
         stamped = ctx.datastore.register_many(promoted)
         missing = [
-            spec for spec in stage.produced_outputs()
-            if not ctx.datastore.has(spec.kind, spec.role)
+            spec for spec in stage.produced_outputs() if not ctx.datastore.has(spec.kind, spec.role)
         ]
         if missing:
             pretty = ", ".join(f"{spec.kind.value}:{spec.role}" for spec in missing)
@@ -489,7 +486,7 @@ class NativeExecutor:
             set(report.executed) | set(report.skipped) | set(report.failed) | set(report.paused)
         )
         names = current_remaining if current_remaining is not None else list(levels[level_index])
-        names += [name for level in levels[level_index + 1:] for name in level]
+        names += [name for level in levels[level_index + 1 :] for name in level]
         for name in names:
             if name in already:
                 continue
@@ -521,11 +518,14 @@ class NativeExecutor:
     ) -> None:
         """Record a cooperative stop at a batch boundary with resume instructions."""
         already = (
-            set(report.executed) | set(report.skipped) | set(report.failed)
-            | set(report.paused) | set(report.cancelled)
+            set(report.executed)
+            | set(report.skipped)
+            | set(report.failed)
+            | set(report.paused)
+            | set(report.cancelled)
         )
         names = current_remaining if current_remaining is not None else list(levels[level_index])
-        names += [name for level in levels[level_index + 1:] for name in level]
+        names += [name for level in levels[level_index + 1 :] for name in level]
         for name in names:
             if name in already:
                 continue
@@ -571,8 +571,13 @@ def build_context(
 ) -> RunContext:
     """Assemble the shared :class:`RunContext` for a run."""
     return RunContext(
-        config=config, datastore=datastore, runner=runner, provenance=provenance,
-        cohort=cohort, run_dir=run_dir, resource_manager=resource_manager,
+        config=config,
+        datastore=datastore,
+        runner=runner,
+        provenance=provenance,
+        cohort=cohort,
+        run_dir=run_dir,
+        resource_manager=resource_manager,
     )
 
 

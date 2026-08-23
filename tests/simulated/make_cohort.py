@@ -86,8 +86,12 @@ def simulate_cohort(
 
 # Four-population setup for introgression validation: topology ((WOLF,DOG),COYOTE) with
 # JACKAL as outgroup, and (optionally) a COYOTE->DOG gene-flow pulse.
-_INTRO_TAXON = {"WOLF": "gray_wolf", "DOG": "domestic_dog", "COYOTE": "coyote",
-                "JACKAL": "golden_jackal"}
+_INTRO_TAXON = {
+    "WOLF": "gray_wolf",
+    "DOG": "domestic_dog",
+    "COYOTE": "coyote",
+    "JACKAL": "golden_jackal",
+}
 _INTRO_LOCALITY = {
     "WOLF": (61.0, 105.0, "eurasia"),
     "DOG": (52.0, 13.0, "europe"),
@@ -117,19 +121,23 @@ def simulate_introgression_cohort(
     dem.add_population_split(time=25_000, derived=["INGROUP", "JACKAL"], ancestral="ROOT")
     if admixture_proportion > 0:
         # backward-in-time mass migration DOG->COYOTE == forward gene flow COYOTE->DOG
-        dem.add_mass_migration(time=800, source="DOG", dest="COYOTE",
-                               proportion=admixture_proportion)
+        dem.add_mass_migration(
+            time=800, source="DOG", dest="COYOTE", proportion=admixture_proportion
+        )
     dem.sort_events()
 
     ts = msprime.sim_ancestry(
-        samples={"WOLF": n_per_pop, "DOG": n_per_pop, "COYOTE": n_per_pop,
-                 "JACKAL": n_per_pop},
-        demography=dem, sequence_length=sequence_length,
-        recombination_rate=1e-8, random_seed=seed)
+        samples={"WOLF": n_per_pop, "DOG": n_per_pop, "COYOTE": n_per_pop, "JACKAL": n_per_pop},
+        demography=dem,
+        sequence_length=sequence_length,
+        recombination_rate=1e-8,
+        random_seed=seed,
+    )
     mts = msprime.sim_mutations(ts, rate=1.5e-8, random_seed=seed)
 
     pop_name = {p.id: p.metadata.get("name", f"pop{p.id}") for p in mts.populations()}
-    names, counts = [], {}
+    names: list[str] = []
+    counts: dict[str, int] = {}
     for ind in mts.individuals():
         pname = pop_name[mts.node(ind.nodes[0]).population]
         counts[pname] = counts.get(pname, 0) + 1

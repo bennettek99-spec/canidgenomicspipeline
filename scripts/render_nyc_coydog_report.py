@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Render a portable HTML report for the public NYC coydog validation."""
 
 from __future__ import annotations
@@ -139,9 +138,9 @@ def breed_html(breed: dict[str, object]) -> str:
     accuracy = calibration["top1_accuracy"]
     return f"""
 <h2>Dog-parent breed assignment</h2>
-<p>The 722-genome NHGRI panel (~144 breeds) shares the same VCF records, so all {sources['n_wgs_samples']} samples were recovered at the 252 bridge loci with one repeat of the indexed byte-range transfer. {sources['n_candidate_groups']} candidate groups were compared against the NYC animals' dog component.</p>
+<p>The 722-genome NHGRI panel (~144 breeds) shares the same VCF records, so all {sources["n_wgs_samples"]} samples were recovered at the 252 bridge loci with one repeat of the indexed byte-range transfer. {sources["n_candidate_groups"]} candidate groups were compared against the NYC animals' dog component.</p>
 <section class="callout warn"><strong>Result: no single breed matches.</strong> For every NYC animal the pooled any-dog panel fits as well as or better than every named breed or village-dog population (all likelihood gaps within 0.3 log units of zero). The dog ancestry is most consistent with a mixed-breed or unregistered dog parent, and/or a parent breed below the resolution of 252 loci.</section>
-<section class="callout"><strong>Calibration: {accuracy:.0%} leave-one-out top-1 accuracy ({calibration['n_tested']} animals, {sources['n_candidate_groups']} groups).</strong> Large distinctive breeds assign reliably (e.g. Bernese Mountain Dog 18/18) but most small panels (3-8 members) do not resolve at this marker count. Single-breed calls are therefore reported as rankings only, never as identification.</section>
+<section class="callout"><strong>Calibration: {accuracy:.0%} leave-one-out top-1 accuracy ({calibration["n_tested"]} animals, {sources["n_candidate_groups"]} groups).</strong> Large distinctive breeds assign reliably (e.g. Bernese Mountain Dog 18/18) but most small panels (3-8 members) do not resolve at this marker count. Single-breed calls are therefore reported as rankings only, never as identification.</section>
 {table(["Sample", "Dog fraction", "Best-fitting group", "Gap vs any-dog (LL)", "Single breed supported"], rows)}
 <p class="small">Depth-4 sensitivity (including NY04, which lacks a strict estimate) gives the same conclusion: best-fitting groups are village-dog pools with gaps near zero.</p>"""
 

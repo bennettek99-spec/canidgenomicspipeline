@@ -75,8 +75,7 @@ class DemoSummarizeStage(Stage):
             counts = Counter(row["taxon"] for row in csv.DictReader(fh))
         out = ctx.datastore.path_for(self.name, "taxon_counts.json")
         out.write_text(json.dumps(dict(counts), indent=2), encoding="utf-8")
-        art = Artifact(ArtifactKind.ANALYSIS_RESULT, "taxon_counts", out,
-                       fmt=FileFormat.JSON)
+        art = Artifact(ArtifactKind.ANALYSIS_RESULT, "taxon_counts", out, fmt=FileFormat.JSON)
         return StageResult(artifacts=[art], metrics={"n_taxa": len(counts)})
 
 

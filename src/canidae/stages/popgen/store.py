@@ -27,10 +27,10 @@ DEFAULT_CHUNK_VARIANTS = 50_000
 class Genotypes:
     """An in-memory genotype matrix plus its coordinate and sample context."""
 
-    calls: allel.GenotypeArray   # (n_variants, n_samples, ploidy)
-    pos: np.ndarray              # (n_variants,) int
-    chrom: np.ndarray            # (n_variants,) str
-    samples: np.ndarray          # (n_samples,) str
+    calls: allel.GenotypeArray  # (n_variants, n_samples, ploidy)
+    pos: np.ndarray  # (n_variants,) int
+    chrom: np.ndarray  # (n_variants,) str
+    samples: np.ndarray  # (n_samples,) str
 
     @property
     def n_variants(self) -> int:
@@ -47,9 +47,7 @@ class Genotypes:
         return {s: i for i, s in enumerate(self.samples)}
 
 
-def save_genotypes(
-    path: Path, genotypes: Genotypes, *, backend: str = "npz"
-) -> Path:
+def save_genotypes(path: Path, genotypes: Genotypes, *, backend: str = "npz") -> Path:
     """Persist genotypes as compact NPZ or an out-of-core memory-mapped directory."""
     path = Path(path)
     if backend == "npy_mmap":
@@ -107,7 +105,7 @@ class GenotypeChunk:
 
     start: int
     stop: int
-    calls: allel.GenotypeArray   # (stop - start, n_samples, ploidy)
+    calls: allel.GenotypeArray  # (stop - start, n_samples, ploidy)
     pos: np.ndarray
     chrom: np.ndarray
     samples: np.ndarray
@@ -137,9 +135,7 @@ def iter_genotype_chunks(
         raise ValueError(f"chunk_variants must be positive, got {chunk_variants}")
 
     if isinstance(source, Genotypes):
-        gt, pos, chrom, samples = (
-            source.calls, source.pos, source.chrom, source.samples
-        )
+        gt, pos, chrom, samples = (source.calls, source.pos, source.chrom, source.samples)
     else:
         path = Path(source)
         if path.is_dir():
@@ -150,7 +146,10 @@ def iter_genotype_chunks(
         else:
             genotypes = load_genotypes(path)
             gt, pos, chrom, samples = (
-                genotypes.calls, genotypes.pos, genotypes.chrom, genotypes.samples
+                genotypes.calls,
+                genotypes.pos,
+                genotypes.chrom,
+                genotypes.samples,
             )
 
     n_variants = gt.shape[0]
@@ -185,9 +184,7 @@ def chunked_allele_counts(
         return allel.AlleleCountsArray(np.empty((0, 2), dtype="i4"))
     width = max(block.shape[1] for block in blocks)
     padded = [
-        block
-        if block.shape[1] == width
-        else np.pad(block, ((0, 0), (0, width - block.shape[1])))
+        block if block.shape[1] == width else np.pad(block, ((0, 0), (0, width - block.shape[1])))
         for block in blocks
     ]
     return allel.AlleleCountsArray(np.concatenate(padded, axis=0))
@@ -200,9 +197,7 @@ def chunked_alt_frequency(
     chunk_variants: int = DEFAULT_CHUNK_VARIANTS,
 ) -> np.ndarray:
     """Per-variant ALT allele frequency; NaN where no allele was called."""
-    counts = np.asarray(chunked_allele_counts(
-        source, subpop=subpop, chunk_variants=chunk_variants
-    ))
+    counts = np.asarray(chunked_allele_counts(source, subpop=subpop, chunk_variants=chunk_variants))
     if counts.size == 0:
         return np.empty(0, dtype=float)
     total = counts.sum(axis=1)
@@ -242,14 +237,15 @@ def align_labels(genotypes: Genotypes, labels: pd.DataFrame) -> pd.DataFrame:
     for sample_id in genotypes.samples:
         if sample_id in labels.index:
             row = labels.loc[sample_id]
-            rows.append({
-                "sample_id": sample_id,
-                "taxon": str(row.get("taxon", "unknown")),
-                "population": str(row.get("population", "unknown")),
-            })
+            rows.append(
+                {
+                    "sample_id": sample_id,
+                    "taxon": str(row.get("taxon", "unknown")),
+                    "population": str(row.get("population", "unknown")),
+                }
+            )
         else:
-            rows.append({"sample_id": sample_id, "taxon": "unknown",
-                         "population": "unknown"})
+            rows.append({"sample_id": sample_id, "taxon": "unknown", "population": "unknown"})
     return pd.DataFrame(rows)
 
 

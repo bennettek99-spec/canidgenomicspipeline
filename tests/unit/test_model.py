@@ -46,10 +46,13 @@ def test_cohort_grouping() -> None:
 
 
 def test_cohort_subset() -> None:
-    cohort = Cohort(id="c1", individuals=[
-        _ind("a", CanidTaxon.DINGO, "au"),
-        _ind("b", CanidTaxon.DINGO, "au"),
-    ])
+    cohort = Cohort(
+        id="c1",
+        individuals=[
+            _ind("a", CanidTaxon.DINGO, "au"),
+            _ind("b", CanidTaxon.DINGO, "au"),
+        ],
+    )
     sub = cohort.subset({"a"})
     assert sub.size == 1 and sub.individuals[0].id == "a"
 

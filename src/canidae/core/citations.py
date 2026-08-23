@@ -49,7 +49,7 @@ class SourceCitation(BaseModel):
         value = value.strip()
         for prefix in ("https://doi.org/", "http://doi.org/", "doi:"):
             if value.lower().startswith(prefix):
-                return value[len(prefix):]
+                return value[len(prefix) :]
         return value
 
     @property
@@ -119,9 +119,7 @@ def resolve_bundle_path(entry: Path, root: Path) -> Path:
         tried.append(resolved)
         if resolved.exists():
             return resolved
-    raise ConfigError(
-        f"citation bundle not found: {entry} (looked in {[str(p) for p in tried]})"
-    )
+    raise ConfigError(f"citation bundle not found: {entry} (looked in {[str(p) for p in tried]})")
 
 
 def load_citation_bundles(paths: list[Path], root: Path) -> list[CitationBundle]:
@@ -147,16 +145,18 @@ def citation_rows(bundles: list[CitationBundle]) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for bundle in bundles:
         for source in bundle.sources:
-            rows.append({
-                "dataset": bundle.label,
-                "source": source.label,
-                "study": " ".join(
-                    part for part in (source.study, str(source.year or "")) if part
-                ),
-                "accession": source.accession or "not recorded",
-                "doi": source.doi or "not recorded",
-                "link": source.resolved_url,
-                "used_for": source.used_for,
-                "access": source.access,
-            })
+            rows.append(
+                {
+                    "dataset": bundle.label,
+                    "source": source.label,
+                    "study": " ".join(
+                        part for part in (source.study, str(source.year or "")) if part
+                    ),
+                    "accession": source.accession or "not recorded",
+                    "doi": source.doi or "not recorded",
+                    "link": source.resolved_url,
+                    "used_for": source.used_for,
+                    "access": source.access,
+                }
+            )
     return rows

@@ -48,9 +48,7 @@ def main() -> None:
         type=Path,
         default=Path("data/nyc_coydog_breeds/all_sample_genotypes.json"),
     )
-    parser.add_argument(
-        "--out-dir", type=Path, default=Path("data/nyc_coydog_breeds")
-    )
+    parser.add_argument("--out-dir", type=Path, default=Path("data/nyc_coydog_breeds"))
     parser.add_argument("--min-group", type=int, default=3)
     parser.add_argument("--top-k", type=int, default=5)
     args = parser.parse_args()
@@ -87,32 +85,30 @@ def main() -> None:
         for index in indices
     ]
     panels = {
-        group: allele_frequencies(keys, records, indices)
-        for group, indices in candidates.items()
+        group: allele_frequencies(keys, records, indices) for group, indices in candidates.items()
     }
 
     mixed_indices = [
-        index for index, sample in enumerate(samples)
-        if classify_group(breed_of(sample)) == "mixed"
+        index for index, sample in enumerate(samples) if classify_group(breed_of(sample)) == "mixed"
     ]
 
     rows: list[dict[str, object]] = []
     manifests: dict[str, object] = {}
     for index in mixed_indices:
         # Leave the held-out mixed dog out of the pooled any-dog baseline.
-        any_panel = allele_frequencies(
-            keys, records, [i for i in pooled_dogs if i != index]
-        )
+        any_panel = allele_frequencies(keys, records, [i for i in pooled_dogs if i != index])
         result = score_breed_candidates(
             keys, records, index, samples, panels, any_panel, top_k=args.top_k
         )
-        rows.append({
-            "sample_id": result["sample_id"],
-            "best_breed": result["best_breed"],
-            "single_breed_gap": result["single_breed_gap"],
-            "single_breed_supported": result["single_breed_supported"],
-            "loci_used": result["loci_used"],
-        })
+        rows.append(
+            {
+                "sample_id": result["sample_id"],
+                "best_breed": result["best_breed"],
+                "single_breed_gap": result["single_breed_gap"],
+                "single_breed_supported": result["single_breed_supported"],
+                "loci_used": result["loci_used"],
+            }
+        )
         manifests[str(result["sample_id"])] = result
 
     csv_path = args.out_dir / "mixed_breed_sensitivity.csv"

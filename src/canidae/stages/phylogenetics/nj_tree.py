@@ -38,9 +38,11 @@ class NjTreeStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: NjTreeConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         if geno.n_samples < 3:
             raise StageInputError("NJ tree needs >= 3 individuals")
@@ -52,14 +54,23 @@ class NjTreeStage(Stage):
         labels = [str(s) for s in geno.samples]
 
         tree, support = bootstrap_support(
-            n_alt, labels, allele_difference_matrix,
-            n_boot=cfg.n_bootstrap, seed=ctx.config.seed, blocks=blocks)
+            n_alt,
+            labels,
+            allele_difference_matrix,
+            n_boot=cfg.n_bootstrap,
+            seed=ctx.config.seed,
+            blocks=blocks,
+        )
         newick = to_newick(tree, support)
 
         out = ctx.datastore.path_for(self.name, "nj_tree.nwk")
         out.write_text(newick + "\n", encoding="utf-8")
         art = ctx.datastore.add(
-            ArtifactKind.TREE, "nj", out, fmt=FileFormat.NEWICK, produced_by=self.name,
+            ArtifactKind.TREE,
+            "nj",
+            out,
+            fmt=FileFormat.NEWICK,
+            produced_by=self.name,
             metadata={
                 "method": "neighbor_joining",
                 "n_bootstrap": cfg.n_bootstrap,

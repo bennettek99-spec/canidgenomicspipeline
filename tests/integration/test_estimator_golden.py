@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -30,8 +31,17 @@ ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "golden" / "population_genomics.json"
 RESULT = ArtifactKind.ANALYSIS_RESULT
 PIPELINE = [
-    "ingest", "qc", "load_genotypes", "distance", "pca", "fst", "diversity",
-    "admixture", "cluster", "roh", "geography",
+    "ingest",
+    "qc",
+    "load_genotypes",
+    "distance",
+    "pca",
+    "fst",
+    "diversity",
+    "admixture",
+    "cluster",
+    "roh",
+    "geography",
 ]
 
 
@@ -40,23 +50,25 @@ def _round(value: object, places: int = 6) -> object:
         return None
     if isinstance(value, (int, bool, str)):
         return value
-    return round(float(value), places)
+    return round(cast(float, value), places)
 
 
 @pytest.fixture(scope="module")
 def observed(tmp_path_factory) -> dict:
     workspace = tmp_path_factory.mktemp("population-golden")
     vcf, sheet = simulate_cohort(workspace / "input", seed=7)
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "population-golden",
-        "paths.root": str(workspace),
-        "pipeline": PIPELINE,
-        "executor.max_workers": 2,
-        "logging.level": "WARNING",
-        "stages.ingest.sample_sheet": str(sheet),
-        "stages.ingest.callset": str(vcf),
-        "stages.admixture.backend": "nmf",
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "population-golden",
+            "paths.root": str(workspace),
+            "pipeline": PIPELINE,
+            "executor.max_workers": 2,
+            "logging.level": "WARNING",
+            "stages.ingest.sample_sheet": str(sheet),
+            "stages.ingest.callset": str(vcf),
+            "stages.admixture.backend": "nmf",
+        }
+    )
     report = run_pipeline(cfg)
     assert report.ok, report.failed
     store = DataStore(cfg.paths.data_root / "store")

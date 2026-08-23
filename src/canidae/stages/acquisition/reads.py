@@ -19,7 +19,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import BinaryIO, Literal
+from typing import Any, BinaryIO, Literal
 from urllib.request import Request, urlopen
 
 import pandas as pd
@@ -109,7 +109,9 @@ class ArchiveEstimate:
 
 
 def estimate_archives(
-    archives: list[ReadArchive], *, timeout_seconds: int = 30,
+    archives: list[ReadArchive],
+    *,
+    timeout_seconds: int = 30,
     content_length: dict[str, int] | None = None,
 ) -> list[ArchiveEstimate]:
     """Estimate compressed transfer size using supplied metadata or HEAD/range metadata."""
@@ -119,17 +121,22 @@ def estimate_archives(
             (content_length or {}).get(url) or _remote_size(url, timeout_seconds)
             for url in archive.urls
         ]
-        estimates.append(ArchiveEstimate(
-            sample_id=archive.sample_id,
-            layout=archive.layout,
-            compressed_bytes=sum(sizes),
-        ))
+        estimates.append(
+            ArchiveEstimate(
+                sample_id=archive.sample_id,
+                layout=archive.layout,
+                compressed_bytes=sum(sizes),
+            )
+        )
     return estimates
 
 
 def enforce_read_transfer_policy(
-    estimates: list[ArchiveEstimate], *, max_download_bytes: int,
-    confirmation_threshold_bytes: int, confirmed: bool,
+    estimates: list[ArchiveEstimate],
+    *,
+    max_download_bytes: int,
+    confirmation_threshold_bytes: int,
+    confirmed: bool,
 ) -> int:
     """Return total estimated bytes or raise before any archive body is requested."""
     total = sum(estimate.compressed_bytes for estimate in estimates)
@@ -170,8 +177,9 @@ class AcquireReadsStage(Stage):
     def run(self, ctx: RunContext) -> StageResult:
         cfg: AcquireReadsConfig = self.config  # type: ignore[assignment]
         if ctx.datastore.has(ArtifactKind.SAMPLE_SHEET, "sample_sheet"):
-            sheet = pd.read_csv(ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path,
-                                dtype=str)
+            sheet = pd.read_csv(
+                ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path, dtype=str
+            )
             known = set(sheet.get("sample_id", pd.Series(dtype=str)).dropna().astype(str))
             requested = {archive.sample_id for archive in cfg.archives}
             missing = sorted(requested - known)
@@ -218,18 +226,24 @@ class AcquireReadsStage(Stage):
         manifest_path = stage_dir / "fastq_manifest.csv"
         _atomic_csv(manifest, manifest_path)
         provenance_path = stage_dir / "read_acquisition_manifest.json"
-        _atomic_json(provenance_path, {
-            "schema_version": 1,
-            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-            "estimated_download_bytes": total,
-            "hard_ceiling_bytes": cfg.max_download_bytes,
-            "confirmation_threshold_bytes": cfg.confirmation_threshold_bytes,
-            "confirmed_large_transfer": cfg.confirm_large_transfer,
-            "archives": checksums,
-            "cleanup": "temporary .part files are removed after success or failure",
-        })
+        _atomic_json(
+            provenance_path,
+            {
+                "schema_version": 1,
+                "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                "estimated_download_bytes": total,
+                "hard_ceiling_bytes": cfg.max_download_bytes,
+                "confirmation_threshold_bytes": cfg.confirmation_threshold_bytes,
+                "confirmed_large_transfer": cfg.confirm_large_transfer,
+                "archives": checksums,
+                "cleanup": "temporary .part files are removed after success or failure",
+            },
+        )
         artifact = ctx.datastore.add(
-            ArtifactKind.RAW_READS, "fastq_manifest", manifest_path, fmt=FileFormat.CSV,
+            ArtifactKind.RAW_READS,
+            "fastq_manifest",
+            manifest_path,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
             metadata={
                 "n_samples": len(rows),
@@ -265,8 +279,12 @@ def download_read_archive(
     path = output_dir / f"{archive.sample_id}_{suffix}.fastq.gz"
     records_per_unit = 2 if archive.layout == "interleaved" else 1
     record = _download_one(
-        archive.urls[0], path, checksum=archive.checksums[0] if archive.checksums else "",
-        fraction=archive.downsample_fraction, rng=rng, records_per_unit=records_per_unit,
+        archive.urls[0],
+        path,
+        checksum=archive.checksums[0] if archive.checksums else "",
+        fraction=archive.downsample_fraction,
+        rng=rng,
+        records_per_unit=records_per_unit,
         timeout_seconds=timeout_seconds,
     )
     return [path], [record]
@@ -276,7 +294,7 @@ def _download_paired(
     archive: ReadArchive, paths: list[Path], *, rng: random.Random, timeout_seconds: int
 ) -> list[dict[str, object]]:
     temporary = [path.with_suffix(path.suffix + ".part") for path in paths]
-    responses: list[object] = []
+    responses: list[Any] = []
     try:
         responses = [_open_stream(url, timeout_seconds) for url in archive.urls]
         raw = [_HashingReader(response) for response in responses]
@@ -299,7 +317,7 @@ def _download_paired(
                     out2.writelines(pair[1] or [])
         for reader in readers:
             reader.close()
-        records = []
+        records: list[dict[str, object]] = []
         for url, item, expected in zip(
             archive.urls, raw, archive.checksums or ["", ""], strict=True
         ):
@@ -364,7 +382,7 @@ def _download_one(
             response.close()
 
 
-def _fastq_record(reader: BinaryIO) -> list[bytes] | None:
+def _fastq_record(reader: gzip.GzipFile | BinaryIO) -> list[bytes] | None:
     first = reader.readline()
     if not first:
         return None
@@ -395,9 +413,9 @@ class _HashingReader(io.RawIOBase):
             self._md5.update(data)
         return data
 
-    def readinto(self, buffer: bytearray) -> int:
+    def readinto(self, buffer: bytearray) -> int:  # type: ignore[override]
         data = self.read(len(buffer))
-        buffer[:len(data)] = data
+        buffer[: len(data)] = data
         return len(data)
 
     def digests(self) -> dict[str, str]:
@@ -427,8 +445,10 @@ def _verify_expected_digest(digests: dict[str, str], expected: str, url: str) ->
 
 def _remote_size(url: str, timeout_seconds: int) -> int:
     try:
-        response = urlopen(Request(url, method="HEAD", headers={"User-Agent": "CANIS/0.2"}),
-                           timeout=timeout_seconds)
+        response = urlopen(
+            Request(url, method="HEAD", headers={"User-Agent": "CANIS/0.2"}),
+            timeout=timeout_seconds,
+        )
         with response:
             length = response.headers.get("Content-Length")
             if length and int(length) > 0:

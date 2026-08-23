@@ -42,15 +42,15 @@ class ClusterStage(Stage):
     def run(self, ctx: RunContext) -> StageResult:
         cfg: ClusterConfig = self.config  # type: ignore[assignment]
         dist = pd.read_csv(
-            ctx.datastore.get(ArtifactKind.ANALYSIS_RESULT, "distance").path, index_col=0)
+            ctx.datastore.get(ArtifactKind.ANALYSIS_RESULT, "distance").path, index_col=0
+        )
         samples = list(dist.index)
         D = dist.to_numpy(dtype=float)
         n = len(samples)
 
         k_hi = min(cfg.k_max, n - 1)
         if k_hi < cfg.k_min:
-            raise StageInputError(f"too few samples ({n}) to cluster in "
-                                  f"[{cfg.k_min}, {cfg.k_max}]")
+            raise StageInputError(f"too few samples ({n}) to cluster in [{cfg.k_min}, {cfg.k_max}]")
 
         best = None
         for k in range(cfg.k_min, k_hi + 1):
@@ -64,24 +64,33 @@ class ClusterStage(Stage):
         best_k, silhouette, labels = best
 
         sheet = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
-        pops = [str(sheet.loc[s, "population"]) if s in sheet.index else "unknown"
-                for s in samples]
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
+        pops = [str(sheet.loc[s, "population"]) if s in sheet.index else "unknown" for s in samples]
         ari = float(adjusted_rand_score(pops, labels))
 
-        table = pd.DataFrame({"sample_id": samples, "population": pops,
-                              "cluster": labels})
+        table = pd.DataFrame({"sample_id": samples, "population": pops, "cluster": labels})
         out = ctx.datastore.path_for(self.name, "clusters.csv")
         table.to_csv(out, index=False)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "cluster", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "cluster",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "cluster", "best_k": int(best_k),
-                      "silhouette": round(silhouette, 4),
-                      "adjusted_rand_index": round(ari, 4), "linkage": cfg.linkage},
+            metadata={
+                "analysis": "cluster",
+                "best_k": int(best_k),
+                "silhouette": round(silhouette, 4),
+                "adjusted_rand_index": round(ari, 4),
+                "linkage": cfg.linkage,
+            },
         )
         return StageResult(
             artifacts=[art],
-            metrics={"best_k": int(best_k), "silhouette": round(silhouette, 4),
-                     "adjusted_rand_index": round(ari, 4)},
+            metrics={
+                "best_k": int(best_k),
+                "silhouette": round(silhouette, 4),
+                "adjusted_rand_index": round(ari, 4),
+            },
         )

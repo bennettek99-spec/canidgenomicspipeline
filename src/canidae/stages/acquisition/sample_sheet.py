@@ -23,8 +23,14 @@ from canidae.core.model import (
 
 REQUIRED_COLUMNS = ("sample_id", "taxon", "population")
 OPTIONAL_COLUMNS = (
-    "subspecies", "scientific_name", "region", "country",
-    "latitude", "longitude", "source_study", "accession",
+    "subspecies",
+    "scientific_name",
+    "region",
+    "country",
+    "latitude",
+    "longitude",
+    "source_study",
+    "accession",
 )
 
 

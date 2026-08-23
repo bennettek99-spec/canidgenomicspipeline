@@ -201,5 +201,8 @@ def test_integrated_example_registers_reduced_panel_stage() -> None:
     stages = instantiate_stages(cfg)
     assert stages[0].name == "reduced_panel"
     assert [stage.name for stage in stages[1:5]] == [
-        "qc", "load_genotypes", "analysis_readiness", "distance"
+        "qc",
+        "load_genotypes",
+        "analysis_readiness",
+        "distance",
     ]

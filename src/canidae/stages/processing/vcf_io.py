@@ -28,16 +28,26 @@ class VcfSites:
     @property
     def keys(self) -> np.ndarray:
         """Per-site identity key 'chrom:pos:ref:alt' for cross-dataset matching."""
-        return np.array([f"{c}:{p}:{r}:{a}" for c, p, r, a in
-                         zip(self.chrom, self.pos, self.ref, self.alt, strict=True)])
+        return np.array(
+            [
+                f"{c}:{p}:{r}:{a}"
+                for c, p, r, a in zip(self.chrom, self.pos, self.ref, self.alt, strict=True)
+            ]
+        )
 
 
 def read_biallelic_snps(path: Path) -> VcfSites:
     """Read a VCF and keep only biallelic SNP sites."""
     cs = allel.read_vcf(
         str(path),
-        fields=["samples", "calldata/GT", "variants/CHROM", "variants/POS",
-                "variants/REF", "variants/ALT"],
+        fields=[
+            "samples",
+            "calldata/GT",
+            "variants/CHROM",
+            "variants/POS",
+            "variants/REF",
+            "variants/ALT",
+        ],
     )
     if cs is None or "calldata/GT" not in cs:
         raise ValueError(f"no genotypes in {path}")
@@ -56,8 +66,15 @@ def read_biallelic_snps(path: Path) -> VcfSites:
     )
 
 
-def write_minimal_vcf(path: Path, chrom: np.ndarray, pos: np.ndarray, ref: np.ndarray,
-                      alt: np.ndarray, samples: np.ndarray, gt: np.ndarray) -> Path:
+def write_minimal_vcf(
+    path: Path,
+    chrom: np.ndarray,
+    pos: np.ndarray,
+    ref: np.ndarray,
+    alt: np.ndarray,
+    samples: np.ndarray,
+    gt: np.ndarray,
+) -> Path:
     """Write a biallelic-SNP VCF 4.2 file from arrays. ``gt`` is (n_sites, n_samples, 2)."""
     path = Path(path)
     contigs = list(dict.fromkeys(str(c) for c in chrom))
@@ -66,12 +83,14 @@ def write_minimal_vcf(path: Path, chrom: np.ndarray, pos: np.ndarray, ref: np.nd
         fh.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
         for c in contigs:
             fh.write(f"##contig=<ID={c}>\n")
-        fh.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"
-                 + "\t".join(map(str, samples)) + "\n")
+        fh.write(
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"
+            + "\t".join(map(str, samples))
+            + "\n"
+        )
         for i in range(len(pos)):
             calls = "\t".join(_gt_str(gt[i, s]) for s in range(len(samples)))
-            fh.write(f"{chrom[i]}\t{int(pos[i])}\t.\t{ref[i]}\t{alt[i]}\t.\t.\t.\tGT\t"
-                     f"{calls}\n")
+            fh.write(f"{chrom[i]}\t{int(pos[i])}\t.\t{ref[i]}\t{alt[i]}\t.\t.\t.\tGT\t{calls}\n")
     return path
 
 

@@ -30,10 +30,12 @@ class _CountingStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         out = ctx.datastore.path_for(self.name, "counter.txt")
-        out.write_text(str(self.config.value), encoding="utf-8")
-        return StageResult([
-            Artifact(ArtifactKind.ANALYSIS_RESULT, "cache_counter", out, FileFormat.OTHER)
-        ])
+        cfg = self.config
+        assert isinstance(cfg, _ValueConfig)
+        out.write_text(str(cfg.value), encoding="utf-8")
+        return StageResult(
+            [Artifact(ArtifactKind.ANALYSIS_RESULT, "cache_counter", out, FileFormat.OTHER)]
+        )
 
 
 class _InputStage(Stage):
@@ -50,9 +52,9 @@ class _InputStage(Stage):
         raw = ctx.datastore.get(ArtifactKind.QC_TABLE, "raw_metrics").path
         out = ctx.datastore.path_for(self.name, "summary.txt")
         out.write_text(raw.read_text(encoding="utf-8"), encoding="utf-8")
-        return StageResult([
-            Artifact(ArtifactKind.ANALYSIS_RESULT, "input_summary", out, FileFormat.OTHER)
-        ])
+        return StageResult(
+            [Artifact(ArtifactKind.ANALYSIS_RESULT, "input_summary", out, FileFormat.OTHER)]
+        )
 
 
 class _BrokenStage(Stage):

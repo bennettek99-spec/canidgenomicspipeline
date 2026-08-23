@@ -25,8 +25,8 @@ class AdmixtureFit:
     """Result of an admixture factorization at a single K."""
 
     K: int
-    Q: np.ndarray            # (n_samples, K), rows sum to 1
-    F: np.ndarray            # (K, n_sites)
+    Q: np.ndarray  # (n_samples, K), rows sum to 1
+    F: np.ndarray  # (K, n_sites)
     reconstruction_error: float
 
 
@@ -61,8 +61,7 @@ def _normalize_rows(W: np.ndarray) -> np.ndarray:
     return W / np.where(totals > 0, totals, 1.0)
 
 
-def fit_admixture(X: np.ndarray, K: int, *, seed: int = 0,
-                  n_iter: int = 250) -> AdmixtureFit:
+def fit_admixture(X: np.ndarray, K: int, *, seed: int = 0, n_iter: int = 250) -> AdmixtureFit:
     """Fit ancestry proportions Q and component ALT frequencies F at a given K."""
     mask = np.ones_like(X, dtype=float)
     W, H = weighted_nmf(X, mask, K, n_iter=n_iter, seed=seed)

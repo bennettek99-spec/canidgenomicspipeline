@@ -46,12 +46,15 @@ class F3Stage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: F3Config = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
         groups = population_indices(geno, labels)
         freqs = fstats.allele_frequencies(geno, groups)
 
@@ -67,17 +70,21 @@ class F3Stage(Stage):
         matrix = pd.DataFrame(np.nan, index=ingroup, columns=ingroup)
         for i, a in enumerate(ingroup):
             for b in ingroup[i:]:
-                val = fstats.outgroup_f3(freqs[outgroup], freqs[a], freqs[b],
-                                         n_blocks=cfg.n_blocks).estimate
+                val = fstats.outgroup_f3(
+                    freqs[outgroup], freqs[a], freqs[b], n_blocks=cfg.n_blocks
+                ).estimate
                 matrix.loc[a, b] = matrix.loc[b, a] = round(val, 6)
 
         out = ctx.datastore.path_for(self.name, "outgroup_f3.csv")
         matrix.to_csv(out)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "f3", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "f3",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "outgroup_f3", "outgroup": outgroup,
-                      "populations": ingroup})
+            metadata={"analysis": "outgroup_f3", "outgroup": outgroup, "populations": ingroup},
+        )
         return StageResult(
-            artifacts=[art],
-            metrics={"outgroup": outgroup, "n_populations": len(ingroup)})
+            artifacts=[art], metrics={"outgroup": outgroup, "n_populations": len(ingroup)}
+        )

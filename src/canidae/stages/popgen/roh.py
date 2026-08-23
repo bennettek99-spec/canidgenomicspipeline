@@ -41,37 +41,44 @@ class RohStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: RohConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         genome_bp = _covered_genome_bp(geno)
         is_het = geno.calls.is_het()  # (n_variants, n_samples)
 
         rows = []
         for s, sample in enumerate(geno.samples):
-            total_bp, n_seg = _sample_roh(
-                geno.chrom, geno.pos, is_het[:, s], cfg)
-            rows.append({
-                "sample_id": sample,
-                "n_roh_segments": n_seg,
-                "total_roh_bp": int(total_bp),
-                "froh": round(total_bp / genome_bp, 6) if genome_bp else 0.0,
-            })
+            total_bp, n_seg = _sample_roh(geno.chrom, geno.pos, is_het[:, s], cfg)
+            rows.append(
+                {
+                    "sample_id": sample,
+                    "n_roh_segments": n_seg,
+                    "total_roh_bp": int(total_bp),
+                    "froh": round(total_bp / genome_bp, 6) if genome_bp else 0.0,
+                }
+            )
         table = pd.DataFrame(rows)
 
         out = ctx.datastore.path_for(self.name, "roh.csv")
         table.to_csv(out, index=False)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "roh", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "roh",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "roh", "window_bp": cfg.window_bp,
-                      "genome_bp": int(genome_bp)},
+            metadata={"analysis": "roh", "window_bp": cfg.window_bp, "genome_bp": int(genome_bp)},
         )
         return StageResult(
             artifacts=[art],
-            metrics={"n_samples": geno.n_samples,
-                     "mean_froh": round(float(table["froh"].mean()), 6)},
+            metrics={
+                "n_samples": geno.n_samples,
+                "mean_froh": round(float(table["froh"].mean()), 6),
+            },
         )
 
 
@@ -83,8 +90,9 @@ def _covered_genome_bp(geno: Genotypes) -> int:
     return total
 
 
-def _sample_roh(chrom: np.ndarray, pos: np.ndarray, het: np.ndarray,
-                cfg: RohConfig) -> tuple[int, int]:
+def _sample_roh(
+    chrom: np.ndarray, pos: np.ndarray, het: np.ndarray, cfg: RohConfig
+) -> tuple[int, int]:
     """Return (total_roh_bp, n_segments) for one sample across all contigs."""
     total_bp = 0
     n_segments = 0
@@ -111,8 +119,9 @@ def _sample_roh(chrom: np.ndarray, pos: np.ndarray, het: np.ndarray,
     return total_bp, n_segments
 
 
-def _close_run(start: int, stop: int, cfg: RohConfig, total_bp: int,
-               n_segments: int) -> tuple[int, int]:
+def _close_run(
+    start: int, stop: int, cfg: RohConfig, total_bp: int, n_segments: int
+) -> tuple[int, int]:
     length = stop - start
     if length >= cfg.min_segment_bp:
         return total_bp + length, n_segments + 1

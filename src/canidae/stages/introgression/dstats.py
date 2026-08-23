@@ -34,6 +34,12 @@ from canidae.stages.popgen.store import (
 
 _log = get_logger("stage.dstats")
 
+_BLOCK_MODES: dict[str, Literal["fixed_bp", "chromosome", "site_count"]] = {
+    "fixed_mb": "fixed_bp",
+    "chromosome": "chromosome",
+    "site_count": "site_count",
+}
+
 
 class DStatsConfig(StageConfig):
     # Required: biological outgroups must never be inferred from PCA distance.
@@ -66,12 +72,15 @@ class DStatsStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: DStatsConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
         groups = population_indices(geno, labels)
         freqs = fstats.allele_frequencies(geno, groups)
 
@@ -87,28 +96,40 @@ class DStatsStage(Stage):
                 "D-statistics require at least four populations including outgroup"
             )
         ingroup = [p for p in groups if p != outgroup]
-        fstats_block_mode = {
-            "fixed_mb": "fixed_bp",
-            "chromosome": "chromosome",
-            "site_count": "site_count",
-        }[cfg.block_mode]
+        fstats_block_mode = _BLOCK_MODES[cfg.block_mode]
         block_size_bp = max(1, round(cfg.block_size_mb * 1_000_000))
 
         rows = []
         for p3 in ingroup:
             for p1, p2 in combinations([p for p in ingroup if p != p3], 2):
-                d = fstats.d_statistic(freqs[p1], freqs[p2], freqs[p3], freqs[outgroup],
-                                       n_blocks=cfg.n_blocks, chrom=geno.chrom, pos=geno.pos,
-                                       block_mode=fstats_block_mode,
-                                       block_size_bp=block_size_bp)
+                d = fstats.d_statistic(
+                    freqs[p1],
+                    freqs[p2],
+                    freqs[p3],
+                    freqs[outgroup],
+                    n_blocks=cfg.n_blocks,
+                    chrom=geno.chrom,
+                    pos=geno.pos,
+                    block_mode=fstats_block_mode,
+                    block_size_bp=block_size_bp,
+                )
                 pval = float(2 * norm.sf(abs(d.z))) if np.isfinite(d.z) else float("nan")
-                rows.append({"P1": p1, "P2": p2, "P3": p3, "O": outgroup,
-                             "D": round(d.estimate, 5), "Z": round(d.z, 3),
-                             "se": round(d.se, 5), "n_sites": d.n_sites,
-                             "n_blocks": d.n_blocks, "block_mode": cfg.block_mode,
-                             "block_size_bp": block_size_bp if cfg.block_mode == "fixed_mb"
-                             else None,
-                             "p_value": None if pval != pval else float(f"{pval:.3g}")})
+                rows.append(
+                    {
+                        "P1": p1,
+                        "P2": p2,
+                        "P3": p3,
+                        "O": outgroup,
+                        "D": round(d.estimate, 5),
+                        "Z": round(d.z, 3),
+                        "se": round(d.se, 5),
+                        "n_sites": d.n_sites,
+                        "n_blocks": d.n_blocks,
+                        "block_mode": cfg.block_mode,
+                        "block_size_bp": block_size_bp if cfg.block_mode == "fixed_mb" else None,
+                        "p_value": None if pval != pval else float(f"{pval:.3g}"),
+                    }
+                )
 
         table = pd.DataFrame(rows)
         if table.empty:
@@ -123,38 +144,61 @@ class DStatsStage(Stage):
 
         top = self._window_scan(ctx, geno, freqs, table, outgroup, cfg)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "dstats", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "dstats",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "dstats", "outgroup": outgroup,
-                      "n_quartets": len(table), "top_quartet": top,
-                      "block_mode": cfg.block_mode, "block_size_bp": block_size_bp,
-                      "legacy_n_blocks": cfg.n_blocks,
-                      "multiple_testing": "Benjamini-Hochberg",
-                      "median_sites_per_block": float(
-                          np.nanmedian(table["n_sites"] / table["n_blocks"])
-                      )})
+            metadata={
+                "analysis": "dstats",
+                "outgroup": outgroup,
+                "n_quartets": len(table),
+                "top_quartet": top,
+                "block_mode": cfg.block_mode,
+                "block_size_bp": block_size_bp,
+                "legacy_n_blocks": cfg.n_blocks,
+                "multiple_testing": "Benjamini-Hochberg",
+                "median_sites_per_block": float(np.nanmedian(table["n_sites"] / table["n_blocks"])),
+            },
+        )
         return StageResult(
             artifacts=[art],
-            metrics={"n_quartets": len(table), "outgroup": outgroup,
-                     "block_mode": cfg.block_mode,
-                     "n_blocks": int(table["n_blocks"].max()) if not table.empty else 0,
-                     "max_abs_Z": None if table.empty else round(
-                         float(table["Z"].abs().max()), 3)})
+            metrics={
+                "n_quartets": len(table),
+                "outgroup": outgroup,
+                "block_mode": cfg.block_mode,
+                "n_blocks": int(table["n_blocks"].max()) if not table.empty else 0,
+                "max_abs_Z": None if table.empty else round(float(table["Z"].abs().max()), 3),
+            },
+        )
 
-    def _window_scan(self, ctx, geno: Genotypes, freqs, table: pd.DataFrame,
-                     outgroup: str, cfg: DStatsConfig):
+    def _window_scan(
+        self, ctx, geno: Genotypes, freqs, table: pd.DataFrame, outgroup: str, cfg: DStatsConfig
+    ):
         if table.empty:
             return None
         best = table.iloc[table["Z"].abs().argmax()]
         quartet = (best["P1"], best["P2"], best["P3"], outgroup)
         windows = fstats.f_d_windows(
-            freqs, quartet, geno.chrom, geno.pos,
-            window_bp=cfg.window_bp, min_sites=cfg.min_window_sites)
+            freqs,
+            quartet,
+            geno.chrom,
+            geno.pos,
+            window_bp=cfg.window_bp,
+            min_sites=cfg.min_window_sites,
+        )
         if windows:
             pd.DataFrame(windows).to_csv(
-                ctx.datastore.path_for(self.name, "fd_windows.csv"), index=False)
-        return {"P1": best["P1"], "P2": best["P2"], "P3": best["P3"], "O": outgroup,
-                "D": float(best["D"]), "Z": float(best["Z"])}
+                ctx.datastore.path_for(self.name, "fd_windows.csv"), index=False
+            )
+        return {
+            "P1": best["P1"],
+            "P2": best["P2"],
+            "P3": best["P3"],
+            "O": outgroup,
+            "D": float(best["D"]),
+            "Z": float(best["Z"]),
+        }
 
 
 def _auto_outgroup(freqs: dict[str, np.ndarray]) -> str:

@@ -60,9 +60,7 @@ def test_sample_sheet_validates(sheet: Path) -> None:
 def test_nyc_sheet_documents_exactly_the_preset_query_samples() -> None:
     """The NYC metadata sheet carries the accessions behind the preset's queries."""
     sheet = read_sample_sheet(EXAMPLES / "nyc_coydog_samples.csv")
-    raw = yaml.safe_load(
-        (EXAMPLES / "nyc_coydog_validation.yaml").read_text(encoding="utf-8")
-    )
+    raw = yaml.safe_load((EXAMPLES / "nyc_coydog_validation.yaml").read_text(encoding="utf-8"))
     queries = set(raw["stages"]["reference_mixture"]["query_samples"])
     assert set(sheet["sample_id"]) == queries
     assert set(raw["stages"]["breed_assign"]["query_samples"]) == queries

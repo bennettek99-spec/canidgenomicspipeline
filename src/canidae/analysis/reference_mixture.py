@@ -24,9 +24,7 @@ def allele_frequencies(
     freqs = np.full(len(keys), np.nan)
     for position, key in enumerate(keys):
         counts = [
-            allele_count(records[key][index])
-            for index in indices
-            if records[key][index] is not None
+            allele_count(call) for index in indices if (call := records[key][index]) is not None
         ]
         if counts:
             freqs[position] = (sum(counts) + 1.0) / (2 * len(counts) + 2.0)
@@ -95,9 +93,7 @@ def leave_one_out(
     min_group: int,
 ) -> tuple[list[dict[str, object]], dict[str, float | int | None]]:
     eligible = {
-        group: list(indices)
-        for group, indices in groups.items()
-        if len(indices) >= min_group
+        group: list(indices) for group, indices in groups.items() if len(indices) >= min_group
     }
     panels = {
         group: allele_frequencies(keys, records, indices) for group, indices in eligible.items()
@@ -107,9 +103,7 @@ def leave_one_out(
     total = 0
     for group, members in sorted(eligible.items()):
         for sample_index in members:
-            own_minus = allele_frequencies(
-                keys, records, [i for i in members if i != sample_index]
-            )
+            own_minus = allele_frequencies(keys, records, [i for i in members if i != sample_index])
             scored: list[tuple[float, str]] = []
             for candidate, panel in panels.items():
                 effective = own_minus if candidate == group else panel

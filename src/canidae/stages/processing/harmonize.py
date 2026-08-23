@@ -86,8 +86,9 @@ class HarmonizeStage(Stage):
             if not failures.empty:
                 bad = ", ".join(failures["dataset_id"].astype(str))
                 raise StageInputError(
-                    "VCF/sample-sheet IDs are not concordant for " + bad +
-                    "; see input metadata before merging"
+                    "VCF/sample-sheet IDs are not concordant for "
+                    + bad
+                    + "; see input metadata before merging"
                 )
         _check_unique_samples(sites)
 
@@ -100,12 +101,17 @@ class HarmonizeStage(Stage):
             )
         merged_gt, samples = _merge_oriented(sites, shared, orientations)
         template = sites[0]
-        idx0 = np.asarray(shared, dtype=int)
+        idx0: np.ndarray = np.asarray(shared, dtype=int)
         stage_dir = ctx.datastore.stage_dir(self.name)
         out_vcf = stage_dir / "harmonized.vcf"
         _write_vcf_atomic(
-            out_vcf, template.chrom[idx0], template.pos[idx0], template.ref[idx0],
-            template.alt[idx0], samples, merged_gt,
+            out_vcf,
+            template.chrom[idx0],
+            template.pos[idx0],
+            template.ref[idx0],
+            template.alt[idx0],
+            samples,
+            merged_gt,
         )
 
         sheet_df = _merge_sample_sheets(sheets)
@@ -122,24 +128,40 @@ class HarmonizeStage(Stage):
             "n_shared_sites": len(shared),
             "n_samples": len(samples),
             "normalization": "biallelic SNP upper-case / canonical contigs"
-            if cfg.normalize_variants else "disabled",
+            if cfg.normalize_variants
+            else "disabled",
             "allow_strand_complement": cfg.allow_strand_complement,
         }
         callset_art = Artifact(
-            ArtifactKind.CALLSET, "callset", out_vcf, FileFormat.VCF,
-            produced_by=self.name, metadata=metadata,
+            ArtifactKind.CALLSET,
+            "callset",
+            out_vcf,
+            FileFormat.VCF,
+            produced_by=self.name,
+            metadata=metadata,
         )
         sheet_art = Artifact(
-            ArtifactKind.SAMPLE_SHEET, "sample_sheet", merged_sheet, FileFormat.CSV,
-            produced_by=self.name, metadata={"n_samples": len(sheet_df)},
+            ArtifactKind.SAMPLE_SHEET,
+            "sample_sheet",
+            merged_sheet,
+            FileFormat.CSV,
+            produced_by=self.name,
+            metadata={"n_samples": len(sheet_df)},
         )
         diagnostics_art = Artifact(
-            ArtifactKind.QC_TABLE, "harmonization_diagnostics", diagnostics_out, FileFormat.CSV,
-            produced_by=self.name, metadata={"reference_build_status": reference_status},
+            ArtifactKind.QC_TABLE,
+            "harmonization_diagnostics",
+            diagnostics_out,
+            FileFormat.CSV,
+            produced_by=self.name,
+            metadata={"reference_build_status": reference_status},
         )
         orientation_art = Artifact(
-            ArtifactKind.QC_TABLE, "harmonization_variant_orientation", orientation_out,
-            FileFormat.CSV, produced_by=self.name,
+            ArtifactKind.QC_TABLE,
+            "harmonization_variant_orientation",
+            orientation_out,
+            FileFormat.CSV,
+            produced_by=self.name,
         )
         return StageResult(
             artifacts=[callset_art, sheet_art, diagnostics_art, orientation_art],
@@ -217,15 +239,17 @@ def _sample_concordance(
     for ds, site, sheet, build in zip(datasets, sites, sheets, builds, strict=True):
         vcf_samples = set(map(str, site.samples))
         sheet_samples = set(sheet["sample_id"].astype(str))
-        rows.append({
-            "dataset_id": ds.dataset_id,
-            "reference_build": build,
-            "n_vcf_samples": len(vcf_samples),
-            "n_sheet_samples": len(sheet_samples),
-            "matched_samples": len(vcf_samples & sheet_samples),
-            "missing_metadata": len(vcf_samples - sheet_samples),
-            "sheet_only_samples": len(sheet_samples - vcf_samples),
-        })
+        rows.append(
+            {
+                "dataset_id": ds.dataset_id,
+                "reference_build": build,
+                "n_vcf_samples": len(vcf_samples),
+                "n_sheet_samples": len(sheet_samples),
+                "matched_samples": len(vcf_samples & sheet_samples),
+                "missing_metadata": len(vcf_samples - sheet_samples),
+                "sheet_only_samples": len(sheet_samples - vcf_samples),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -252,8 +276,9 @@ def _site_maps(site: VcfSites) -> dict[str, int]:
     return mapping
 
 
-def _orientation(template_ref: str, template_alt: str, ref: str, alt: str,
-                 allow_complement: bool) -> tuple[str, bool] | None:
+def _orientation(
+    template_ref: str, template_alt: str, ref: str, alt: str, allow_complement: bool
+) -> tuple[str, bool] | None:
     if (ref, alt) == (template_ref, template_alt):
         return "same", False
     if (ref, alt) == (template_alt, template_ref):
@@ -297,8 +322,11 @@ def _shared_oriented_sites(
                 valid = False
                 break
             orientation = _orientation(
-                str(sites[0].ref[i]), str(sites[0].alt[i]), str(site.ref[other_i]),
-                str(site.alt[other_i]), allow_complement,
+                str(sites[0].ref[i]),
+                str(sites[0].alt[i]),
+                str(site.ref[other_i]),
+                str(site.alt[other_i]),
+                allow_complement,
             )
             if orientation is None:
                 valid = False
@@ -315,14 +343,15 @@ def _shared_oriented_sites(
 
 
 def _merge_oriented(
-    sites: list[VcfSites], template_indices: list[int],
+    sites: list[VcfSites],
+    template_indices: list[int],
     orientations: list[dict[int, tuple[int, str, bool]]],
 ) -> tuple[np.ndarray, np.ndarray]:
     matrices, samples = [], []
     for site, mapping in zip(sites, orientations, strict=True):
         selected = [mapping[index] for index in template_indices]
-        indices = np.asarray([entry[0] for entry in selected], dtype=int)
-        flip = np.asarray([entry[2] for entry in selected], dtype=bool)
+        indices: np.ndarray = np.asarray([entry[0] for entry in selected], dtype=int)
+        flip: np.ndarray = np.asarray([entry[2] for entry in selected], dtype=bool)
         gt = site.gt[indices].copy()
         if flip.any():
             values = gt[flip]
@@ -333,45 +362,57 @@ def _merge_oriented(
 
 
 def _orientation_report(
-    datasets: list[DatasetInput], orientations: list[dict[int, tuple[int, str, bool]]],
+    datasets: list[DatasetInput],
+    orientations: list[dict[int, tuple[int, str, bool]]],
     incompatible: int,
 ) -> pd.DataFrame:
     rows = []
     for dataset_index, (dataset, mapping) in enumerate(zip(datasets, orientations, strict=True)):
         counts = pd.Series([entry[1] for entry in mapping.values()]).value_counts().to_dict()
-        rows.append({
-            "dataset_id": dataset.dataset_id,
-            "same_orientation_sites": int(counts.get("same", 0)),
-            "ref_alt_swapped_sites": int(counts.get("swap", 0)),
-            "strand_complemented_sites": int(counts.get("complement", 0)),
-            "complemented_and_swapped_sites": int(counts.get("complement_swap", 0)),
-            "incompatible_coordinate_alleles": incompatible if dataset_index else 0,
-        })
+        rows.append(
+            {
+                "dataset_id": dataset.dataset_id,
+                "same_orientation_sites": int(counts.get("same", 0)),
+                "ref_alt_swapped_sites": int(counts.get("swap", 0)),
+                "strand_complemented_sites": int(counts.get("complement", 0)),
+                "complemented_and_swapped_sites": int(counts.get("complement_swap", 0)),
+                "incompatible_coordinate_alleles": incompatible if dataset_index else 0,
+            }
+        )
     return pd.DataFrame(rows)
 
 
 def _batch_diagnostics(
-    sample_diagnostics: pd.DataFrame, sites: list[VcfSites], datasets: list[DatasetInput],
+    sample_diagnostics: pd.DataFrame,
+    sites: list[VcfSites],
+    datasets: list[DatasetInput],
     reference_status: str,
 ) -> pd.DataFrame:
     rows = []
-    for row, site, _dataset in zip(sample_diagnostics.to_dict("records"), sites, datasets,
-                                   strict=True):
+    for row, site, _dataset in zip(
+        sample_diagnostics.to_dict("records"), sites, datasets, strict=True
+    ):
         called = np.all(site.gt >= 0, axis=2)
         sample_rates = called.mean(axis=0) if called.shape[1] else np.empty(0)
         site_rates = called.mean(axis=1) if called.shape[0] else np.empty(0)
-        rows.append({
-            **row,
-            "n_biallelic_snps": len(site.pos),
-            "mean_sample_call_rate": round(float(sample_rates.mean()), 6)
-            if sample_rates.size else None,
-            "min_sample_call_rate": round(float(sample_rates.min()), 6)
-            if sample_rates.size else None,
-            "mean_site_call_rate": round(float(site_rates.mean()), 6) if site_rates.size else None,
-            "reference_build_status": reference_status,
-            "normalization_scope": "biallelic_snp_only",
-            "liftover": "not_run",
-        })
+        rows.append(
+            {
+                **row,
+                "n_biallelic_snps": len(site.pos),
+                "mean_sample_call_rate": round(float(sample_rates.mean()), 6)
+                if sample_rates.size
+                else None,
+                "min_sample_call_rate": round(float(sample_rates.min()), 6)
+                if sample_rates.size
+                else None,
+                "mean_site_call_rate": round(float(site_rates.mean()), 6)
+                if site_rates.size
+                else None,
+                "reference_build_status": reference_status,
+                "normalization_scope": "biallelic_snp_only",
+                "liftover": "not_run",
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -389,8 +430,15 @@ def _atomic_csv(table: pd.DataFrame, destination: Path) -> Path:
     return destination
 
 
-def _write_vcf_atomic(path: Path, chrom: np.ndarray, pos: np.ndarray, ref: np.ndarray,
-                      alt: np.ndarray, samples: np.ndarray, gt: np.ndarray) -> Path:
+def _write_vcf_atomic(
+    path: Path,
+    chrom: np.ndarray,
+    pos: np.ndarray,
+    ref: np.ndarray,
+    alt: np.ndarray,
+    samples: np.ndarray,
+    gt: np.ndarray,
+) -> Path:
     temporary = path.with_suffix(path.suffix + ".tmp")
     write_minimal_vcf(temporary, chrom, pos, ref, alt, samples, gt)
     temporary.replace(path)

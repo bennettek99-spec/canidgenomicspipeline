@@ -63,9 +63,7 @@ def test_chunk_contents_match_the_whole_matrix(mmap_store) -> None:
     )
     assert np.array_equal(rebuilt, np.asarray(geno.calls))
 
-    positions = np.concatenate(
-        [c.pos for c in iter_genotype_chunks(path, chunk_variants=37)]
-    )
+    positions = np.concatenate([c.pos for c in iter_genotype_chunks(path, chunk_variants=37)])
     assert np.array_equal(positions, geno.pos)
     for chunk in iter_genotype_chunks(path, chunk_variants=37):
         assert chunk.samples.tolist() == geno.samples.tolist()
@@ -102,9 +100,7 @@ def test_chunked_allele_counts_honour_a_subpopulation(mmap_store) -> None:
     path, geno = mmap_store
     subpop = [0, 2, 4]
     expected = np.asarray(geno.allele_counts(subpop=subpop))
-    observed = np.asarray(
-        chunked_allele_counts(path, subpop=subpop, chunk_variants=40)
-    )
+    observed = np.asarray(chunked_allele_counts(path, subpop=subpop, chunk_variants=40))
     assert np.array_equal(observed, expected)
 
 

@@ -46,19 +46,28 @@ class StructuralVariationStage(Stage):
         stage_dir = ctx.datastore.stage_dir(self.name)
         out_vcf = str(stage_dir / "sv.vcf")
         cmd = sv_command(list(crams["cram"]), ref, out_vcf)
-        ctx.runner.run(_BASH, ["-lc", cmd], resources=ResourceSpec(cpus=cfg.threads),
-                       record=ctx.scratch.get("_record"), cwd=stage_dir,
-                       expect_outputs=[Path(out_vcf)])
-        art = ctx.datastore.add(ArtifactKind.ANALYSIS_RESULT, "sv", Path(out_vcf),
-                                fmt=FileFormat.VCF, produced_by=self.name,
-                                metadata={"caller": "delly", "sv_types": cfg.sv_types})
+        ctx.runner.run(
+            _BASH,
+            ["-lc", cmd],
+            resources=ResourceSpec(cpus=cfg.threads),
+            record=ctx.scratch.get("_record"),
+            cwd=stage_dir,
+            expect_outputs=[Path(out_vcf)],
+        )
+        art = ctx.datastore.add(
+            ArtifactKind.ANALYSIS_RESULT,
+            "sv",
+            Path(out_vcf),
+            fmt=FileFormat.VCF,
+            produced_by=self.name,
+            metadata={"caller": "delly", "sv_types": cfg.sv_types},
+        )
         return StageResult(artifacts=[art], metrics={"n_samples": len(crams)})
 
 
 def sv_command(crams: list[str], ref: str, out_vcf: str) -> str:
     inputs = " ".join(crams)
-    return (f"delly call -g {ref} -o sv.bcf {inputs} "
-            f"&& bcftools view sv.bcf -Ov -o {out_vcf}")
+    return f"delly call -g {ref} -o sv.bcf {inputs} && bcftools view sv.bcf -Ov -o {out_vcf}"
 
 
 def _resolve(path: Path, root: Path) -> Path:

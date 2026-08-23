@@ -47,12 +47,15 @@ class FstStage(Stage):
         if cfg.method != "hudson":
             raise StageInputError(f"unsupported F_ST method: {cfg.method}")
 
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
         groups = {
             pop: idx
             for pop, idx in population_indices(geno, labels).items()
@@ -71,7 +74,7 @@ class FstStage(Stage):
         matrix = pd.DataFrame(0.0, index=pops, columns=pops)
         pair_values: dict[str, float] = {}
         for i, a in enumerate(pops):
-            for b in pops[i + 1:]:
+            for b in pops[i + 1 :]:
                 fst = _hudson_fst(allele_counts[a], allele_counts[b])
                 matrix.loc[a, b] = matrix.loc[b, a] = round(fst, 6)
                 pair_values[f"{a}__{b}"] = round(fst, 6)
@@ -79,22 +82,33 @@ class FstStage(Stage):
         out = ctx.datastore.path_for(self.name, "fst_matrix.csv")
         matrix.to_csv(out)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "fst", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "fst",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "fst", "method": "hudson", "populations": pops,
-                      "pairwise": pair_values, "small_sample_populations": small_groups,
-                      "limitations": (
-                          "Population estimates with fewer than two individuals are descriptive "
-                          "and should not be used for inferential claims."
-                          if small_groups else "No singleton populations were included."
-                      )},
+            metadata={
+                "analysis": "fst",
+                "method": "hudson",
+                "populations": pops,
+                "pairwise": pair_values,
+                "small_sample_populations": small_groups,
+                "limitations": (
+                    "Population estimates with fewer than two individuals are descriptive "
+                    "and should not be used for inferential claims."
+                    if small_groups
+                    else "No singleton populations were included."
+                ),
+            },
         )
         finite = [v for v in pair_values.values() if np.isfinite(v)]
         return StageResult(
             artifacts=[art],
-            metrics={"n_populations": len(pops),
-                     "max_fst": max(finite) if finite else None,
-                     "min_fst": min(finite) if finite else None},
+            metrics={
+                "n_populations": len(pops),
+                "max_fst": max(finite) if finite else None,
+                "min_fst": min(finite) if finite else None,
+            },
         )
 
 

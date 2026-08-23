@@ -23,8 +23,7 @@ from canidae.core.stage import ArtifactSpec, RunContext, Stage, StageConfig, Sta
 def tmp_context(tmp_path: Path) -> RunContext:
     store = DataStore(tmp_path / "store")
     prov = ProvenanceWriter(tmp_path / "run", config_digest="test", seed=1)
-    return build_context(GlobalConfig(), store, LocalRunner(), prov,
-                         run_dir=tmp_path / "run")
+    return build_context(GlobalConfig(), store, LocalRunner(), prov, run_dir=tmp_path / "run")
 
 
 class ProducerStage(Stage):

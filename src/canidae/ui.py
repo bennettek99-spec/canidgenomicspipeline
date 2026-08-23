@@ -83,7 +83,9 @@ def build_ui_config(payload: dict[str, Any], project_root: Path) -> GlobalConfig
         estimate_laptop_run(preset)
 
     workers = _bounded_int(payload.get("max_workers", 2), default=2, minimum=1, maximum=8)
-    memory_mb = _bounded_int(payload.get("memory_mb", 8192), default=8192, minimum=1024, maximum=65536)
+    memory_mb = _bounded_int(
+        payload.get("memory_mb", 8192), default=8192, minimum=1024, maximum=65536
+    )
     pipeline = _analysis_pipeline(
         analyses, entry="reduced_panel" if mode == "redwolf_public" else "ingest"
     )
@@ -104,33 +106,39 @@ def build_ui_config(payload: dict[str, Any], project_root: Path) -> GlobalConfig
         vcf = str(payload.get("vcf_path", "")).strip()
         sheet = str(payload.get("sample_sheet", "")).strip()
         if not vcf or not sheet:
-            raise UiRequestError("Local VCF mode needs both a VCF/BCF path and a sample-sheet CSV path.")
-        overrides.update({
-            "stages.ingest.callset": vcf,
-            "stages.ingest.sample_sheet": sheet,
-            "stages.ingest.dataset_id": str(payload.get("dataset_id") or "local_ui_dataset"),
-            "stages.ingest.reference_build": str(payload.get("reference_build") or "unknown"),
-            "stages.ingest.panel_relative": bool(payload.get("panel_relative", False)),
-        })
+            raise UiRequestError(
+                "Local VCF mode needs both a VCF/BCF path and a sample-sheet CSV path."
+            )
+        overrides.update(
+            {
+                "stages.ingest.callset": vcf,
+                "stages.ingest.sample_sheet": sheet,
+                "stages.ingest.dataset_id": str(payload.get("dataset_id") or "local_ui_dataset"),
+                "stages.ingest.reference_build": str(payload.get("reference_build") or "unknown"),
+                "stages.ingest.panel_relative": bool(payload.get("panel_relative", False)),
+            }
+        )
     else:
         sheet = str(payload.get("sample_sheet", "")).strip()
         if not sheet:
             sheet = "configs/examples/redwolf_jackal_aadr_samples.csv"
         selected = _sample_ids(str(payload.get("selected_samples", "")))
-        overrides.update({
-            "stages.reduced_panel.sample_sheet": sheet,
-            "stages.reduced_panel.preset": preset,
-            "stages.reduced_panel.selected_samples": selected,
-            "stages.reduced_panel.confirm_large_transfer": bool(payload.get("confirm_large_transfer", False)),
-            "stages.reduced_panel.dataset_id": "PRJNA448733_reduced_panel",
-            "stages.reduced_panel.reference_id": "CanFam3.1",
-        })
+        overrides.update(
+            {
+                "stages.reduced_panel.sample_sheet": sheet,
+                "stages.reduced_panel.preset": preset,
+                "stages.reduced_panel.selected_samples": selected,
+                "stages.reduced_panel.confirm_large_transfer": bool(
+                    payload.get("confirm_large_transfer", False)
+                ),
+                "stages.reduced_panel.dataset_id": "PRJNA448733_reduced_panel",
+                "stages.reduced_panel.reference_id": "CanFam3.1",
+            }
+        )
     if "introgression" in analyses:
         outgroup = str(payload.get("outgroup", "")).strip()
         if not outgroup:
-            raise UiRequestError(
-                "D-statistics need an explicit biological outgroup population."
-            )
+            raise UiRequestError("D-statistics need an explicit biological outgroup population.")
         overrides["stages.dstats.outgroup"] = outgroup
         overrides["stages.dstats.block_mode"] = "chromosome"
     if "local_ancestry" in analyses:
@@ -192,7 +200,9 @@ class RunController:
     def start(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
-                raise UiRequestError("A run is already active. Pause, stop, or wait for it to finish.")
+                raise UiRequestError(
+                    "A run is already active. Pause, stop, or wait for it to finish."
+                )
             config = build_ui_config(payload, self.project_root)
             self.config = config
             self.run_id = f"ui-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
@@ -209,7 +219,9 @@ class RunController:
         manager.request_pause()
         with self._lock:
             self.state = "pause_requested"
-            self.message = "Pause requested. The pipeline stops safely after the current stage batch."
+            self.message = (
+                "Pause requested. The pipeline stops safely after the current stage batch."
+            )
         return self.status()
 
     def stop(self) -> dict[str, Any]:
@@ -230,7 +242,9 @@ class RunController:
             manager.resume()
             manager.clear_cancel()
             self.state = "running"
-            self.message = "Resuming with the same run ID; unchanged stages will use the safe cache."
+            self.message = (
+                "Resuming with the same run ID; unchanged stages will use the safe cache."
+            )
             self.error = None
             self._thread = threading.Thread(target=self._run, name="canidae-ui-resume", daemon=True)
             self._thread.start()
@@ -265,7 +279,9 @@ class RunController:
     def _manager(self) -> ResourceManager:
         if self.config is None or self.run_id is None:
             raise UiRequestError("Start a run before using run controls.")
-        return ResourceManager(self.config.resource_manager, run_dir=self.config.paths.run_root / self.run_id)
+        return ResourceManager(
+            self.config.resource_manager, run_dir=self.config.paths.run_root / self.run_id
+        )
 
     def _run(self) -> None:
         assert self.config is not None and self.run_id is not None
@@ -276,17 +292,23 @@ class RunController:
                 self.outputs = outputs
                 if report.cancelled:
                     self.state = "cancelled"
-                    self.message = "Stopped safely. Remove the stop marker or use Resume to continue."
+                    self.message = (
+                        "Stopped safely. Remove the stop marker or use Resume to continue."
+                    )
                 elif report.paused:
                     self.state = "paused"
                     self.message = "Paused safely. Use Resume when ready."
                 elif report.failed:
                     self.state = "failed"
-                    self.error = "; ".join(f"{stage}: {error}" for stage, error in report.failed.items())
+                    self.error = "; ".join(
+                        f"{stage}: {error}" for stage, error in report.failed.items()
+                    )
                     self.message = "The manifest contains the error and a recovery instruction."
                 else:
                     self.state = "completed"
-                    self.message = "Completed. Open the self-contained report or any companion output below."
+                    self.message = (
+                        "Completed. Open the self-contained report or any companion output below."
+                    )
         except Exception as exc:
             with self._lock:
                 self.state = "failed"
@@ -303,15 +325,19 @@ class RunController:
         except (OSError, json.JSONDecodeError):
             return {"progress": "Preparing run manifest…"}
         records = manifest.get("records", [])
-        completed = sum(record.get("status") in {"succeeded", "skipped", "failed"}
-                        for record in records)
-        current = next((record for record in reversed(records)
-                        if record.get("status") == "running"), None)
+        completed = sum(
+            record.get("status") in {"succeeded", "skipped", "failed"} for record in records
+        )
+        current = next(
+            (record for record in reversed(records) if record.get("status") == "running"), None
+        )
         if current:
             detail = ""
             progress_path = self.config.paths.run_root / self.run_id / "progress.json"
             with suppress(OSError, json.JSONDecodeError):
-                detail = str(json.loads(progress_path.read_text(encoding="utf-8")).get("message", ""))
+                detail = str(
+                    json.loads(progress_path.read_text(encoding="utf-8")).get("message", "")
+                )
             return {
                 "progress": f"Current stage: {current.get('stage', 'unknown')} "
                 f"({completed}/{len(self.config.pipeline)} finalized)"
@@ -331,8 +357,11 @@ class RunController:
 def _outputs_for(config: GlobalConfig) -> list[dict[str, str]]:
     store = DataStore(config.paths.data_root / "store")
     return [
-        {"id": str(index), "label": f"{artifact.role}: {artifact.path.name}",
-         "path": str(artifact.path)}
+        {
+            "id": str(index),
+            "label": f"{artifact.role}: {artifact.path.name}",
+            "path": str(artifact.path),
+        }
         for index, artifact in enumerate(
             sorted(store.all(), key=lambda artifact: (artifact.kind.value, artifact.role))
         )
@@ -375,8 +404,10 @@ class _UiHandler(BaseHTTPRequestHandler):
         except UiRequestError as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
         except Exception as exc:  # defensive boundary: never show a raw traceback in the UI
-            self._send_json({"error": f"Unexpected local UI error: {type(exc).__name__}: {exc}"},
-                            status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            self._send_json(
+                {"error": f"Unexpected local UI error: {type(exc).__name__}: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
 
     def log_message(self, _format: str, *_args: Any) -> None:
         return
@@ -416,8 +447,9 @@ class _UiHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def serve_ui(project_root: Path, *, host: str = "127.0.0.1", port: int = 8765,
-             open_browser: bool = True) -> None:
+def serve_ui(
+    project_root: Path, *, host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True
+) -> None:
     """Launch the browser UI and serve until the user interrupts it with Ctrl+C."""
     controller = RunController(Path(project_root).resolve())
 
@@ -464,6 +496,10 @@ updateMode();
 
 
 __all__ = [
-    "RunController", "UiRequestError", "build_ui_config", "estimate_laptop_run",
-    "exact_laptop_estimate", "serve_ui",
+    "RunController",
+    "UiRequestError",
+    "build_ui_config",
+    "estimate_laptop_run",
+    "exact_laptop_estimate",
+    "serve_ui",
 ]

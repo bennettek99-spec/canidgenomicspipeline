@@ -46,32 +46,34 @@ def nyc_run(tmp_path_factory):
     ws = tmp_path_factory.mktemp("hybrid_nyc")
     panel = build_hybrid_panel(ws / "panel")
     queries = [s for s in panel.two_source_query_ids() if s.startswith("NYFIXTURE")]
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "hybrid-nyc", "paths.root": str(ws),
-        "pipeline": ["reference_mixture", "breed_assign", "report"],
-        "logging.level": "WARNING",
-        "stages.reference_mixture.bridge_vcf": str(panel.bridge_vcf),
-        "stages.reference_mixture.reference_genotypes": str(panel.reference_genotypes),
-        "stages.reference_mixture.calls_dir": str(panel.calls_dir),
-        "stages.reference_mixture.query_samples": queries,
-        "stages.reference_mixture.wgs_samples": panel.reference_samples,
-        "stages.reference_mixture.coyote_samples": panel.coyote_samples,
-        "stages.reference_mixture.expected_f1": "NYFIXTURE_F1",
-        "stages.reference_mixture.expected_parent": "NYFIXTURE_PARENT",
-        "stages.reference_mixture.expected_offspring": ["NYFIXTURE_OFF1",
-                                                        "NYFIXTURE_OFF2"],
-        "stages.reference_mixture.f1_target": 0.50,
-        "stages.breed_assign.bridge_vcf": str(panel.bridge_vcf),
-        "stages.breed_assign.wgs_genotypes": str(panel.wgs_genotypes),
-        "stages.breed_assign.calls_dir": str(panel.calls_dir),
-        "stages.breed_assign.dog_fractions": str(panel.dog_fractions),
-        "stages.breed_assign.locus_filter_json": str(panel.reference_genotypes),
-        "stages.breed_assign.query_samples": queries,
-        "stages.breed_assign.min_group": 3,
-        "stages.report.title": "Hybrid fixture",
-        "stages.report.exploratory": True,
-        "stages.report.citations": ["nhgri_722g_wgs", "eastern_coyote_radseq"],
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "hybrid-nyc",
+            "paths.root": str(ws),
+            "pipeline": ["reference_mixture", "breed_assign", "report"],
+            "logging.level": "WARNING",
+            "stages.reference_mixture.bridge_vcf": str(panel.bridge_vcf),
+            "stages.reference_mixture.reference_genotypes": str(panel.reference_genotypes),
+            "stages.reference_mixture.calls_dir": str(panel.calls_dir),
+            "stages.reference_mixture.query_samples": queries,
+            "stages.reference_mixture.wgs_samples": panel.reference_samples,
+            "stages.reference_mixture.coyote_samples": panel.coyote_samples,
+            "stages.reference_mixture.expected_f1": "NYFIXTURE_F1",
+            "stages.reference_mixture.expected_parent": "NYFIXTURE_PARENT",
+            "stages.reference_mixture.expected_offspring": ["NYFIXTURE_OFF1", "NYFIXTURE_OFF2"],
+            "stages.reference_mixture.f1_target": 0.50,
+            "stages.breed_assign.bridge_vcf": str(panel.bridge_vcf),
+            "stages.breed_assign.wgs_genotypes": str(panel.wgs_genotypes),
+            "stages.breed_assign.calls_dir": str(panel.calls_dir),
+            "stages.breed_assign.dog_fractions": str(panel.dog_fractions),
+            "stages.breed_assign.locus_filter_json": str(panel.reference_genotypes),
+            "stages.breed_assign.query_samples": queries,
+            "stages.breed_assign.min_group": 3,
+            "stages.report.title": "Hybrid fixture",
+            "stages.report.exploratory": True,
+            "stages.report.citations": ["nhgri_722g_wgs", "eastern_coyote_radseq"],
+        }
+    )
     run_pipeline(cfg)
     return cfg, panel, queries
 
@@ -164,18 +166,21 @@ def test_report_cites_the_configured_data_sources(nyc_run) -> None:
 def eastern_run(tmp_path_factory):
     ws = tmp_path_factory.mktemp("hybrid_eastern")
     panel = build_hybrid_panel(ws / "panel")
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "hybrid-eastern", "paths.root": str(ws),
-        "pipeline": ["multiway_admixture", "report"],
-        "logging.level": "WARNING",
-        "stages.multiway_admixture.bridge_vcf": str(panel.bridge_vcf),
-        "stages.multiway_admixture.wgs_genotypes": str(panel.wgs_genotypes),
-        "stages.multiway_admixture.western_ids": panel.query_ids(region="western"),
-        "stages.multiway_admixture.bootstrap_n": 25,
-        "stages.multiway_admixture.min_group": 3,
-        "stages.report.title": "Eastern fixture",
-        "stages.report.exploratory": True,
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "hybrid-eastern",
+            "paths.root": str(ws),
+            "pipeline": ["multiway_admixture", "report"],
+            "logging.level": "WARNING",
+            "stages.multiway_admixture.bridge_vcf": str(panel.bridge_vcf),
+            "stages.multiway_admixture.wgs_genotypes": str(panel.wgs_genotypes),
+            "stages.multiway_admixture.western_ids": panel.query_ids(region="western"),
+            "stages.multiway_admixture.bootstrap_n": 25,
+            "stages.multiway_admixture.min_group": 3,
+            "stages.report.title": "Eastern fixture",
+            "stages.report.exploratory": True,
+        }
+    )
     run_pipeline(cfg)
     return cfg, panel
 
@@ -227,23 +232,33 @@ def test_multiway_keeps_them_when_the_guard_is_disabled(tmp_path) -> None:
     )
 
     panel = build_hybrid_panel(tmp_path / "panel")
-    cfg = GlobalConfig.load(include_defaults=True, overrides={
-        "project_name": "guard-off", "paths.root": str(tmp_path),
-        "pipeline": ["multiway_admixture"], "logging.level": "WARNING",
-    })
+    cfg = GlobalConfig.load(
+        include_defaults=True,
+        overrides={
+            "project_name": "guard-off",
+            "paths.root": str(tmp_path),
+            "pipeline": ["multiway_admixture"],
+            "logging.level": "WARNING",
+        },
+    )
     store = DataStore(tmp_path / "store")
     run_dir = tmp_path / "run"
     run_dir.mkdir()
     ctx = build_context(
-        cfg, store, LocalRunner(),
-        ProvenanceWriter(run_dir, config_digest=cfg.digest(), seed=1), run_dir=run_dir,
+        cfg,
+        store,
+        LocalRunner(),
+        ProvenanceWriter(run_dir, config_digest=cfg.digest(), seed=1),
+        run_dir=run_dir,
     )
-    result = MultiwayAdmixtureStage(MultiwayAdmixtureConfig(
-        bridge_vcf=panel.bridge_vcf,
-        wgs_genotypes=panel.wgs_genotypes,
-        bootstrap_n=10,
-        exclude_bridge_wgs_bug_ids=False,
-    )).run(ctx)
+    result = MultiwayAdmixtureStage(
+        MultiwayAdmixtureConfig(
+            bridge_vcf=panel.bridge_vcf,
+            wgs_genotypes=panel.wgs_genotypes,
+            bootstrap_n=10,
+            exclude_bridge_wgs_bug_ids=False,
+        )
+    ).run(ctx)
     table = pd.read_csv(result.artifacts[0].path)
     assert BUG_COLUMN in set(table["sample_id"])
 

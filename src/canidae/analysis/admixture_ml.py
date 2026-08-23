@@ -41,9 +41,7 @@ def panel_frequencies(
     panel = matrix[indices]
     counts = np.nansum(panel, axis=0)
     called = np.sum(~np.isnan(panel), axis=0)
-    freqs = (counts + SHRINKAGE_PSEUDOCOUNT * pooled_prior) / (
-        2.0 * called + SHRINKAGE_PSEUDOCOUNT
-    )
+    freqs = (counts + SHRINKAGE_PSEUDOCOUNT * pooled_prior) / (2.0 * called + SHRINKAGE_PSEUDOCOUNT)
     freqs[called == 0] = np.nan
     return freqs
 
@@ -59,7 +57,8 @@ def loglik_grid(
     """
     steps = round(1.0 / GRID_STEP) + 1
     grid = np.linspace(0.0, 1.0, steps)
-    fw, fd = np.meshgrid(grid, grid, indexing="ij")
+    mesh: list[np.ndarray] = list(np.meshgrid(grid, grid, indexing="ij"))
+    fw, fd = mesh[0], mesh[1]
     valid = fw + fd <= 1.0 + 1e-9
     fw_v, fd_v = fw[valid], fd[valid]
     called = ~np.isnan(alt_counts)
@@ -102,7 +101,8 @@ def cohort_grid(
     """ML mixture fit for a pooled cohort (binomial on per-locus alt counts)."""
     steps = round(1.0 / GRID_STEP) + 1
     grid = np.linspace(0.0, 1.0, steps)
-    fw, fd = np.meshgrid(grid, grid, indexing="ij")
+    mesh: list[np.ndarray] = list(np.meshgrid(grid, grid, indexing="ij"))
+    fw, fd = mesh[0], mesh[1]
     valid = fw + fd <= 1.0 + 1e-9
     fw_v, fd_v = fw[valid], fd[valid]
     use = chromosome_counts > 0
@@ -147,10 +147,11 @@ def bootstrap_ci(
         fw, fd, _ = best_mixture(d, pc, pw, pd)
         wolf_draws.append(fw)
         dog_draws.append(fd)
-    return {
-        "wolf": [round(v, 3) for v in np.percentile(wolf_draws, [2.5, 97.5])],
-        "dog": [round(v, 3) for v in np.percentile(dog_draws, [2.5, 97.5])],
-    }
+    wolf_q: np.ndarray = np.percentile(wolf_draws, [2.5, 97.5])
+    dog_q: np.ndarray = np.percentile(dog_draws, [2.5, 97.5])
+    wolf_ci = [round(float(v), 3) for v in wolf_q]
+    dog_ci = [round(float(v), 3) for v in dog_q]
+    return {"wolf": wolf_ci, "dog": dog_ci}
 
 
 def calls_mixture_loglik(
@@ -165,9 +166,7 @@ def calls_mixture_loglik(
     keep = ~np.isnan(alt_counts)
     observed = alt_counts[keep]
     p_eff = (
-        (1.0 - f_wolf - f_dog) * p_coyote[keep]
-        + f_wolf * p_wolf[keep]
-        + f_dog * p_dog_breed[keep]
+        (1.0 - f_wolf - f_dog) * p_coyote[keep] + f_wolf * p_wolf[keep] + f_dog * p_dog_breed[keep]
     )
     p_eff = np.clip(p_eff, MIN_EFFECTIVE_P, 1.0 - MIN_EFFECTIVE_P)
     alt2 = observed > 1.0

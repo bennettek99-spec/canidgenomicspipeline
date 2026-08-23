@@ -50,13 +50,16 @@ class DiversityStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: DiversityConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno_art = ctx.datastore.get(ArtifactKind.GENOTYPES, role)
         geno = load_genotypes(geno_art.path)
         labels = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
         groups = {
             pop: idx
             for pop, idx in population_indices(geno, labels).items()
@@ -78,20 +81,23 @@ class DiversityStage(Stage):
             mpd = allel.mean_pairwise_difference(ac, fill=0.0)
             panel_diversity = float(np.mean(mpd))
             diversity = float(mpd.sum() / callable_sites) if callable_sites else panel_diversity
-            rows.append({
-                "population": pop,
-                "n_samples": len(idx),
-                "n_segregating_sites": int(ac.is_segregating().sum()),
-                # ``pi`` remains for backwards-compatible table consumers; the explicit
-                # scope fields prevent a selected-SNP average being mistaken for genome-wide pi.
-                "pi": round(diversity, 8),
-                "panel_relative_diversity": round(panel_diversity, 8),
-                "diversity_scope": scope,
-                "callable_sites": callable_sites or None,
-                "mean_heterozygosity": round(float(np.mean(sample_het[idx])), 6),
-                "heterozygosity_scope": "called_panel_sites" if not callable_sites
-                else "called_sites_with_callable_denominator",
-            })
+            rows.append(
+                {
+                    "population": pop,
+                    "n_samples": len(idx),
+                    "n_segregating_sites": int(ac.is_segregating().sum()),
+                    # ``pi`` remains for backwards-compatible table consumers; the explicit
+                    # scope fields prevent a selected-SNP average being mistaken for genome-wide pi.
+                    "pi": round(diversity, 8),
+                    "panel_relative_diversity": round(panel_diversity, 8),
+                    "diversity_scope": scope,
+                    "callable_sites": callable_sites or None,
+                    "mean_heterozygosity": round(float(np.mean(sample_het[idx])), 6),
+                    "heterozygosity_scope": "called_panel_sites"
+                    if not callable_sites
+                    else "called_sites_with_callable_denominator",
+                }
+            )
         table = pd.DataFrame(rows).sort_values("population").reset_index(drop=True)
 
         out = ctx.datastore.path_for(self.name, "diversity.csv")
@@ -111,7 +117,10 @@ class DiversityStage(Stage):
                 "population-level uncertainty."
             )
         art = Artifact(
-            ArtifactKind.ANALYSIS_RESULT, "diversity", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "diversity",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
             metadata={
                 "analysis": "diversity",
@@ -124,8 +133,7 @@ class DiversityStage(Stage):
         )
         return StageResult(
             artifacts=[art],
-            metrics={"n_populations": len(table),
-                     "mean_pi": round(float(table["pi"].mean()), 6)},
+            metrics={"n_populations": len(table), "mean_pi": round(float(table["pi"].mean()), 6)},
         )
 
 

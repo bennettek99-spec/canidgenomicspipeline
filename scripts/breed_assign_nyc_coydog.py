@@ -20,6 +20,8 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+import validate_nyc_coydog as nyc
+
 from canidae.analysis.breed_panel import (
     INFERRED_VILLAGE_CODES,
     breed_of,
@@ -49,8 +51,6 @@ from canidae.io.indexed_vcf import (
     source_header,
 )
 
-import validate_nyc_coydog as nyc
-
 
 def fetch_all_sample_genotypes(
     sites: dict[tuple[str, int], tuple[str, str]],
@@ -79,9 +79,7 @@ def fetch_all_sample_genotypes(
     for chrom, pos in sites:
         chunks.update(chunks_for(by_chrom[chrom], pos))
     merged = merge_chunks(chunks)
-    estimated = sum(
-        ((end >> 16) + BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged
-    )
+    estimated = sum(((end >> 16) + BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged)
     if budget.used + estimated > max_bytes:
         raise RuntimeError(
             f"indexed extraction estimate exceeds safety limit: "
@@ -188,9 +186,7 @@ def main() -> None:
     parser.add_argument("--min-depth", type=int, default=8)
     parser.add_argument("--min-group", type=int, default=3)
     parser.add_argument("--max-download-bytes", type=int, default=9_000_000_000)
-    parser.add_argument(
-        "--top-k", type=int, default=5, help="breeds to report per NYC sample"
-    )
+    parser.add_argument("--top-k", type=int, default=5, help="breeds to report per NYC sample")
     args = parser.parse_args()
     if not 1 <= args.max_download_bytes < 10_000_000_000:
         parser.error("--max-download-bytes must be positive and below 10 GB")
@@ -282,9 +278,7 @@ def main() -> None:
     print(f"Leave-one-out top-1 accuracy: {loo_summary}", flush=True)
 
     validation = json.loads(args.validation_json.read_text(encoding="utf-8"))
-    dog_fractions = {
-        str(row["sample_id"]): row["dog_fraction"] for row in validation["results"]
-    }
+    dog_fractions = {str(row["sample_id"]): row["dog_fraction"] for row in validation["results"]}
     score_rows: list[dict[str, object]] = []
     per_sample_top: dict[str, object] = {}
     for sample_id in nyc.NYC_RUNS:
@@ -344,9 +338,7 @@ def main() -> None:
             flush=True,
         )
 
-    with (args.out_dir / "breed_scores.csv").open(
-        "w", newline="", encoding="utf-8"
-    ) as handle:
+    with (args.out_dir / "breed_scores.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(score_rows[0]))
         writer.writeheader()
         writer.writerows(score_rows)
@@ -365,9 +357,7 @@ def main() -> None:
                             candidates.items(), key=lambda item: -len(item[1])
                         )
                     },
-                    "group_categories": {
-                        group: categories[group] for group in sorted(groups)
-                    },
+                    "group_categories": {group: categories[group] for group in sorted(groups)},
                     "inferred_labels": {
                         code: f"VillageDog({region}, inferred)"
                         for code, region in INFERRED_VILLAGE_CODES.items()

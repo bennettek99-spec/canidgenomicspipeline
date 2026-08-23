@@ -44,16 +44,12 @@ def test_every_shipped_bundle_validates(path: Path) -> None:
 
 def test_bundles_resolve_by_bare_id_and_by_path() -> None:
     by_id = load_citation_bundles([Path("nhgri_722g_wgs")], ROOT)
-    by_path = load_citation_bundles(
-        [Path("configs/citations/nhgri_722g_wgs.yaml")], ROOT
-    )
+    by_path = load_citation_bundles([Path("configs/citations/nhgri_722g_wgs.yaml")], ROOT)
     assert by_id[0].id == by_path[0].id == "nhgri_722g_wgs"
 
 
 def test_duplicate_bundles_are_listed_once() -> None:
-    bundles = load_citation_bundles(
-        [Path("nhgri_722g_wgs"), Path("nhgri_722g_wgs")], ROOT
-    )
+    bundles = load_citation_bundles([Path("nhgri_722g_wgs"), Path("nhgri_722g_wgs")], ROOT)
     assert len(bundles) == 1
 
 
@@ -91,7 +87,8 @@ def test_resolved_url_falls_back_to_the_archive_link() -> None:
 
 def test_citation_rows_report_missing_identifiers_honestly() -> None:
     bundle = CitationBundle(
-        id="b", label="Bundle",
+        id="b",
+        label="Bundle",
         sources=[SourceCitation(key="k", label="Source", url="https://example.org")],
     )
     row = citation_rows([bundle])[0]
@@ -115,9 +112,7 @@ PRESETS_WITH_CITATIONS = [
 
 @pytest.mark.parametrize("preset", PRESETS_WITH_CITATIONS)
 def test_preset_declares_resolvable_citation_bundles(preset: str) -> None:
-    raw = yaml.safe_load(
-        (ROOT / "configs/examples" / preset).read_text(encoding="utf-8")
-    )
+    raw = yaml.safe_load((ROOT / "configs/examples" / preset).read_text(encoding="utf-8"))
     declared = raw["stages"]["report"]["citations"]
     assert declared, f"{preset} declares no citation bundles"
     bundles = load_citation_bundles([Path(entry) for entry in declared], ROOT)

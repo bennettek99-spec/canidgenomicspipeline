@@ -20,24 +20,32 @@ def test_qc_removes_failed_samples_and_sites_before_genotype_loading(
     source_dir = tmp_context.datastore.stage_dir("source")
     vcf = source_dir / "input.vcf"
     samples = np.array(["A", "B", "C"])
-    gt = np.array([
-        [[0, 0], [-1, -1], [0, 1]],
-        [[0, 1], [-1, -1], [-1, -1]],
-        [[1, 1], [1, 1], [1, 1]],
-    ], dtype=np.int8)
+    gt = np.array(
+        [
+            [[0, 0], [-1, -1], [0, 1]],
+            [[0, 1], [-1, -1], [-1, -1]],
+            [[1, 1], [1, 1], [1, 1]],
+        ],
+        dtype=np.int8,
+    )
     write_minimal_vcf(
-        vcf, np.array(["1", "1", "1"]), np.array([100, 200, 300]),
-        np.array(["A", "A", "C"]), np.array(["G", "G", "T"]), samples, gt,
+        vcf,
+        np.array(["1", "1", "1"]),
+        np.array([100, 200, 300]),
+        np.array(["A", "A", "C"]),
+        np.array(["G", "G", "T"]),
+        samples,
+        gt,
     )
     sheet = source_dir / "samples.csv"
-    pd.DataFrame({
-        "sample_id": samples,
-        "taxon": ["gray_wolf", "gray_wolf", "coyote"],
-        "population": ["wolf", "wolf", "coyote"],
-    }).to_csv(sheet, index=False)
-    tmp_context.datastore.register(
-        Artifact(ArtifactKind.CALLSET, "callset", vcf, FileFormat.VCF)
-    )
+    pd.DataFrame(
+        {
+            "sample_id": samples,
+            "taxon": ["gray_wolf", "gray_wolf", "coyote"],
+            "population": ["wolf", "wolf", "coyote"],
+        }
+    ).to_csv(sheet, index=False)
+    tmp_context.datastore.register(Artifact(ArtifactKind.CALLSET, "callset", vcf, FileFormat.VCF))
     tmp_context.datastore.register(
         Artifact(ArtifactKind.SAMPLE_SHEET, "sample_sheet", sheet, FileFormat.CSV)
     )

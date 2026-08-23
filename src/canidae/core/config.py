@@ -16,12 +16,14 @@ import hashlib
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from canidae.core.errors import ConfigError
+
+_T = TypeVar("_T", bound=BaseModel)
 
 _PACKAGE_DEFAULTS = Path(__file__).resolve().parents[3] / "configs" / "defaults.yaml"
 
@@ -173,22 +175,18 @@ class GlobalConfig(_Frozen):
         """Return the raw config block for a stage (empty dict if absent)."""
         return dict(self.stages.get(stage_name, {}))
 
-    def parse_stage_config(self, stage_name: str, model: type[BaseModel]) -> BaseModel:
+    def parse_stage_config(self, stage_name: str, model: type[_T]) -> _T:
         """Validate a stage's config block against its own Pydantic model."""
         try:
             return model.model_validate(self.stage_config(stage_name))
         except Exception as exc:
-            raise ConfigError(
-                f"config for stage '{stage_name}' failed validation: {exc}"
-            ) from exc
+            raise ConfigError(f"config for stage '{stage_name}' failed validation: {exc}") from exc
 
     # -- provenance --------------------------------------------------------------------
 
     def digest(self) -> str:
         """A stable SHA-256 over the canonicalized config (used for cache invalidation)."""
-        payload = json.dumps(
-            self.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-        )
+        payload = json.dumps(self.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def to_yaml(self) -> str:
@@ -204,11 +202,7 @@ def _deep_merge(base: dict[str, Any], overlay: Mapping[str, Any]) -> dict[str, A
     """Recursively merge ``overlay`` into ``base`` in place. Mappings merge; scalars and
     lists replace."""
     for key, value in overlay.items():
-        if (
-            key in base
-            and isinstance(base[key], dict)
-            and isinstance(value, Mapping)
-        ):
+        if key in base and isinstance(base[key], dict) and isinstance(value, Mapping):
             _deep_merge(base[key], value)
         else:
             base[key] = value

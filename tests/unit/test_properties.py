@@ -35,7 +35,7 @@ def test_string_genotype_scales_are_inverse(counts: list[int]) -> None:
 
 @given(st.lists(st.integers(min_value=-1, max_value=2), min_size=9, max_size=9))
 def test_vcf_round_trip_preserves_alt_counts(values: list[int]) -> None:
-    calls = np.asarray([_gt(value) for value in values], dtype="i1").reshape(3, 3, 2)
+    calls: np.ndarray = np.asarray([_gt(value) for value in values], dtype="i1").reshape(3, 3, 2)
     with TemporaryDirectory() as directory:
         path = write_minimal_vcf(
             Path(directory) / "roundtrip.vcf",
@@ -52,7 +52,7 @@ def test_vcf_round_trip_preserves_alt_counts(values: list[int]) -> None:
 
 @given(st.lists(st.integers(min_value=-1, max_value=2), min_size=20, max_size=20))
 def test_plink_round_trip_preserves_alt_counts(values: list[int]) -> None:
-    calls = np.asarray([_gt(value) for value in values], dtype="i1").reshape(4, 5, 2)
+    calls: np.ndarray = np.asarray([_gt(value) for value in values], dtype="i1").reshape(4, 5, 2)
     geno = Genotypes(
         calls=allel.GenotypeArray(calls),
         pos=np.arange(100, 500, 100, dtype=np.int64),
@@ -61,7 +61,5 @@ def test_plink_round_trip_preserves_alt_counts(values: list[int]) -> None:
     )
     with TemporaryDirectory() as directory:
         fileset = write_plink_bed(geno, Path(directory) / "roundtrip")
-        expected = np.asarray(values, dtype="i1").reshape(4, 5)
-        np.testing.assert_array_equal(
-            decode_bed(fileset, n_samples=5), expected
-        )
+        expected: np.ndarray = np.asarray(values, dtype="i1").reshape(4, 5)
+        np.testing.assert_array_equal(decode_bed(fileset, n_samples=5), expected)

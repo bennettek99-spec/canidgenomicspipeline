@@ -90,21 +90,18 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["N802"]  # test helper names
+# Self-contained HTML report: the long lines are prose/template strings, not code.
+"scripts/render_nyc_coydog_report.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = false
 check_untyped_defs = true
 no_implicit_optional = true
-warn_unused_ignores = false
+warn_unused_ignores = true
+warn_redundant_casts = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
-# The existing scientific stages predate type enforcement. Keep CI blocking on
-# typed code paths while the legacy numerical interfaces are tightened in place.
-disable_error_code = [
-    "arg-type", "assignment", "dict-item", "no-any-return", "no-untyped-def",
-    "no-untyped-call", "override", "return-value", "type-arg", "var-annotated",
-]
 
 [[tool.mypy.overrides]]
 module = [

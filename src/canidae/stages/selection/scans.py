@@ -26,7 +26,7 @@ from canidae.stages.popgen.store import load_genotypes, load_sample_labels, popu
 
 
 class SelectionConfig(StageConfig):
-    focal_population: str = ""       # PBS focal pop; auto (first) if empty
+    focal_population: str = ""  # PBS focal pop; auto (first) if empty
     reference_populations: list[str] = Field(default_factory=list)  # auto if empty
     window_bp: int = 100_000
 
@@ -48,12 +48,15 @@ class SelectionStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: SelectionConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
         groups = population_indices(geno, labels)
 
         focal, ref_b, ref_c = self._triad(cfg, groups)
@@ -65,8 +68,11 @@ class SelectionStage(Stage):
             pos = geno.pos[m]
             if pos.size < 2:
                 continue
-            rows.extend(self._contig_windows(str(contig), pos, {p: ac[p][m] for p in ac},
-                                             focal, ref_b, ref_c, cfg.window_bp))
+            rows.extend(
+                self._contig_windows(
+                    str(contig), pos, {p: ac[p][m] for p in ac}, focal, ref_b, ref_c, cfg.window_bp
+                )
+            )
         table = pd.DataFrame(rows)
         if table.empty:
             raise StageInputError("no windows computed (too few sites)")
@@ -74,16 +80,24 @@ class SelectionStage(Stage):
         out = ctx.datastore.path_for(self.name, "selection_windows.csv")
         table.to_csv(out, index=False)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "selection", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "selection",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "selection", "focal": focal,
-                      "references": [ref_b, ref_c], "window_bp": cfg.window_bp,
-                      "n_windows": len(table),
-                      "max_pbs": round(float(np.nanmax(table["pbs"])), 4)})
+            metadata={
+                "analysis": "selection",
+                "focal": focal,
+                "references": [ref_b, ref_c],
+                "window_bp": cfg.window_bp,
+                "n_windows": len(table),
+                "max_pbs": round(float(np.nanmax(table["pbs"])), 4),
+            },
+        )
         return StageResult(
             artifacts=[art],
-            metrics={"n_windows": len(table),
-                     "max_pbs": round(float(np.nanmax(table["pbs"])), 4)})
+            metrics={"n_windows": len(table), "max_pbs": round(float(np.nanmax(table["pbs"])), 4)},
+        )
 
     def _triad(self, cfg: SelectionConfig, groups) -> tuple[str, str, str]:
         pops = list(groups)
@@ -102,11 +116,16 @@ class SelectionStage(Stage):
         td, windows, _ = allel.windowed_tajima_d(pos, ac[focal], size=window_bp)
         rows = []
         for i, (start, stop) in enumerate(windows):
-            pbs = _pbs(fst_ab[i], fst_ac[i], fst_bc[i])
-            rows.append({"chrom": contig, "start": int(start), "end": int(stop),
-                         "pbs": round(pbs, 5) if np.isfinite(pbs) else np.nan,
-                         "tajima_d": round(float(td[i]), 5) if np.isfinite(td[i])
-                         else np.nan})
+            pbs = _pbs(float(fst_ab[i]), float(fst_ac[i]), float(fst_bc[i]))
+            rows.append(
+                {
+                    "chrom": contig,
+                    "start": int(start),
+                    "end": int(stop),
+                    "pbs": round(pbs, 5) if np.isfinite(pbs) else np.nan,
+                    "tajima_d": round(float(td[i]), 5) if np.isfinite(td[i]) else np.nan,
+                }
+            )
         return rows
 
 
@@ -119,6 +138,7 @@ def _pbs(fst_ab: float, fst_ac: float, fst_bc: float) -> float:
     def t(f: float) -> float:
         f = min(max(f, 0.0), 0.9999)
         return -np.log(1.0 - f)
+
     if not all(np.isfinite([fst_ab, fst_ac, fst_bc])):
         return float("nan")
     return (t(fst_ab) + t(fst_ac) - t(fst_bc)) / 2.0

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
+from typing import cast
 
 from pydantic import Field
 
@@ -141,9 +142,7 @@ class BreedAssignStage(Stage):
             for group, indices in candidates.items()
         }
 
-        loo_rows, loo_summary = leave_one_out(
-            keys, records, samples, candidates, cfg.min_group
-        )
+        loo_rows, loo_summary = leave_one_out(keys, records, samples, candidates, cfg.min_group)
         loo_path = ctx.datastore.path_for(self.name, "leave_one_out.csv")
         write_csv_dicts(loo_path, loo_rows)
 
@@ -163,13 +162,11 @@ class BreedAssignStage(Stage):
                 ll, used = calls_log_likelihood(
                     calls, keys, panel, coyote_panel, float(dog_fraction)
                 )
-                entries.append(
-                    {"breed": breed, "log_likelihood": round(ll, 2), "loci_used": used}
-                )
+                entries.append({"breed": breed, "log_likelihood": round(ll, 2), "loci_used": used})
             any_ll, any_used = calls_log_likelihood(
                 calls, keys, pooled_panel, coyote_panel, float(dog_fraction)
             )
-            entries.sort(key=lambda entry: float(entry["log_likelihood"]), reverse=True)
+            entries.sort(key=lambda entry: cast(float, entry["log_likelihood"]), reverse=True)
             for rank, entry in enumerate(entries[: cfg.top_k], start=1):
                 score_rows.append(
                     {
@@ -179,8 +176,8 @@ class BreedAssignStage(Stage):
                         "log_likelihood": entry["log_likelihood"],
                         "gap_to_next": (
                             round(
-                                float(entries[rank - 1]["log_likelihood"])
-                                - float(entries[rank]["log_likelihood"]),
+                                cast(float, entries[rank - 1]["log_likelihood"])
+                                - cast(float, entries[rank]["log_likelihood"]),
                                 2,
                             )
                             if rank < len(entries)
@@ -190,7 +187,7 @@ class BreedAssignStage(Stage):
                     }
                 )
             best = entries[0]
-            gap = float(best["log_likelihood"]) - any_ll
+            gap = cast(float, best["log_likelihood"]) - any_ll
             per_sample[sample_id] = {
                 "dog_fraction": dog_fraction,
                 "best_breed": best["breed"],
@@ -200,9 +197,7 @@ class BreedAssignStage(Stage):
                 "single_breed_supported": bool(gap > cfg.single_breed_gap),
                 "loci_used": any_used,
             }
-            _log.info(
-                "%s best=%s gap=%.2f", sample_id, best["breed"], gap
-            )
+            _log.info("%s best=%s gap=%.2f", sample_id, best["breed"], gap)
 
         scores_path = ctx.datastore.path_for(self.name, "breed_scores.csv")
         write_csv_dicts(scores_path, score_rows)
@@ -293,9 +288,7 @@ def _load_dog_fractions(path: Path, ctx: RunContext) -> dict[str, float]:
 
         df = pd.read_csv(path)
         if "sample_id" not in df.columns or "dog_fraction" not in df.columns:
-            raise StageInputError(
-                "dog_fractions CSV must have sample_id and dog_fraction columns"
-            )
+            raise StageInputError("dog_fractions CSV must have sample_id and dog_fraction columns")
         return {
             str(row.sample_id): float(row.dog_fraction)
             for row in df.itertuples(index=False)

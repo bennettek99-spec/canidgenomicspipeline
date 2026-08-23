@@ -66,13 +66,19 @@ class IngestStage(Stage):
         df.to_csv(normalized, index=False)
 
         sheet_art = ctx.datastore.add(
-            ArtifactKind.SAMPLE_SHEET, "sample_sheet", normalized,
-            fmt=FileFormat.CSV, produced_by=self.name,
+            ArtifactKind.SAMPLE_SHEET,
+            "sample_sheet",
+            normalized,
+            fmt=FileFormat.CSV,
+            produced_by=self.name,
             metadata={"n_samples": len(df)},
         )
         callset_art = ctx.datastore.add(
-            ArtifactKind.CALLSET, "callset", vcf_path,
-            fmt=_guess_format(vcf_path), produced_by=self.name,
+            ArtifactKind.CALLSET,
+            "callset",
+            vcf_path,
+            fmt=_guess_format(vcf_path),
+            produced_by=self.name,
             metadata={
                 "dataset_id": cfg.dataset_id,
                 "source": str(vcf_path),
@@ -121,8 +127,13 @@ class SampleSheetStage(Stage):
         normalized = ctx.datastore.path_for(self.name, "sample_sheet.csv")
         df.to_csv(normalized, index=False)
         art = ctx.datastore.add(
-            ArtifactKind.SAMPLE_SHEET, "sample_sheet", normalized, fmt=FileFormat.CSV,
-            produced_by=self.name, metadata={"n_samples": len(df)})
+            ArtifactKind.SAMPLE_SHEET,
+            "sample_sheet",
+            normalized,
+            fmt=FileFormat.CSV,
+            produced_by=self.name,
+            metadata={"n_samples": len(df)},
+        )
         return StageResult(artifacts=[art], metrics={"n_samples": len(df)})
 
 

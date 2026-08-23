@@ -100,7 +100,10 @@ def test_panel_frequencies_shrink_toward_the_pooled_prior() -> None:
 
 def test_wgs_allele_count_matrix_shape_and_missingness() -> None:
     keys = [("chr1", 10), ("chr1", 20)]
-    records = {("chr1", 10): ["0/0", "1/1"], ("chr1", 20): ["0/1", None]}
+    records: dict[tuple[str, int], list[str | None]] = {
+        ("chr1", 10): ["0/0", "1/1"],
+        ("chr1", 20): ["0/1", None],
+    }
     matrix = wgs_allele_count_matrix(keys, records)
     assert matrix.shape == (2, 2)
     assert matrix[0].tolist() == [0.0, 1.0]
@@ -152,7 +155,10 @@ def test_infer_dog_fraction_returns_none_below_min_called() -> None:
     reference = {("chr1", 100): ["0/0", "1/1"]}
     calls = {("chr1", 100): ("0/1", 20, 10, 10)}
     est, called, rmse = infer_dog_fraction(
-        calls, reference, wgs_samples=wgs, coyote_samples=frozenset({"Coy1"}),
+        calls,
+        reference,
+        wgs_samples=wgs,
+        coyote_samples=frozenset({"Coy1"}),
         min_called=20,
     )
     assert est is None and rmse is None and called == 1
@@ -170,7 +176,10 @@ def test_infer_dog_fraction_skips_non_diagnostic_loci() -> None:
         ("chr1", 200): ("0/0", 20, 20, 0),
     }
     est, called, _ = infer_dog_fraction(
-        calls, reference, wgs_samples=wgs, coyote_samples=frozenset({"Coy1"}),
+        calls,
+        reference,
+        wgs_samples=wgs,
+        coyote_samples=frozenset({"Coy1"}),
         min_called=1,
     )
     assert called == 1
@@ -220,8 +229,7 @@ def test_best_mixture_recovers_a_pure_wolf_sample() -> None:
 
 
 def test_best_mixture_ignores_uncalled_loci() -> None:
-    p_c, p_w, p_d = (np.array([0.02, 0.02]), np.array([0.98, 0.98]),
-                     np.array([0.02, 0.02]))
+    p_c, p_w, p_d = (np.array([0.02, 0.02]), np.array([0.98, 0.98]), np.array([0.02, 0.02]))
     both = best_mixture(np.array([2.0, np.nan]), p_c, p_w, p_d)
     only = best_mixture(np.array([2.0]), p_c[:1], p_w[:1], p_d[:1])
     assert both[:2] == only[:2]
@@ -323,10 +331,19 @@ def test_bridge_panel_round_trip(tmp_path: Path) -> None:
 
 def test_bridge_wgs_bug_ids_are_the_documented_mislabeled_columns() -> None:
     """The exclusion list must stay pinned; silently emptying it re-opens the bug."""
-    assert frozenset(
-        {"Coyote01", "Coyote02", "AlaskanWolf", "AlgonquinWolf13467",
-         "AlgonquinWolf13470", "GoldenJackal01"}
-    ) == BRIDGE_WGS_IDS
+    assert (
+        frozenset(
+            {
+                "Coyote01",
+                "Coyote02",
+                "AlaskanWolf",
+                "AlgonquinWolf13467",
+                "AlgonquinWolf13470",
+                "GoldenJackal01",
+            }
+        )
+        == BRIDGE_WGS_IDS
+    )
 
 
 def test_load_calls_csv_masks_shallow_sites(tmp_path: Path) -> None:
@@ -338,8 +355,7 @@ def test_load_calls_csv_masks_shallow_sites(tmp_path: Path) -> None:
         "chr1,300,A,G,1/1,20,1,19\n",
         encoding="utf-8",
     )
-    sites = {("chr1", 100): ("A", "G"), ("chr1", 200): ("A", "G"),
-             ("chr1", 300): ("A", "G")}
+    sites = {("chr1", 100): ("A", "G"), ("chr1", 200): ("A", "G"), ("chr1", 300): ("A", "G")}
     calls = load_calls_csv(path, sites, min_depth=8)
     assert calls[("chr1", 100)][0] == "0/1"
     assert calls[("chr1", 200)][0] is None  # below min_depth
@@ -351,8 +367,7 @@ def test_load_calls_csv_requires_full_site_coverage(tmp_path: Path) -> None:
 
     path = tmp_path / "Q1_calls.csv"
     path.write_text(
-        "chrom,position,ref,alt,gt,depth,ref_count,alt_count\n"
-        "chr1,100,A,G,0/1,20,10,10\n",
+        "chrom,position,ref,alt,gt,depth,ref_count,alt_count\nchr1,100,A,G,0/1,20,10,10\n",
         encoding="utf-8",
     )
     sites = {("chr1", 100): ("A", "G"), ("chr1", 999): ("A", "G")}
@@ -416,8 +431,11 @@ def test_reference_mixture_stage_recovers_fixture_truth(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
     run_dir.mkdir()
     ctx = build_context(
-        cfg, store, LocalRunner(),
-        ProvenanceWriter(run_dir, config_digest=cfg.digest(), seed=1), run_dir=run_dir,
+        cfg,
+        store,
+        LocalRunner(),
+        ProvenanceWriter(run_dir, config_digest=cfg.digest(), seed=1),
+        run_dir=run_dir,
     )
     result = ReferenceMixtureStage(
         ReferenceMixtureConfig(
@@ -440,9 +458,7 @@ def test_reference_mixture_stage_recovers_fixture_truth(tmp_path: Path) -> None:
     # fraction. That is a documented limitation of the two-source recipe, and
     # the multiway stage is the one that separates the two.
     wolf_carrying = panel.wolf_carrying_query_ids()
-    inflation = [
-        table.loc[s, "dog_fraction"] - panel.truth[s].f_dog for s in wolf_carrying
-    ]
+    inflation = [table.loc[s, "dog_fraction"] - panel.truth[s].f_dog for s in wolf_carrying]
     assert min(inflation) > 0.0
 
     manifest = json.loads(Path(result.artifacts[0].metadata["manifest"]).read_text())

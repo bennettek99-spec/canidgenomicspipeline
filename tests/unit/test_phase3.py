@@ -23,7 +23,7 @@ def _abba_baba_freqs(n_abba: int, n_baba: int, *, seed: int = 0):
     real data) so the block jackknife sees homogeneous blocks."""
     n = n_abba + n_baba
     rng = np.random.default_rng(seed)
-    is_abba = np.zeros(n, dtype=bool)
+    is_abba: np.ndarray = np.zeros(n, dtype=bool)
     is_abba[rng.permutation(n)[:n_abba]] = True
     p1 = np.where(is_abba, 0.0, 1.0)
     p2 = np.where(is_abba, 1.0, 0.0)
@@ -34,8 +34,8 @@ def _abba_baba_freqs(n_abba: int, n_baba: int, *, seed: int = 0):
 
 def test_d_statistic_detects_abba_excess() -> None:
     d = d_statistic(*_abba_baba_freqs(600, 200), n_blocks=20)
-    assert 0.4 < d.estimate < 0.6      # (600-200)/(600+200) = 0.5
-    assert abs(d.z) > 3                 # significant
+    assert 0.4 < d.estimate < 0.6  # (600-200)/(600+200) = 0.5
+    assert abs(d.z) > 3  # significant
 
 
 def test_d_statistic_symmetric_is_zero() -> None:
@@ -56,19 +56,28 @@ def test_coordinate_aware_jackknife_keeps_chromosome_blocks_distinct() -> None:
     pos = np.array([100, 200, 1_000_100, 1_000_200] * 2)
 
     fixed = d_statistic(
-        p1, p2, p3, po,
+        p1,
+        p2,
+        p3,
+        po,
         chrom=chrom,
         pos=pos,
         block_mode="fixed_bp",
         block_size_bp=1_000_000,
     )
     by_chromosome = d_statistic(
-        p1, p2, p3, po,
+        p1,
+        p2,
+        p3,
+        po,
         chrom=chrom,
         block_mode="chromosome",
     )
     stat_f4 = f4(
-        p1, p2, p3, po,
+        p1,
+        p2,
+        p3,
+        po,
         chrom=chrom,
         block_mode="chromosome",
     )
@@ -83,7 +92,10 @@ def test_fixed_bp_blocks_require_positions() -> None:
     p1, p2, p3, po = _abba_baba_freqs(4, 4)
     with pytest.raises(ValueError, match="requires positions"):
         d_statistic(
-            p1, p2, p3, po,
+            p1,
+            p2,
+            p3,
+            po,
             chrom=np.array(["1"] * 8),
             block_mode="fixed_bp",
         )
@@ -92,15 +104,18 @@ def test_fixed_bp_blocks_require_positions() -> None:
 def test_neighbor_joining_recovers_topology() -> None:
     # additive distances for the tree ((A,B),(C,D))
     labels = ["A", "B", "C", "D"]
-    d = np.array([
-        [0, 2, 3, 3],
-        [2, 0, 3, 3],
-        [3, 3, 0, 2],
-        [3, 3, 2, 0],
-    ], dtype=float)
+    d = np.array(
+        [
+            [0, 2, 3, 3],
+            [2, 0, 3, 3],
+            [3, 3, 0, 2],
+            [3, 3, 2, 0],
+        ],
+        dtype=float,
+    )
     tree = neighbor_joining(d, labels)
     splits = bipartitions(tree)
-    assert frozenset({"C", "D"}) in splits    # the A,B | C,D split (canonicalized vs ref A)
+    assert frozenset({"C", "D"}) in splits  # the A,B | C,D split (canonicalized vs ref A)
 
 
 def test_to_newick_is_parseable() -> None:
@@ -135,10 +150,10 @@ def test_write_phylip_iupac(tmp_path: Path) -> None:
     geno = _demo_genotypes()
     path = write_phylip(geno, tmp_path / "aln.phy", segregating_only=False)
     lines = path.read_text(encoding="utf-8").splitlines()
-    assert lines[0] == "4 2"                 # 4 taxa, 2 sites
+    assert lines[0] == "4 2"  # 4 taxa, 2 sites
     seqs = {ln.split()[0]: ln.split()[1] for ln in lines[1:]}
-    assert seqs["B"] == "WA"                 # het then hom-ref
-    assert seqs["D"][0] == "N"               # missing genotype -> N
+    assert seqs["B"] == "WA"  # het then hom-ref
+    assert seqs["D"][0] == "N"  # missing genotype -> N
 
 
 def test_write_treemix_input(tmp_path: Path) -> None:
@@ -149,4 +164,4 @@ def test_write_treemix_input(tmp_path: Path) -> None:
         header = fh.readline().split()
         first = fh.readline().split()
     assert header == ["pop1", "pop2"]
-    assert all("," in field for field in first)   # "ref,alt" per population
+    assert all("," in field for field in first)  # "ref,alt" per population

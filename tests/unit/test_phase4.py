@@ -39,10 +39,10 @@ def test_align_command_pipeline() -> None:
 
 
 def test_align_command_supports_interleaved_and_single_end_reads() -> None:
-    interleaved = align_command("I1", "reads.fq.gz", "", "ref.fa", "I1.cram", 2,
-                                layout="interleaved")
-    single = align_command("S1", "reads.fq.gz", "", "ref.fa", "S1.cram", 2,
-                           layout="single")
+    interleaved = align_command(
+        "I1", "reads.fq.gz", "", "ref.fa", "I1.cram", 2, layout="interleaved"
+    )
+    single = align_command("S1", "reads.fq.gz", "", "ref.fa", "S1.cram", 2, layout="single")
     assert " -p reads.fq.gz " in interleaved
     assert "reads.fq.gz " in single and " -p " not in single
 
@@ -55,15 +55,14 @@ def test_call_command_backends() -> None:
 
 
 def test_joint_command_backends() -> None:
-    assert "glnexus_cli" in joint_command(["a.g.vcf", "b.g.vcf"], "ref", "out.vcf",
-                                          "glnexus", 4)
+    assert "glnexus_cli" in joint_command(["a.g.vcf", "b.g.vcf"], "ref", "out.vcf", "glnexus", 4)
     assert "GenotypeGVCFs" in joint_command(["a.g.vcf"], "ref", "out.vcf", "gatk", 4)
 
 
 def test_bcftools_joint_command() -> None:
     cmd = bcftools_joint_command(["A.cram", "B.cram", "C.cram"], "ref.fa", "joint.vcf.gz", 8)
     assert "bcftools mpileup -f ref.fa" in cmd
-    assert "A.cram B.cram C.cram" in cmd          # all samples in one call
+    assert "A.cram B.cram C.cram" in cmd  # all samples in one call
     assert "bcftools call -m -v" in cmd and "joint.vcf.gz" in cmd
 
 

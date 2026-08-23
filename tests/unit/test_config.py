@@ -17,8 +17,7 @@ def test_defaults_load() -> None:
 
 def test_layered_override(tmp_path: Path) -> None:
     project = tmp_path / "project.yaml"
-    project.write_text("project_name: wolves\nexecutor:\n  max_workers: 16\n",
-                       encoding="utf-8")
+    project.write_text("project_name: wolves\nexecutor:\n  max_workers: 16\n", encoding="utf-8")
     cfg = GlobalConfig.load(project)
     assert cfg.project_name == "wolves"
     assert cfg.executor.max_workers == 16

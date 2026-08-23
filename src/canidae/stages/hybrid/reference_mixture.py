@@ -8,6 +8,7 @@ fractions plus a JSON validation verdict. This is a bridge-locus diagnostic.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from pydantic import Field
 
@@ -133,9 +134,7 @@ class ReferenceMixtureStage(Stage):
                 min_difference=cfg.min_difference,
                 min_called=cfg.min_called,
             )
-            mean_depth = float(
-                sum(depth for _, depth, _, _ in calls.values()) / max(len(calls), 1)
-            )
+            mean_depth = float(sum(depth for _, depth, _, _ in calls.values()) / max(len(calls), 1))
             rows.append(
                 {
                     "sample_id": sample_id,
@@ -228,10 +227,10 @@ def _pedigree_verdict(
     available = all(value is not None for value in [f1, parent, *offspring])
     passed = bool(
         available
-        and abs(float(f1) - cfg.f1_target) <= cfg.f1_tolerance
-        and float(parent) <= cfg.parent_max
-        and all(cfg.offspring_min <= float(v) <= cfg.offspring_max for v in offspring)
-        and all(float(v) < float(f1) for v in offspring)
+        and abs(float(cast(float, f1)) - cfg.f1_target) <= cfg.f1_tolerance
+        and float(cast(float, parent)) <= cfg.parent_max
+        and all(cfg.offspring_min <= float(cast(float, v)) <= cfg.offspring_max for v in offspring)
+        and all(float(cast(float, v)) < float(cast(float, f1)) for v in offspring)
     )
     return {
         "passed": passed,

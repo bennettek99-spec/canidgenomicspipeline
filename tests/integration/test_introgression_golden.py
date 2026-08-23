@@ -7,6 +7,7 @@ import os
 import sys
 from io import StringIO
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -33,7 +34,7 @@ def _round(value: object, places: int = 6) -> object:
         return None
     if isinstance(value, (int, bool, str)):
         return value
-    return round(float(value), places)
+    return round(cast(float, value), places)
 
 
 def _split_signature(newick: str) -> list[list[str]]:
@@ -52,18 +53,20 @@ def observed(tmp_path_factory) -> dict:
     vcf, sheet = simulate_introgression_cohort(
         workspace / "input", seed=11, admixture_proportion=0.2
     )
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "introgression-golden",
-        "paths.root": str(workspace),
-        "pipeline": ["ingest", "load_genotypes", "nj_tree", "f3", "dstats"],
-        "logging.level": "WARNING",
-        "stages.ingest.sample_sheet": str(sheet),
-        "stages.ingest.callset": str(vcf),
-        "stages.nj_tree.n_bootstrap": 30,
-        "stages.f3.outgroup": "jackal",
-        "stages.dstats.outgroup": "jackal",
-        "stages.dstats.block_mode": "site_count",
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "introgression-golden",
+            "paths.root": str(workspace),
+            "pipeline": ["ingest", "load_genotypes", "nj_tree", "f3", "dstats"],
+            "logging.level": "WARNING",
+            "stages.ingest.sample_sheet": str(sheet),
+            "stages.ingest.callset": str(vcf),
+            "stages.nj_tree.n_bootstrap": 30,
+            "stages.f3.outgroup": "jackal",
+            "stages.dstats.outgroup": "jackal",
+            "stages.dstats.block_mode": "site_count",
+        }
+    )
     report = run_pipeline(cfg)
     assert report.ok, report.failed
     store = DataStore(cfg.paths.data_root / "store")
@@ -85,9 +88,7 @@ def observed(tmp_path_factory) -> dict:
                 for row, values in f3.iterrows()
             },
         },
-        "nj": {
-            "splits": _split_signature(store.get(ArtifactKind.TREE, "nj").path.read_text())
-        },
+        "nj": {"splits": _split_signature(store.get(ArtifactKind.TREE, "nj").path.read_text())},
     }
 
 

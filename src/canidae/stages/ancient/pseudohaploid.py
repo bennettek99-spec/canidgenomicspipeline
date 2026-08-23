@@ -40,7 +40,7 @@ class PseudohaploidStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, "genotypes").path)
-        gt = np.asarray(geno.calls)                 # (n_sites, n_samples, 2)
+        gt = np.asarray(geno.calls)  # (n_sites, n_samples, 2)
         called = (gt[:, :, 0] >= 0) & (gt[:, :, 1] >= 0)
 
         rng = np.random.default_rng(ctx.config.seed)
@@ -50,29 +50,41 @@ class PseudohaploidStage(Stage):
         pseudo[~called] = -1
 
         het_before = geno.calls.is_het().sum(axis=0)
-        pseudo_geno = Genotypes(calls=allel.GenotypeArray(pseudo), pos=geno.pos,
-                                chrom=geno.chrom, samples=geno.samples)
+        pseudo_geno = Genotypes(
+            calls=allel.GenotypeArray(pseudo), pos=geno.pos, chrom=geno.chrom, samples=geno.samples
+        )
         het_after = pseudo_geno.calls.is_het().sum(axis=0)
 
         stage_dir = ctx.datastore.stage_dir(self.name)
         npz = save_genotypes(stage_dir / "pseudohaploid.npz", pseudo_geno)
-        summary = pd.DataFrame({
-            "sample_id": geno.samples,
-            "n_called": called.sum(axis=0).astype(int),
-            "het_before": het_before.astype(int),
-            "het_after": het_after.astype(int),
-        })
+        summary = pd.DataFrame(
+            {
+                "sample_id": geno.samples,
+                "n_called": called.sum(axis=0).astype(int),
+                "het_before": het_before.astype(int),
+                "het_after": het_after.astype(int),
+            }
+        )
         out = stage_dir / "pseudohaploid_summary.csv"
         summary.to_csv(out, index=False)
 
         geno_art = ctx.datastore.add(
-            ArtifactKind.GENOTYPES, "pseudohaploid", npz, fmt=FileFormat.NPZ,
+            ArtifactKind.GENOTYPES,
+            "pseudohaploid",
+            npz,
+            fmt=FileFormat.NPZ,
             produced_by=self.name,
-            metadata={"n_samples": geno.n_samples, "n_variants": geno.n_variants})
+            metadata={"n_samples": geno.n_samples, "n_variants": geno.n_variants},
+        )
         summary_art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "ancient", out, fmt=FileFormat.CSV,
-            produced_by=self.name, metadata={"analysis": "pseudohaploid"})
+            ArtifactKind.ANALYSIS_RESULT,
+            "ancient",
+            out,
+            fmt=FileFormat.CSV,
+            produced_by=self.name,
+            metadata={"analysis": "pseudohaploid"},
+        )
         return StageResult(
             artifacts=[geno_art, summary_art],
-            metrics={"n_samples": geno.n_samples,
-                     "total_het_after": int(het_after.sum())})
+            metrics={"n_samples": geno.n_samples, "total_het_after": int(het_after.sum())},
+        )

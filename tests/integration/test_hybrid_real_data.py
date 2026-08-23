@@ -17,6 +17,7 @@ import json
 import os
 from collections import defaultdict
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -67,7 +68,9 @@ def _run_preset_stage(preset: str, stage_name: str, tmp_path: Path):
     run_dir = tmp_path / f"run-{stage_name}"
     run_dir.mkdir(parents=True, exist_ok=True)
     ctx = build_context(
-        cfg, DataStore(tmp_path / "store"), LocalRunner(),
+        cfg,
+        DataStore(tmp_path / "store"),
+        LocalRunner(),
         ProvenanceWriter(run_dir, config_digest=cfg.digest(), seed=cfg.seed),
         run_dir=run_dir,
     )
@@ -85,7 +88,8 @@ def _manifest(result) -> dict:
 @pytest.fixture(scope="module")
 def nyc_mixture(tmp_path_factory):
     return _run_preset_stage(
-        "nyc_coydog_validation.yaml", "reference_mixture",
+        "nyc_coydog_validation.yaml",
+        "reference_mixture",
         tmp_path_factory.mktemp("nyc_mixture"),
     )
 
@@ -93,7 +97,8 @@ def nyc_mixture(tmp_path_factory):
 @pytest.fixture(scope="module")
 def nyc_breeds(tmp_path_factory):
     return _run_preset_stage(
-        "nyc_coydog_validation.yaml", "breed_assign",
+        "nyc_coydog_validation.yaml",
+        "breed_assign",
         tmp_path_factory.mktemp("nyc_breeds"),
     )
 
@@ -101,7 +106,8 @@ def nyc_breeds(tmp_path_factory):
 @pytest.fixture(scope="module")
 def eastern_multiway(tmp_path_factory):
     return _run_preset_stage(
-        "eastern_coyote_ancestry.yaml", "multiway_admixture",
+        "eastern_coyote_ancestry.yaml",
+        "multiway_admixture",
         tmp_path_factory.mktemp("eastern"),
     )
 
@@ -121,70 +127,75 @@ def _round(value: object, places: int = 6) -> object:
         return None
     if isinstance(value, (bool, int, str)):
         return value
-    return round(float(value), places)
+    return round(cast(float, value), places)
 
 
 def test_nyc_dog_fractions_match_the_published_snapshot(nyc_mixture) -> None:
     result = nyc_mixture
     table = pd.read_csv(result.artifacts[0].path).set_index("sample_id")
     manifest = _manifest(result)
-    _check("nyc_reference_mixture.json", {
-        "dog_fraction": {
-            sample: _round(table.loc[sample, "dog_fraction"])
-            for sample in table.index
+    _check(
+        "nyc_reference_mixture.json",
+        {
+            "dog_fraction": {
+                sample: _round(table.loc[sample, "dog_fraction"]) for sample in table.index
+            },
+            "diagnostic_sites_called": {
+                sample: int(table.loc[sample, "diagnostic_sites_called"]) for sample in table.index
+            },
+            "n_reference_loci": manifest["method"]["n_reference_loci"],
+            "validation_passed": manifest["validation"]["passed"],
         },
-        "diagnostic_sites_called": {
-            sample: int(table.loc[sample, "diagnostic_sites_called"])
-            for sample in table.index
-        },
-        "n_reference_loci": manifest["method"]["n_reference_loci"],
-        "validation_passed": manifest["validation"]["passed"],
-    })
+    )
 
 
 def test_nyc_breed_assignment_matches_the_published_snapshot(nyc_breeds) -> None:
     manifest = _manifest(nyc_breeds)
-    _check("nyc_breed_assign.json", {
-        "calibration": {
-            "n_tested": manifest["calibration"]["n_tested"],
-            "top1_correct": manifest["calibration"]["top1_correct"],
-            "top1_accuracy": _round(manifest["calibration"]["top1_accuracy"]),
+    _check(
+        "nyc_breed_assign.json",
+        {
+            "calibration": {
+                "n_tested": manifest["calibration"]["n_tested"],
+                "top1_correct": manifest["calibration"]["top1_correct"],
+                "top1_accuracy": _round(manifest["calibration"]["top1_accuracy"]),
+            },
+            "sources": manifest["sources"],
+            "results": {
+                sample: {
+                    "best_breed": info["best_breed"],
+                    "single_breed_gap": _round(info["single_breed_gap"], 2),
+                    "single_breed_supported": info["single_breed_supported"],
+                    "loci_used": info["loci_used"],
+                }
+                for sample, info in sorted(manifest["results"].items())
+            },
         },
-        "sources": manifest["sources"],
-        "results": {
-            sample: {
-                "best_breed": info["best_breed"],
-                "single_breed_gap": _round(info["single_breed_gap"], 2),
-                "single_breed_supported": info["single_breed_supported"],
-                "loci_used": info["loci_used"],
-            }
-            for sample, info in sorted(manifest["results"].items())
-        },
-    })
+    )
 
 
 def test_no_nyc_sample_is_assigned_a_single_breed(nyc_breeds) -> None:
     """The honest-labelling invariant for a 252-locus bridge panel."""
     manifest = _manifest(nyc_breeds)
     assert manifest["results"], "expected at least one scored query"
-    assert not any(
-        info["single_breed_supported"] for info in manifest["results"].values()
-    )
+    assert not any(info["single_breed_supported"] for info in manifest["results"].values())
 
 
 def test_eastern_coyote_summary_matches_the_published_snapshot(eastern_multiway) -> None:
     result = eastern_multiway
     table = pd.read_csv(result.artifacts[0].path).set_index("sample_id")
     manifest = _manifest(result)
-    _check("eastern_multiway_admixture.json", {
-        "queries": manifest["queries"],
-        "references": manifest["references"],
-        "group_summary": manifest["group_summary"],
-        "per_sample": {
-            sample: [_round(row["f_wolf"], 3), _round(row["f_dog"], 3)]
-            for sample, row in table.sort_index().iterrows()
+    _check(
+        "eastern_multiway_admixture.json",
+        {
+            "queries": manifest["queries"],
+            "references": manifest["references"],
+            "group_summary": manifest["group_summary"],
+            "per_sample": {
+                sample: [_round(row["f_wolf"], 3), _round(row["f_dog"], 3)]
+                for sample, row in table.sort_index().iterrows()
+            },
         },
-    })
+    )
 
 
 def test_western_controls_carry_no_wolf_or_dog_ancestry(eastern_multiway) -> None:
@@ -232,16 +243,18 @@ def _breed_mix_sensitivity() -> dict:
         for index in indices
     ]
     panels = {
-        group: allele_frequencies(keys, records, indices)
-        for group, indices in candidates.items()
+        group: allele_frequencies(keys, records, indices) for group, indices in candidates.items()
     }
     mixed = [
-        index for index, sample in enumerate(samples)
-        if classify_group(breed_of(sample)) == "mixed"
+        index for index, sample in enumerate(samples) if classify_group(breed_of(sample)) == "mixed"
     ]
     return {
         samples[index]: score_breed_candidates(
-            keys, records, index, samples, panels,
+            keys,
+            records,
+            index,
+            samples,
+            panels,
             allele_frequencies(keys, records, [i for i in pooled if i != index]),
         )
         for index in mixed

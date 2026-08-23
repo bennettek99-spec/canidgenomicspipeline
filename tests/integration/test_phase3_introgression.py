@@ -33,24 +33,43 @@ from make_cohort import simulate_introgression_cohort
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 R = ArtifactKind.ANALYSIS_RESULT
 
-PIPELINE = ["ingest", "qc", "load_genotypes", "analysis_readiness",
-            "distance", "nj_tree", "pca", "fst",
-            "diversity", "f3", "dstats", "report"]
+PIPELINE = [
+    "ingest",
+    "qc",
+    "load_genotypes",
+    "analysis_readiness",
+    "distance",
+    "nj_tree",
+    "pca",
+    "fst",
+    "diversity",
+    "f3",
+    "dstats",
+    "report",
+]
 
 
 @pytest.fixture(scope="module")
 def admixed(tmp_path_factory) -> GlobalConfig:
     ws = tmp_path_factory.mktemp("intro_admixed")
     vcf, sheet = simulate_introgression_cohort(ws / "in", seed=11, admixture_proportion=0.2)
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "intro", "paths.root": str(ws), "pipeline": PIPELINE,
-        "executor.max_workers": 3, "logging.level": "WARNING",
-        "stages.ingest.sample_sheet": str(sheet), "stages.ingest.callset": str(vcf),
-        "stages.nj_tree.n_bootstrap": 30, "stages.admixture.backend": "nmf",
-        "stages.analysis_readiness.ld_prune": False,
-        "stages.f3.outgroup": "jackal", "stages.dstats.outgroup": "jackal",
-        "stages.dstats.block_mode": "site_count",
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "intro",
+            "paths.root": str(ws),
+            "pipeline": PIPELINE,
+            "executor.max_workers": 3,
+            "logging.level": "WARNING",
+            "stages.ingest.sample_sheet": str(sheet),
+            "stages.ingest.callset": str(vcf),
+            "stages.nj_tree.n_bootstrap": 30,
+            "stages.admixture.backend": "nmf",
+            "stages.analysis_readiness.ld_prune": False,
+            "stages.f3.outgroup": "jackal",
+            "stages.dstats.outgroup": "jackal",
+            "stages.dstats.block_mode": "site_count",
+        }
+    )
     run_pipeline(cfg)
     return cfg
 
@@ -59,18 +78,24 @@ def admixed(tmp_path_factory) -> GlobalConfig:
 def control_dstat(tmp_path_factory) -> fstats.JackknifeResult:
     ws = tmp_path_factory.mktemp("intro_control")
     vcf, sheet = simulate_introgression_cohort(ws / "in", seed=11, admixture_proportion=0.0)
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "ctrl", "paths.root": str(ws),
-        "pipeline": ["ingest", "load_genotypes"], "logging.level": "WARNING",
-        "stages.ingest.sample_sheet": str(sheet), "stages.ingest.callset": str(vcf),
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "ctrl",
+            "paths.root": str(ws),
+            "pipeline": ["ingest", "load_genotypes"],
+            "logging.level": "WARNING",
+            "stages.ingest.sample_sheet": str(sheet),
+            "stages.ingest.callset": str(vcf),
+        }
+    )
     run_pipeline(cfg)
     store = DataStore(cfg.paths.data_root / "store")
     geno = load_genotypes(store.get(ArtifactKind.GENOTYPES, "genotypes").path)
     labels = load_sample_labels(store.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
     freqs = fstats.allele_frequencies(geno, population_indices(geno, labels))
-    return fstats.d_statistic(freqs["wolf"], freqs["dog"], freqs["coyote"],
-                              freqs["jackal"], n_blocks=20)
+    return fstats.d_statistic(
+        freqs["wolf"], freqs["dog"], freqs["coyote"], freqs["jackal"], n_blocks=20
+    )
 
 
 def _store(cfg: GlobalConfig) -> DataStore:
@@ -84,8 +109,9 @@ def test_dstats_detects_gene_flow(admixed) -> None:
     df = pd.read_csv(art.path)
     # the trio testing wolf-vs-dog allele sharing with coyote (the true sisters are
     # wolf & dog) must be significant given the simulated coyote->dog gene flow
-    trio = df[(df["P3"] == "coyote")
-              & df.apply(lambda r: {r["P1"], r["P2"]} == {"wolf", "dog"}, axis=1)]
+    trio = df[
+        (df["P3"] == "coyote") & df.apply(lambda r: {r["P1"], r["P2"]} == {"wolf", "dog"}, axis=1)
+    ]
     assert not trio.empty
     assert trio.iloc[0]["n_blocks"] > 1
     assert abs(trio.iloc[0]["Z"]) > 3

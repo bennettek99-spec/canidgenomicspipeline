@@ -76,14 +76,16 @@ def run_pipeline(
     configure_logging(config.logging, run_dir=run_dir)
     set_global_seed(config.seed)
 
-    _log.info("project '%s' | config digest %s", config.project_name,
-              config.digest()[:16])
+    _log.info("project '%s' | config digest %s", config.project_name, config.digest()[:16])
 
     datastore = DataStore(config.paths.data_root / "store")
     runner = make_runner(config.containers)
     provenance = ProvenanceWriter(
-        run_dir, config_digest=config.digest(), seed=config.seed,
-        repo_dir=config.paths.root, resolved_config_yaml=config.to_yaml(),
+        run_dir,
+        config_digest=config.digest(),
+        seed=config.seed,
+        repo_dir=config.paths.root,
+        resolved_config_yaml=config.to_yaml(),
     )
     resource_manager = ResourceManager(config.resource_manager, run_dir=run_dir)
     try:
@@ -94,8 +96,11 @@ def run_pipeline(
         stale_transactions = resource_manager.cleanup_stale_transactions(datastore.root)
         provenance.add_run_metadata(
             resource_preflight=[
-                {"path": str(check.path), "free_mb": check.free_mb,
-                 "required_free_mb": check.required_free_mb}
+                {
+                    "path": str(check.path),
+                    "free_mb": check.free_mb,
+                    "required_free_mb": check.required_free_mb,
+                }
                 for check in disk_checks
             ],
             thread_limits=applied_threads,
@@ -105,7 +110,9 @@ def run_pipeline(
         )
     except Exception as exc:
         provenance.record_run_event(
-            "resource_preflight", status="failed", error=f"{type(exc).__name__}: {exc}",
+            "resource_preflight",
+            status="failed",
+            error=f"{type(exc).__name__}: {exc}",
             recovery=getattr(
                 exc, "recovery", "Resolve the local resource preflight error and rerun."
             ),
@@ -113,7 +120,12 @@ def run_pipeline(
         provenance.flush()
         raise
     ctx = build_context(
-        config, datastore, runner, provenance, cohort=cohort, run_dir=run_dir,
+        config,
+        datastore,
+        runner,
+        provenance,
+        cohort=cohort,
+        run_dir=run_dir,
         resource_manager=resource_manager,
     )
 
@@ -128,6 +140,10 @@ def run_pipeline(
     report = executor.run(stages, ctx, dry_run=dry_run)
     provenance.flush()
 
-    _log.info("done: %d executed, %d skipped, %d failed",
-              len(report.executed), len(report.skipped), len(report.failed))
+    _log.info(
+        "done: %d executed, %d skipped, %d failed",
+        len(report.executed),
+        len(report.skipped),
+        len(report.failed),
+    )
     return report

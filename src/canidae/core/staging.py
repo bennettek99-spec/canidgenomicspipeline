@@ -33,9 +33,7 @@ class StagedDataStore:
         self.base = base
         self.stage_name = stage_name
         self.root = base.root
-        self._workspace = (
-            base.root / ".staging" / f"{stage_name}-{uuid.uuid4().hex}"
-        )
+        self._workspace = base.root / ".staging" / f"{stage_name}-{uuid.uuid4().hex}"
         self._stage_root = self._workspace / stage_name
         self._local_artifacts: dict[tuple[ArtifactKind, str], Artifact] = {}
 
@@ -106,11 +104,13 @@ class StagedDataStore:
 
     def find(self, kind: ArtifactKind, role: str | None = None) -> list[Artifact]:
         merged = {artifact.key: artifact for artifact in self.base.find(kind, role)}
-        merged.update({
-            key: artifact
-            for key, artifact in self._local_artifacts.items()
-            if key[0] == kind and (role is None or key[1] == role)
-        })
+        merged.update(
+            {
+                key: artifact
+                for key, artifact in self._local_artifacts.items()
+                if key[0] == kind and (role is None or key[1] == role)
+            }
+        )
         return list(merged.values())
 
     def all(self) -> list[Artifact]:
@@ -184,8 +184,9 @@ def rewrite_staged_paths(value: Any, staged_root: Path, final_root: Path) -> Any
     if isinstance(value, str):
         return value.replace(staged, final)
     if isinstance(value, dict):
-        return {key: rewrite_staged_paths(item, staged_root, final_root)
-                for key, item in value.items()}
+        return {
+            key: rewrite_staged_paths(item, staged_root, final_root) for key, item in value.items()
+        }
     if isinstance(value, list):
         return [rewrite_staged_paths(item, staged_root, final_root) for item in value]
     if isinstance(value, tuple):

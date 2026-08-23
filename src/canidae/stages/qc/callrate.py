@@ -39,9 +39,7 @@ class SampleQCConfig(StageConfig):
     @property
     def sample_threshold(self) -> float:
         return (
-            self.min_call_rate
-            if self.min_sample_call_rate is None
-            else self.min_sample_call_rate
+            self.min_call_rate if self.min_sample_call_rate is None else self.min_sample_call_rate
         )
 
 
@@ -109,9 +107,12 @@ class SampleQCStage(Stage):
         callset_out = stage_dir / "qc_filtered.vcf"
         _write_filtered_vcf(
             callset_out,
-            sites.chrom[site_keep], sites.pos[site_keep], sites.ref[site_keep],
+            sites.chrom[site_keep],
+            sites.pos[site_keep],
+            sites.ref[site_keep],
             sites.alt[site_keep],
-            retained_samples, retained_gt[site_keep],
+            retained_samples,
+            retained_gt[site_keep],
         )
         sheet_out = _atomic_csv(retained_sheet, stage_dir / "qc_sample_sheet.csv")
         sample_out = _atomic_csv(sample_table, stage_dir / "sample_qc.csv")
@@ -131,17 +132,39 @@ class SampleQCStage(Stage):
             "min_site_maf": cfg.min_site_maf,
         }
         artifacts = [
-            Artifact(ArtifactKind.QC_TABLE, "sample_qc", sample_out, FileFormat.CSV,
-                     produced_by=self.name),
-            Artifact(ArtifactKind.QC_TABLE, "site_qc", site_out, FileFormat.CSV,
-                     produced_by=self.name),
-            Artifact(ArtifactKind.QC_TABLE, "qc_exclusions", exclusions_out, FileFormat.CSV,
-                     produced_by=self.name),
-            Artifact(ArtifactKind.CALLSET, "qc_callset", callset_out, FileFormat.VCF,
-                     produced_by=self.name, metadata=filtered_metadata),
-            Artifact(ArtifactKind.SAMPLE_SHEET, "qc_sample_sheet", sheet_out, FileFormat.CSV,
-                     produced_by=self.name,
-                     metadata={"n_samples": len(retained_sheet), "qc_enforced": True}),
+            Artifact(
+                ArtifactKind.QC_TABLE,
+                "sample_qc",
+                sample_out,
+                FileFormat.CSV,
+                produced_by=self.name,
+            ),
+            Artifact(
+                ArtifactKind.QC_TABLE, "site_qc", site_out, FileFormat.CSV, produced_by=self.name
+            ),
+            Artifact(
+                ArtifactKind.QC_TABLE,
+                "qc_exclusions",
+                exclusions_out,
+                FileFormat.CSV,
+                produced_by=self.name,
+            ),
+            Artifact(
+                ArtifactKind.CALLSET,
+                "qc_callset",
+                callset_out,
+                FileFormat.VCF,
+                produced_by=self.name,
+                metadata=filtered_metadata,
+            ),
+            Artifact(
+                ArtifactKind.SAMPLE_SHEET,
+                "qc_sample_sheet",
+                sheet_out,
+                FileFormat.CSV,
+                produced_by=self.name,
+                metadata={"n_samples": len(retained_sheet), "qc_enforced": True},
+            ),
         ]
         return StageResult(
             artifacts=artifacts,
@@ -176,16 +199,18 @@ def _sample_metrics(
             reason_parts.append("sample_call_rate_below_threshold")
         reasons.append(";".join(reason_parts))
         keep.append(not reason_parts)
-    return pd.DataFrame({
-        "sample_id": samples.astype(str),
-        "n_variants": n_variants,
-        "n_called": n_called.astype(int),
-        "n_missing": (n_variants - n_called).astype(int),
-        "call_rate": np.round(call_rate, 6),
-        "heterozygosity": np.round(het, 6),
-        "pass": keep,
-        "exclusion_reason": reasons,
-    }), np.asarray(keep, dtype=bool)
+    return pd.DataFrame(
+        {
+            "sample_id": samples.astype(str),
+            "n_variants": n_variants,
+            "n_called": n_called.astype(int),
+            "n_missing": (n_variants - n_called).astype(int),
+            "call_rate": np.round(call_rate, 6),
+            "heterozygosity": np.round(het, 6),
+            "pass": keep,
+            "exclusion_reason": reasons,
+        }
+    ), np.asarray(keep, dtype=bool)
 
 
 def _site_metrics(
@@ -203,8 +228,12 @@ def _site_metrics(
     allele_total = (called.sum(axis=1) * 2).astype(float)
     alt_count = np.where(called[:, :, None], np.maximum(gt, 0), 0).sum(axis=(1, 2))
     with np.errstate(divide="ignore", invalid="ignore"):
-        alt_freq = np.divide(alt_count, allele_total, out=np.zeros_like(alt_count, dtype=float),
-                             where=allele_total > 0)
+        alt_freq = np.divide(
+            alt_count,
+            allele_total,
+            out=np.zeros_like(alt_count, dtype=float),
+            where=allele_total > 0,
+        )
     maf = np.minimum(alt_freq, 1.0 - alt_freq)
     reasons: list[str] = []
     keep: list[bool] = []
@@ -216,12 +245,20 @@ def _site_metrics(
             reason_parts.append("site_maf_below_threshold")
         reasons.append(";".join(reason_parts))
         keep.append(not reason_parts)
-    return pd.DataFrame({
-        "chrom": chrom.astype(str), "position": pos.astype(int), "ref": ref.astype(str),
-        "alt": alt.astype(str), "n_samples": n_samples, "n_called": n_called.astype(int),
-        "call_rate": np.round(call_rate, 6), "maf": np.round(maf, 6), "pass": keep,
-        "exclusion_reason": reasons,
-    }), np.asarray(keep, dtype=bool)
+    return pd.DataFrame(
+        {
+            "chrom": chrom.astype(str),
+            "position": pos.astype(int),
+            "ref": ref.astype(str),
+            "alt": alt.astype(str),
+            "n_samples": n_samples,
+            "n_called": n_called.astype(int),
+            "call_rate": np.round(call_rate, 6),
+            "maf": np.round(maf, 6),
+            "pass": keep,
+            "exclusion_reason": reasons,
+        }
+    ), np.asarray(keep, dtype=bool)
 
 
 def _sample_exclusions(table: pd.DataFrame) -> pd.DataFrame:
@@ -234,14 +271,21 @@ def _sample_exclusions(table: pd.DataFrame) -> pd.DataFrame:
 def _site_exclusions(table: pd.DataFrame) -> pd.DataFrame:
     failed = table.loc[~table["pass"], ["chrom", "position", "ref", "alt", "exclusion_reason"]]
     entities = (
-        failed["chrom"].astype(str) + ":" + failed["position"].astype(int).astype(str)
-        + ":" + failed["ref"].astype(str) + ":" + failed["alt"].astype(str)
+        failed["chrom"].astype(str)
+        + ":"
+        + failed["position"].astype(int).astype(str)
+        + ":"
+        + failed["ref"].astype(str)
+        + ":"
+        + failed["alt"].astype(str)
     )
-    out = pd.DataFrame({
-        "entity_type": ["site"] * len(failed),
-        "entity": entities.to_numpy(),
-        "exclusion_reason": failed["exclusion_reason"],
-    })
+    out = pd.DataFrame(
+        {
+            "entity_type": ["site"] * len(failed),
+            "entity": entities.to_numpy(),
+            "exclusion_reason": failed["exclusion_reason"],
+        }
+    )
     return out
 
 

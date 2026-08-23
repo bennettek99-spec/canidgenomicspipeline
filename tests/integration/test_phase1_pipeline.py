@@ -27,8 +27,18 @@ from make_cohort import simulate_cohort
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 PIPELINE = [
-    "ingest", "qc", "load_genotypes", "distance", "pca", "fst", "diversity",
-    "admixture", "cluster", "roh", "geography", "report",
+    "ingest",
+    "qc",
+    "load_genotypes",
+    "distance",
+    "pca",
+    "fst",
+    "diversity",
+    "admixture",
+    "cluster",
+    "roh",
+    "geography",
+    "report",
 ]
 R = ArtifactKind.ANALYSIS_RESULT
 
@@ -37,16 +47,18 @@ R = ArtifactKind.ANALYSIS_RESULT
 def phase1_run(tmp_path_factory) -> tuple[GlobalConfig, object]:
     workspace = tmp_path_factory.mktemp("phase2")
     vcf, sheet = simulate_cohort(workspace / "input", seed=7)
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "canis-test",
-        "paths.root": str(workspace),
-        "pipeline": PIPELINE,
-        "executor.max_workers": 3,
-        "logging.level": "WARNING",
-        "stages.ingest.sample_sheet": str(sheet),
-        "stages.ingest.callset": str(vcf),
-        "stages.admixture.backend": "nmf",
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "canis-test",
+            "paths.root": str(workspace),
+            "pipeline": PIPELINE,
+            "executor.max_workers": 3,
+            "logging.level": "WARNING",
+            "stages.ingest.sample_sheet": str(sheet),
+            "stages.ingest.callset": str(vcf),
+            "stages.admixture.backend": "nmf",
+        }
+    )
     report = run_pipeline(cfg)
     return cfg, report
 
@@ -71,8 +83,14 @@ def test_pipeline_runs_all_stages(phase1_run) -> None:
 def test_report_has_all_sections(phase1_run) -> None:
     cfg, _ = phase1_run
     html = _store(cfg).get(ArtifactKind.REPORT, "html").path.read_text(encoding="utf-8")
-    for section in ("Principal component analysis", "Admixture", "Population clustering",
-                    "Genetic diversity", "Runs of homozygosity", "Geography"):
+    for section in (
+        "Principal component analysis",
+        "Admixture",
+        "Population clustering",
+        "Genetic diversity",
+        "Runs of homozygosity",
+        "Geography",
+    ):
         assert section in html, section
 
 
@@ -107,7 +125,7 @@ def test_admixture_separates_coyote(phase1_run) -> None:
     art = _store(cfg).get(R, "admixture")
     q = pd.read_csv(art.path)
     q_cols = [c for c in q.columns if c.startswith("Q")]
-    assert np.allclose(q[q_cols].sum(axis=1), 1.0, atol=1e-6)   # proportions sum to 1
+    assert np.allclose(q[q_cols].sum(axis=1), 1.0, atol=1e-6)  # proportions sum to 1
     assert 2 <= art.metadata["best_k"] <= 6
     q["dom"] = q[q_cols].to_numpy().argmax(axis=1)
     dom = q.groupby("population")["dom"].agg(lambda s: s.mode().iloc[0])

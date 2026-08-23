@@ -36,8 +36,9 @@ _BASH = ToolSpec(name="bash")
 # --------------------------------------------------------------------------------------
 
 
-def align_command(sample: str, fq1: str, fq2: str, ref: str, cram: str,
-                  threads: int, *, layout: str = "paired") -> str:
+def align_command(
+    sample: str, fq1: str, fq2: str, ref: str, cram: str, threads: int, *, layout: str = "paired"
+) -> str:
     if layout == "paired":
         if not fq2:
             raise StageInputError("paired-end alignment requires fastq2")
@@ -58,30 +59,38 @@ def align_command(sample: str, fq1: str, fq2: str, ref: str, cram: str,
     )
 
 
-def call_command(sample: str, cram: str, ref: str, gvcf: str, backend: str,
-                 threads: int) -> str:
+def call_command(sample: str, cram: str, ref: str, gvcf: str, backend: str, threads: int) -> str:
     if backend == "gatk":
-        return (f"gatk HaplotypeCaller -R {ref} -I {cram} -O {gvcf} "
-                f"-ERC GVCF --native-pair-hmm-threads {threads}")
+        return (
+            f"gatk HaplotypeCaller -R {ref} -I {cram} -O {gvcf} "
+            f"-ERC GVCF --native-pair-hmm-threads {threads}"
+        )
     if backend == "bcftools":
-        return (f"bcftools mpileup -f {ref} --threads {threads} {cram} "
-                f"| bcftools call -m -g 5 -Oz -o {gvcf} --threads {threads}")
+        return (
+            f"bcftools mpileup -f {ref} --threads {threads} {cram} "
+            f"| bcftools call -m -g 5 -Oz -o {gvcf} --threads {threads}"
+        )
     if backend == "deepvariant":
-        return (f"run_deepvariant --model_type=WGS --ref={ref} --reads={cram} "
-                f"--output_gvcf={gvcf} --num_shards={threads}")
+        return (
+            f"run_deepvariant --model_type=WGS --ref={ref} --reads={cram} "
+            f"--output_gvcf={gvcf} --num_shards={threads}"
+        )
     raise StageInputError(f"unknown calling backend: {backend}")
 
 
-def joint_command(gvcfs: list[str], ref: str, out_vcf: str, backend: str,
-                  threads: int) -> str:
+def joint_command(gvcfs: list[str], ref: str, out_vcf: str, backend: str, threads: int) -> str:
     if backend == "glnexus":
         joined = " ".join(gvcfs)
-        return (f"glnexus_cli --config DeepVariantWGS --threads {threads} {joined} "
-                f"| bcftools view -Ov -o {out_vcf}")
+        return (
+            f"glnexus_cli --config DeepVariantWGS --threads {threads} {joined} "
+            f"| bcftools view -Ov -o {out_vcf}"
+        )
     if backend == "gatk":
         variants = " ".join(f"-V {g}" for g in gvcfs)
-        return (f"gatk CombineGVCFs -R {ref} {variants} -O combined.g.vcf.gz "
-                f"&& gatk GenotypeGVCFs -R {ref} -V combined.g.vcf.gz -O {out_vcf}")
+        return (
+            f"gatk CombineGVCFs -R {ref} {variants} -O combined.g.vcf.gz "
+            f"&& gatk GenotypeGVCFs -R {ref} -V combined.g.vcf.gz -O {out_vcf}"
+        )
     raise StageInputError(f"unknown joint-genotyping backend: {backend}")
 
 
@@ -155,18 +164,23 @@ class AlignStage(Stage):
             cmd = align_command(
                 r.sample_id, r.fastq1, r.fastq2, ref, cram, cfg.threads, layout=r.layout
             )
-            ctx.runner.run(_BASH, ["-lc", cmd],
-                           resources=ResourceSpec(cpus=cfg.threads),
-                           record=ctx.scratch.get("_record"), cwd=stage_dir,
-                           expect_outputs=[Path(cram)])
+            ctx.runner.run(
+                _BASH,
+                ["-lc", cmd],
+                resources=ResourceSpec(cpus=cfg.threads),
+                record=ctx.scratch.get("_record"),
+                cwd=stage_dir,
+                expect_outputs=[Path(cram)],
+            )
             rows.append({"sample_id": r.sample_id, "cram": cram})
-        return _emit_manifest(ctx, self.name, rows, "cram_manifest.csv",
-                              ArtifactKind.ALIGNMENT, "crams")
+        return _emit_manifest(
+            ctx, self.name, rows, "cram_manifest.csv", ArtifactKind.ALIGNMENT, "crams"
+        )
 
 
 class CallConfig(StageConfig):
     reference: Path = Path("reference.fasta")
-    backend: str = "gatk"       # gatk | bcftools | deepvariant
+    backend: str = "gatk"  # gatk | bcftools | deepvariant
     threads: int = 4
 
 
@@ -191,18 +205,21 @@ class CallVariantsStage(Stage):
         for r in crams.itertuples(index=False):
             gvcf = str(stage_dir / f"{r.sample_id}.g.vcf.gz")
             cmd = call_command(r.sample_id, r.cram, ref, gvcf, cfg.backend, cfg.threads)
-            ctx.runner.run(_BASH, ["-lc", cmd],
-                           resources=ResourceSpec(cpus=cfg.threads),
-                           record=ctx.scratch.get("_record"), cwd=stage_dir,
-                           expect_outputs=[Path(gvcf)])
+            ctx.runner.run(
+                _BASH,
+                ["-lc", cmd],
+                resources=ResourceSpec(cpus=cfg.threads),
+                record=ctx.scratch.get("_record"),
+                cwd=stage_dir,
+                expect_outputs=[Path(gvcf)],
+            )
             rows.append({"sample_id": r.sample_id, "gvcf": gvcf})
-        return _emit_manifest(ctx, self.name, rows, "gvcf_manifest.csv",
-                              ArtifactKind.GVCF, "gvcfs")
+        return _emit_manifest(ctx, self.name, rows, "gvcf_manifest.csv", ArtifactKind.GVCF, "gvcfs")
 
 
 class JointConfig(StageConfig):
     reference: Path = Path("reference.fasta")
-    backend: str = "glnexus"    # glnexus | gatk
+    backend: str = "glnexus"  # glnexus | gatk
     threads: int = 4
 
 
@@ -225,13 +242,22 @@ class JointGenotypeStage(Stage):
         stage_dir = ctx.datastore.stage_dir(self.name)
         out_vcf = str(stage_dir / "joint.vcf")
         cmd = joint_command(list(gvcfs["gvcf"]), ref, out_vcf, cfg.backend, cfg.threads)
-        ctx.runner.run(_BASH, ["-lc", cmd], resources=ResourceSpec(cpus=cfg.threads),
-                       record=ctx.scratch.get("_record"), cwd=stage_dir,
-                       expect_outputs=[Path(out_vcf)])
-        art = ctx.datastore.add(ArtifactKind.CALLSET, "callset", Path(out_vcf),
-                                fmt=FileFormat.VCF, produced_by=self.name,
-                                metadata={"backend": cfg.backend,
-                                          "n_samples": len(gvcfs)})
+        ctx.runner.run(
+            _BASH,
+            ["-lc", cmd],
+            resources=ResourceSpec(cpus=cfg.threads),
+            record=ctx.scratch.get("_record"),
+            cwd=stage_dir,
+            expect_outputs=[Path(out_vcf)],
+        )
+        art = ctx.datastore.add(
+            ArtifactKind.CALLSET,
+            "callset",
+            Path(out_vcf),
+            fmt=FileFormat.VCF,
+            produced_by=self.name,
+            metadata={"backend": cfg.backend, "n_samples": len(gvcfs)},
+        )
         return StageResult(artifacts=[art], metrics={"n_samples": len(gvcfs)})
 
 
@@ -266,12 +292,22 @@ class BcftoolsCallStage(Stage):
         stage_dir = ctx.datastore.stage_dir(self.name)
         out_vcf = str(stage_dir / "joint.vcf.gz")
         cmd = bcftools_joint_command(list(crams["cram"]), ref, out_vcf, cfg.threads)
-        ctx.runner.run(_BASH, ["-lc", cmd], resources=ResourceSpec(cpus=cfg.threads),
-                       record=ctx.scratch.get("_record"), cwd=stage_dir,
-                       expect_outputs=[Path(out_vcf)])
-        art = ctx.datastore.add(ArtifactKind.CALLSET, "callset", Path(out_vcf),
-                                fmt=FileFormat.VCF, produced_by=self.name,
-                                metadata={"caller": "bcftools", "n_samples": len(crams)})
+        ctx.runner.run(
+            _BASH,
+            ["-lc", cmd],
+            resources=ResourceSpec(cpus=cfg.threads),
+            record=ctx.scratch.get("_record"),
+            cwd=stage_dir,
+            expect_outputs=[Path(out_vcf)],
+        )
+        art = ctx.datastore.add(
+            ArtifactKind.CALLSET,
+            "callset",
+            Path(out_vcf),
+            fmt=FileFormat.VCF,
+            produced_by=self.name,
+            metadata={"caller": "bcftools", "n_samples": len(crams)},
+        )
         return StageResult(artifacts=[art], metrics={"n_samples": len(crams)})
 
 
@@ -279,11 +315,13 @@ def _resolve(path: Path, root: Path) -> Path:
     return path if path.is_absolute() else (root / path)
 
 
-def _emit_manifest(ctx: RunContext, stage: str, rows: list[dict], filename: str,
-                   kind: ArtifactKind, role: str) -> StageResult:
+def _emit_manifest(
+    ctx: RunContext, stage: str, rows: list[dict], filename: str, kind: ArtifactKind, role: str
+) -> StageResult:
     df = pd.DataFrame(rows)
     out = ctx.datastore.path_for(stage, filename)
     df.to_csv(out, index=False)
-    art = ctx.datastore.add(kind, role, out, fmt=FileFormat.CSV, produced_by=stage,
-                            metadata={"n_samples": len(df)})
+    art = ctx.datastore.add(
+        kind, role, out, fmt=FileFormat.CSV, produced_by=stage, metadata={"n_samples": len(df)}
+    )
     return StageResult(artifacts=[art], metrics={"n_samples": len(df)})

@@ -18,8 +18,7 @@ def _write(store: DataStore, stage: str, name: str, text: str) -> Path:
 def test_add_get_roundtrip(tmp_path: Path) -> None:
     store = DataStore(tmp_path / "store")
     p = _write(store, "qc", "metrics.csv", "a,b\n1,2\n")
-    art = store.add(ArtifactKind.QC_TABLE, "metrics", p, fmt=FileFormat.CSV,
-                    produced_by="qc")
+    art = store.add(ArtifactKind.QC_TABLE, "metrics", p, fmt=FileFormat.CSV, produced_by="qc")
     assert art.checksum is not None
     got = store.get(ArtifactKind.QC_TABLE, "metrics")
     assert got.path == p and got.produced_by == "qc"

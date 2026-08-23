@@ -51,4 +51,3 @@ def test_windows_preparation_script_has_a_sub_10gb_hard_limit() -> None:
     assert "status != 206" in lib
     assert "server ignored byte-range request" in lib
     assert "from canidae.io.indexed_vcf import" in script
-  

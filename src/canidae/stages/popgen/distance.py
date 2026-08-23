@@ -37,9 +37,11 @@ class DistanceStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: DistanceConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         ac = geno.calls.count_alleles()
         n_alt = geno.calls.to_n_alt()[ac.is_segregating()]  # (n_seg_sites, n_samples)
@@ -52,14 +54,18 @@ class DistanceStage(Stage):
         out = ctx.datastore.path_for(self.name, "distance_matrix.csv")
         matrix.to_csv(out)
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "distance", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "distance",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "distance", "metric": cfg.metric,
-                       "n_sites": int(n_alt.shape[0])},
+            metadata={"analysis": "distance", "metric": cfg.metric, "n_sites": int(n_alt.shape[0])},
         )
         iu = np.triu_indices(dmatrix.shape[0], k=1)
         return StageResult(
             artifacts=[art],
-            metrics={"n_samples": geno.n_samples,
-                     "mean_distance": round(float(dmatrix[iu].mean()), 6)},
+            metrics={
+                "n_samples": geno.n_samples,
+                "mean_distance": round(float(dmatrix[iu].mean()), 6),
+            },
         )

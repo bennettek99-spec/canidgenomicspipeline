@@ -21,8 +21,8 @@ from canidae.stages.popgen.store import load_genotypes, load_sample_labels, popu
 
 
 class LocalAncestryConfig(StageConfig):
-    sources: list[str] = Field(default_factory=list)   # reference source populations
-    targets: list[str] = Field(default_factory=list)   # default: all non-source pops
+    sources: list[str] = Field(default_factory=list)  # reference source populations
+    targets: list[str] = Field(default_factory=list)  # default: all non-source pops
     window_bp: int = 200_000
     switch_prob: float = 0.02
     min_sites: int = 5
@@ -45,19 +45,23 @@ class LocalAncestryStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: LocalAncestryConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = load_sample_labels(
-            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path
+        )
         groups = population_indices(geno, labels)
 
         sources = cfg.sources or _default_sources(groups)
         missing = [s for s in sources if s not in groups]
         if len(sources) < 2 or missing:
             raise StageInputError(
-                f"local ancestry needs >=2 source populations present; missing {missing}")
+                f"local ancestry needs >=2 source populations present; missing {missing}"
+            )
         targets = cfg.targets or [p for p in groups if p not in sources]
         if not targets:
             raise StageInputError("no target populations to paint")
@@ -73,30 +77,40 @@ class LocalAncestryStage(Stage):
             for idx in groups[pop]:
                 sample = str(geno.samples[idx])
                 calls = infer_local_ancestry(
-                    n_alt[:, idx], geno.chrom, geno.pos, source_freqs,
-                    window_bp=cfg.window_bp, switch_prob=cfg.switch_prob,
-                    min_sites=cfg.min_sites)
+                    n_alt[:, idx],
+                    geno.chrom,
+                    geno.pos,
+                    source_freqs,
+                    window_bp=cfg.window_bp,
+                    switch_prob=cfg.switch_prob,
+                    min_sites=cfg.min_sites,
+                )
                 for c in calls:
                     window_rows.append({"sample_id": sample, "population": pop, **c})
                 summary_rows.append(_fractions(sample, pop, calls, sources))
 
         summary = pd.DataFrame(summary_rows)
         stage_dir = ctx.datastore.stage_dir(self.name)
-        pd.DataFrame(window_rows).to_csv(stage_dir / "local_ancestry_windows.csv",
-                                         index=False)
+        pd.DataFrame(window_rows).to_csv(stage_dir / "local_ancestry_windows.csv", index=False)
         out = stage_dir / "local_ancestry_fractions.csv"
         summary.to_csv(out, index=False)
 
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "local_ancestry", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "local_ancestry",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
-            metadata={"analysis": "local_ancestry", "sources": sources,
-                      "targets": targets, "window_bp": cfg.window_bp,
-                      "chromosome_reset": True,
-                      "processing_order": "sequential_chromosomes"})
-        return StageResult(
-            artifacts=[art],
-            metrics={"n_targets": len(summary), "sources": sources})
+            metadata={
+                "analysis": "local_ancestry",
+                "sources": sources,
+                "targets": targets,
+                "window_bp": cfg.window_bp,
+                "chromosome_reset": True,
+                "processing_order": "sequential_chromosomes",
+            },
+        )
+        return StageResult(artifacts=[art], metrics={"n_targets": len(summary), "sources": sources})
 
 
 def _default_sources(groups: dict[str, list[int]]) -> list[str]:

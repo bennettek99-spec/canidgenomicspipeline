@@ -63,66 +63,81 @@ class AnalysisReadinessStage(Stage):
         groups = population_indices(geno, labels)
         issues: list[dict[str, str]] = []
 
-        singleton = {pop: len(idx) for pop, idx in groups.items()
-                     if len(idx) < cfg.min_samples_per_population}
+        singleton = {
+            pop: len(idx)
+            for pop, idx in groups.items()
+            if len(idx) < cfg.min_samples_per_population
+        }
         if singleton:
-            issues.append({
-                "severity": "error" if cfg.strict else "warning",
-                "code": "small_population",
-                "detail": ", ".join(f"{pop}={n}" for pop, n in singleton.items()),
-            })
+            issues.append(
+                {
+                    "severity": "error" if cfg.strict else "warning",
+                    "code": "small_population",
+                    "detail": ", ".join(f"{pop}={n}" for pop, n in singleton.items()),
+                }
+            )
 
-        keep = np.ones(geno.n_variants, dtype=bool)
+        keep: np.ndarray = np.ones(geno.n_variants, dtype=bool)
         non_autosomal = np.array([not _is_autosome(value) for value in geno.chrom])
         if cfg.autosomes_only and np.any(non_autosomal):
             keep &= ~non_autosomal
-            issues.append({
-                "severity": "info",
-                "code": "non_autosomal_removed",
-                "detail": str(int(non_autosomal.sum())),
-            })
+            issues.append(
+                {
+                    "severity": "info",
+                    "code": "non_autosomal_removed",
+                    "detail": str(int(non_autosomal.sum())),
+                }
+            )
 
         candidate = np.flatnonzero(keep)
         ld_removed = 0
         if cfg.ld_prune and candidate.size and geno.n_samples >= 4:
             retained = _ld_prune(
-                geno, candidate, window_bp=cfg.ld_window_bp,
+                geno,
+                candidate,
+                window_bp=cfg.ld_window_bp,
                 r2_threshold=cfg.ld_r2_threshold,
             )
             keep[candidate] = False
             keep[retained] = True
             ld_removed = int(candidate.size - retained.size)
         elif cfg.ld_prune and geno.n_samples < 4:
-            issues.append({
-                "severity": "warning",
-                "code": "ld_pruning_underpowered",
-                "detail": f"n_samples={geno.n_samples}",
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "code": "ld_pruning_underpowered",
+                    "detail": f"n_samples={geno.n_samples}",
+                }
+            )
 
         duplicates = _near_duplicates(geno, cfg.duplicate_concordance)
         if duplicates:
-            issues.append({
-                "severity": "error" if cfg.strict else "warning",
-                "code": "near_duplicate_samples",
-                "detail": "; ".join(
-                    f"{a}/{b}={value:.4f}" for a, b, value in duplicates
-                ),
-            })
+            issues.append(
+                {
+                    "severity": "error" if cfg.strict else "warning",
+                    "code": "near_duplicate_samples",
+                    "detail": "; ".join(f"{a}/{b}={value:.4f}" for a, b, value in duplicates),
+                }
+            )
         if source.metadata.get("panel_relative"):
-            issues.append({
-                "severity": "warning",
-                "code": "ascertainment_panel_relative",
-                "detail": str(source.metadata.get("panel_name") or "selected SNP panel"),
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "code": "ascertainment_panel_relative",
+                    "detail": str(source.metadata.get("panel_name") or "selected SNP panel"),
+                }
+            )
         hard_call_filters = source.metadata.get("hard_call_filters") or {}
         if source.metadata.get("panel_relative") and not any(hard_call_filters.values()):
-            issues.append({
-                "severity": "warning",
-                "code": "hard_call_quality_unavailable",
-                "detail": (
-                    "No GQ/DP thresholds were applied; interpret low-coverage calls cautiously."
-                ),
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "code": "hard_call_quality_unavailable",
+                    "detail": (
+                        "No GQ/DP thresholds were applied; interpret low-coverage calls cautiously."
+                    ),
+                }
+            )
         if cfg.strict and any(issue["severity"] == "error" for issue in issues):
             detail = "; ".join(issue["detail"] for issue in issues if issue["severity"] == "error")
             raise StageInputError(f"analysis readiness failed in strict mode: {detail}")
@@ -138,8 +153,7 @@ class AnalysisReadinessStage(Stage):
         stage_dir = ctx.datastore.stage_dir(self.name)
         backend = "npy_mmap" if source.path.is_dir() else "npz"
         output_name = (
-            "analysis_genotypes.store" if backend == "npy_mmap"
-            else "analysis_genotypes.npz"
+            "analysis_genotypes.store" if backend == "npy_mmap" else "analysis_genotypes.npz"
         )
         output = save_genotypes(stage_dir / output_name, ready, backend=backend)
         audit_path = stage_dir / "analysis_readiness.json"
@@ -208,7 +222,8 @@ def _ld_prune(
         chrom = str(geno.chrom[index])
         position = int(geno.pos[index])
         recent = [
-            prior for prior in reversed(retained)
+            prior
+            for prior in reversed(retained)
             if str(geno.chrom[prior]) == chrom and position - int(geno.pos[prior]) <= window_bp
         ]
         if any(_r2(n_alt[index], n_alt[prior]) >= r2_threshold for prior in recent):

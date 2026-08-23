@@ -24,8 +24,8 @@ from canidae.stages.popgen.store import Genotypes
 def _two_group_matrix() -> np.ndarray:
     rng = np.random.default_rng(0)
     X = rng.random((10, 100)) * 0.2
-    X[:5, :50] += 2.0     # group 1 carries alt alleles in the first half
-    X[5:, 50:] += 2.0     # group 2 in the second half
+    X[:5, :50] += 2.0  # group 1 carries alt alleles in the first half
+    X[5:, 50:] += 2.0  # group 2 in the second half
     return X
 
 

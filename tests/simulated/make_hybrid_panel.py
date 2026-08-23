@@ -28,6 +28,7 @@ import gzip
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -81,12 +82,8 @@ PEDIGREE_QUERIES = (
     Query("NYFIXTURE_OFF1", 0.0, 0.25, "Beagle", "eastern"),
     Query("NYFIXTURE_OFF2", 0.0, 0.28, "Beagle", "eastern"),
 )
-EASTERN_QUERIES = tuple(
-    Query(f"EC{i:02d}", 0.25, 0.10, "pooled", "eastern") for i in range(1, 11)
-)
-WESTERN_QUERIES = tuple(
-    Query(f"WC{i:02d}", 0.0, 0.0, "pooled", "western") for i in range(1, 7)
-)
+EASTERN_QUERIES = tuple(Query(f"EC{i:02d}", 0.25, 0.10, "pooled", "eastern") for i in range(1, 11))
+WESTERN_QUERIES = tuple(Query(f"WC{i:02d}", 0.0, 0.0, "pooled", "western") for i in range(1, 7))
 BUG_QUERY = Query(BUG_COLUMN, 0.0, 0.0, "pooled", "eastern")
 ALL_QUERIES = PEDIGREE_QUERIES + EASTERN_QUERIES + WESTERN_QUERIES + (BUG_QUERY,)
 
@@ -126,10 +123,7 @@ def group_frequencies(rng: np.random.Generator) -> dict[str, np.ndarray]:
     """True per-group ALT frequencies over the blocked locus layout."""
     background = rng.uniform(0.15, 0.85, N_LOCI)
     dog_groups = [*BREED_SAMPLES, "VillDog_Peru"]
-    freqs = {
-        group: background.copy()
-        for group in ("Coyote", "AlaskanWolf", *dog_groups)
-    }
+    freqs = {group: background.copy() for group in ("Coyote", "AlaskanWolf", *dog_groups)}
 
     # Dogs carry the derived allele; wolf sits close to coyote so this block
     # informs the dog axis only.
@@ -168,9 +162,7 @@ def _panel_membership() -> list[tuple[str, str]]:
 
 def _query_frequencies(query: Query, freqs: dict[str, np.ndarray]) -> np.ndarray:
     if query.dog_source == "pooled":
-        p_dog = np.mean(
-            [freqs[g] for g in (*BREED_SAMPLES, "VillDog_Peru")], axis=0
-        )
+        p_dog = np.mean([freqs[g] for g in (*BREED_SAMPLES, "VillDog_Peru")], axis=0)
     else:
         p_dog = freqs[query.dog_source]
     f_coyote = 1.0 - query.f_wolf - query.f_dog
@@ -206,9 +198,7 @@ def build_hybrid_panel(out_dir: Path, seed: int = 20260817) -> HybridPanel:
 
     # Two-source reference: coyotes + dogs only. The stage treats every
     # non-coyote entry as dog, so wolves must not appear here.
-    reference_samples = [
-        sample for sample, group in members if group not in ("AlaskanWolf",)
-    ]
+    reference_samples = [sample for sample, group in members if group not in ("AlaskanWolf",)]
     reference_rows = [panel_samples.index(s) for s in reference_samples]
     reference_payload = {
         key: [_genotype_string(int(c)) for c in panel_counts[reference_rows, i]]
@@ -218,9 +208,8 @@ def build_hybrid_panel(out_dir: Path, seed: int = 20260817) -> HybridPanel:
     reference_path.write_text(json.dumps(reference_payload), encoding="utf-8")
 
     # Query genotypes, drawn from the same mixture model the stages fit.
-    query_counts = {
-        query.sample_id: rng.binomial(2, _query_frequencies(query, freqs))
-        for query in ALL_QUERIES
+    query_counts: dict[str, Any] = {
+        query.sample_id: rng.binomial(2, _query_frequencies(query, freqs)) for query in ALL_QUERIES
     }
     depths = np.full(N_LOCI, CALL_DEPTH)
     depths[::LOW_DEPTH_EVERY] = LOW_DEPTH
@@ -231,15 +220,22 @@ def build_hybrid_panel(out_dir: Path, seed: int = 20260817) -> HybridPanel:
         with path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
             writer.writerow(
-                ["chrom", "position", "ref", "alt", "gt", "depth",
-                 "ref_count", "alt_count"]
+                ["chrom", "position", "ref", "alt", "gt", "depth", "ref_count", "alt_count"]
             )
             for i, pos in enumerate(positions):
                 depth = int(depths[i])
                 alt = round(counts[i] / 2.0 * depth)
                 writer.writerow(
-                    [CHROM, pos, "A", "G", _genotype_string(int(counts[i])),
-                     depth, depth - alt, alt]
+                    [
+                        CHROM,
+                        pos,
+                        "A",
+                        "G",
+                        _genotype_string(int(counts[i])),
+                        depth,
+                        depth - alt,
+                        alt,
+                    ]
                 )
 
     bridge_path = out_dir / "bridge.vcf.gz"
@@ -253,9 +249,7 @@ def build_hybrid_panel(out_dir: Path, seed: int = 20260817) -> HybridPanel:
             + "\n"
         )
         for i, pos in enumerate(positions):
-            calls = "\t".join(
-                _genotype_string(int(query_counts[s][i])) for s in bridge_columns
-            )
+            calls = "\t".join(_genotype_string(int(query_counts[s][i])) for s in bridge_columns)
             handle.write(f"{CHROM}\t{pos}\t.\tA\tG\t.\tPASS\t.\tGT\t{calls}\n")
 
     # A plain sample -> fraction map, the simplest breed_assign input shape.

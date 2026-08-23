@@ -56,10 +56,7 @@ DEFAULT_SOURCE_VCF_URL = (
     "https://research.nhgri.nih.gov/dog_genome/downloads/datasets/WGS/"
     "722g.990.SNP.INDEL.chrAll.vcf.gz"
 )
-DEFAULT_PANEL_URL = (
-    "https://download.cncb.ac.cn/dogsd/dog10k/variations/"
-    "CFA31_IlluminaHD.vcf.gz"
-)
+DEFAULT_PANEL_URL = "https://download.cncb.ac.cn/dogsd/dog10k/variations/CFA31_IlluminaHD.vcf.gz"
 DEFAULT_PANEL_MD5 = "4a87088b17631fb6237210044ac099a6"
 
 _BGZF_MAX_BLOCK = 65_536
@@ -203,7 +200,7 @@ def preset_site_count(preset: str) -> int:
         ) from exc
 
 
-def format_bytes(value: int) -> str:
+def format_bytes(value: float) -> str:
     """Render a byte count for an error message or user-facing progress output."""
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if value < 1000 or unit == "TB":
@@ -343,7 +340,7 @@ def _parse_tabix(raw_bgzf: bytes) -> tuple[list[str], list[ReferenceIndex]]:
     for _ in range(6):
         i32()  # format, sequence/begin/end columns, meta character, skipped lines
     names_len = i32()
-    names = raw[offset: offset + names_len].rstrip(b"\x00").decode().split("\x00")
+    names = raw[offset : offset + names_len].rstrip(b"\x00").decode().split("\x00")
     offset += names_len
     refs: list[ReferenceIndex] = []
     for _ in range(n_ref):
@@ -412,12 +409,12 @@ def _decompress_bgzf(data: bytes, first_uncompressed_offset: int = 0) -> bytes:
     output = bytearray()
     cursor = 0
     while cursor + 18 <= len(data):
-        if data[cursor: cursor + 2] != b"\x1f\x8b":
+        if data[cursor : cursor + 2] != b"\x1f\x8b":
             break
         block_size = struct.unpack_from("<H", data, cursor + 16)[0] + 1
         if cursor + block_size > len(data):
             break
-        output.extend(gzip.decompress(data[cursor: cursor + block_size]))
+        output.extend(gzip.decompress(data[cursor : cursor + block_size]))
         cursor += block_size
     return bytes(output[first_uncompressed_offset:])
 
@@ -516,8 +513,11 @@ def _atomic_gzip_vcf(
 ) -> None:
     """Write the compact VCF to a neighboring temporary file before promotion."""
     with tempfile.NamedTemporaryFile(
-        mode="wb", suffix=".vcf.gz.tmp", prefix=f".{output_path.stem}.",
-        dir=output_path.parent, delete=False,
+        mode="wb",
+        suffix=".vcf.gz.tmp",
+        prefix=f".{output_path.stem}.",
+        dir=output_path.parent,
+        delete=False,
     ) as handle:
         temporary = Path(handle.name)
     try:
@@ -560,9 +560,7 @@ def _indexed_plan(
     for chrom, pos in targets:
         chunks.update(_chunks_for(name_to_index[chrom], pos))
     merged = _merge_chunks(chunks)
-    range_bytes = sum(
-        ((end >> 16) + _BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged
-    )
+    range_bytes = sum(((end >> 16) + _BGZF_MAX_BLOCK) - (begin >> 16) for begin, end in merged)
     estimate = TransferEstimate(
         prerequisite_bytes=prerequisite_bytes,
         range_bytes=range_bytes,
@@ -587,9 +585,7 @@ def preflight_indexed_panel(
     budget = TransferBudget(max_download_bytes)
     panel_data = _request(panel_url, budget, timeout_seconds=timeout_seconds)
     verify_checksum(panel_data, panel_checksum, label="marker panel")
-    index_data = _request(
-        f"{source_vcf_url}.tbi", budget, timeout_seconds=timeout_seconds
-    )
+    index_data = _request(f"{source_vcf_url}.tbi", budget, timeout_seconds=timeout_seconds)
     verify_checksum(index_data, index_checksum, label="tabix index")
     return _indexed_plan(panel_data, index_data, target_sites, budget.used)[2]
 
@@ -650,22 +646,16 @@ def extract_indexed_panel(
     try:
         if progress:
             progress("downloading marker panel and tabix index")
-        panel_data = _request(
-            panel_url, budget, timeout_seconds=timeout_seconds, progress=progress
-        )
+        panel_data = _request(panel_url, budget, timeout_seconds=timeout_seconds, progress=progress)
         panel_digest = verify_checksum(panel_data, panel_checksum, label="marker panel")
         (work / "marker_panel.vcf.gz").write_bytes(panel_data)
 
         index_url = f"{source_vcf_url}.tbi"
-        index_data = _request(
-            index_url, budget, timeout_seconds=timeout_seconds, progress=progress
-        )
+        index_data = _request(index_url, budget, timeout_seconds=timeout_seconds, progress=progress)
         index_digest = verify_checksum(index_data, index_checksum, label="tabix index")
         (work / "source.vcf.gz.tbi").write_bytes(index_data)
 
-        targets, merged, estimate = _indexed_plan(
-            panel_data, index_data, target_sites, budget.used
-        )
+        targets, merged, estimate = _indexed_plan(panel_data, index_data, target_sites, budget.used)
         if progress:
             progress(
                 f"estimated transfer {format_bytes(estimate.total_bytes)} for "
@@ -693,9 +683,7 @@ def extract_indexed_panel(
         skipped: Counter[str] = Counter()
         cache = None
         if range_cache_dir is not None:
-            namespace = hashlib.sha256(
-                f"{source_vcf_url}|{index_digest}".encode()
-            ).hexdigest()[:24]
+            namespace = hashlib.sha256(f"{source_vcf_url}|{index_digest}".encode()).hexdigest()[:24]
             cache = RangeCache(Path(range_cache_dir), namespace)
 
         def fetch(item: tuple[int, tuple[int, int]]) -> tuple[int, int, bytes]:
@@ -728,55 +716,54 @@ def extract_indexed_panel(
                     yield from pool.map(fetch, indexed_ranges[offset : offset + batch_size])
 
         for number, virtual_begin, data in bounded_fetches():
-                text = _decompress_bgzf(data, virtual_begin & 0xFFFF).decode(errors="replace")
-                for line in text.splitlines():
-                    if not line or line.startswith("#"):
-                        continue
-                    fields = line.split("\t")
-                    if len(fields) <= max(sample_columns):
-                        skipped["truncated_record"] += 1
-                        continue
-                    try:
-                        key = (fields[0], int(fields[1]))
-                    except (ValueError, IndexError):
-                        skipped["malformed_position"] += 1
-                        continue
-                    if key not in targets or key in records:
-                        continue
-                    if len(fields) < 10:
-                        skipped["missing_format_or_samples"] += 1
-                        continue
-                    ref, alt = fields[3], fields[4]
-                    if len(ref) != 1 or len(alt) != 1 or "," in alt:
-                        skipped["not_biallelic_snp"] += 1
-                        continue
-                    formats = fields[8].split(":")
-                    if "GT" not in formats:
-                        skipped["missing_gt_field"] += 1
-                        continue
-                    genotypes = [
-                        _genotype(
-                            fields[index], formats,
-                            min_gq=min_genotype_quality,
-                            min_dp=min_genotype_depth,
-                        )
-                        for index in sample_columns
-                    ]
-                    if any(gt is None for gt in genotypes):
-                        skipped["missing_or_non_diploid_gt"] += 1
-                        continue
-                    records[key] = "\t".join(
-                        fields[:8] + ["GT"] + [str(gt) for gt in genotypes]
+            text = _decompress_bgzf(data, virtual_begin & 0xFFFF).decode(errors="replace")
+            for line in text.splitlines():
+                if not line or line.startswith("#"):
+                    continue
+                fields = line.split("\t")
+                if len(fields) <= max(sample_columns):
+                    skipped["truncated_record"] += 1
+                    continue
+                try:
+                    key = (fields[0], int(fields[1]))
+                except (ValueError, IndexError):
+                    skipped["malformed_position"] += 1
+                    continue
+                if key not in targets or key in records:
+                    continue
+                if len(fields) < 10:
+                    skipped["missing_format_or_samples"] += 1
+                    continue
+                ref, alt = fields[3], fields[4]
+                if len(ref) != 1 or len(alt) != 1 or "," in alt:
+                    skipped["not_biallelic_snp"] += 1
+                    continue
+                formats = fields[8].split(":")
+                if "GT" not in formats:
+                    skipped["missing_gt_field"] += 1
+                    continue
+                genotypes = [
+                    _genotype(
+                        fields[index],
+                        formats,
+                        min_gq=min_genotype_quality,
+                        min_dp=min_genotype_depth,
                     )
-                if progress and (number % 100 == 0 or number == len(merged)):
-                    reused = cache.reused_bytes if cache else 0
-                    elapsed = max(time.monotonic() - range_started, 0.001)
-                    remaining_s = (len(merged) - number) / max(number / elapsed, 1e-9)
-                    progress(
-                        f"ranges {number:,}/{len(merged):,}; downloaded "
-                        f"{format_bytes(budget.used)}; reused {format_bytes(reused)}; "
-                        f"retained {len(records):,} SNPs; ETA {remaining_s / 60:.1f} min"
-                    )
+                    for index in sample_columns
+                ]
+                if any(gt is None for gt in genotypes):
+                    skipped["missing_or_non_diploid_gt"] += 1
+                    continue
+                records[key] = "\t".join(fields[:8] + ["GT"] + [str(gt) for gt in genotypes])
+            if progress and (number % 100 == 0 or number == len(merged)):
+                reused = cache.reused_bytes if cache else 0
+                elapsed = max(time.monotonic() - range_started, 0.001)
+                remaining_s = (len(merged) - number) / max(number / elapsed, 1e-9)
+                progress(
+                    f"ranges {number:,}/{len(merged):,}; downloaded "
+                    f"{format_bytes(budget.used)}; reused {format_bytes(reused)}; "
+                    f"retained {len(records):,} SNPs; ETA {remaining_s / 60:.1f} min"
+                )
 
         minimum = min_retained_sites if min_retained_sites is not None else min(1_000, target_sites)
         if len(records) < minimum:
@@ -921,11 +908,15 @@ class ReducedPanelStage(Stage):
             if ctx.run_dir is not None:
                 atomic_write_text(
                     Path(ctx.run_dir) / "progress.json",
-                    json.dumps({
-                        "stage": self.name,
-                        "message": message,
-                        "updated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-                    }, indent=2) + "\n",
+                    json.dumps(
+                        {
+                            "stage": self.name,
+                            "message": message,
+                            "updated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                        },
+                        indent=2,
+                    )
+                    + "\n",
                 )
 
         result = extract_indexed_panel(

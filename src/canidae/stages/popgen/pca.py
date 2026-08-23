@@ -40,13 +40,15 @@ class PCAStage(Stage):
 
     def run(self, ctx: RunContext) -> StageResult:
         cfg: PCAConfig = self.config  # type: ignore[assignment]
-        role = "analysis_genotypes" if ctx.datastore.has(
-            ArtifactKind.GENOTYPES, "analysis_genotypes"
-        ) else "genotypes"
+        role = (
+            "analysis_genotypes"
+            if ctx.datastore.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
         geno = load_genotypes(ctx.datastore.get(ArtifactKind.GENOTYPES, role).path)
         labels = align_labels(
-            geno, load_sample_labels(
-                ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path)
+            geno,
+            load_sample_labels(ctx.datastore.get(ArtifactKind.SAMPLE_SHEET, "sample_sheet").path),
         )
 
         # Restrict to segregating sites and retain ALT allele counts (n_variants, n_samples).
@@ -79,7 +81,10 @@ class PCAStage(Stage):
 
         evr = [round(float(x), 5) for x in model.explained_variance_ratio_]
         art = ctx.datastore.add(
-            ArtifactKind.ANALYSIS_RESULT, "pca", out, fmt=FileFormat.CSV,
+            ArtifactKind.ANALYSIS_RESULT,
+            "pca",
+            out,
+            fmt=FileFormat.CSV,
             produced_by=self.name,
             metadata={
                 "analysis": "pca",
@@ -91,6 +96,9 @@ class PCAStage(Stage):
         )
         return StageResult(
             artifacts=[art],
-            metrics={"n_components": max_components, "n_sites_used": int(n_alt.shape[0]),
-                     "pc1_variance": evr[0] if evr else None},
+            metrics={
+                "n_components": max_components,
+                "n_sites_used": int(n_alt.shape[0]),
+                "pc1_variance": evr[0] if evr else None,
+            },
         )

@@ -38,8 +38,7 @@ def write_plink_bed(genotypes: Genotypes, prefix: Path) -> PlinkFileset:
     bed.write_bytes(_MAGIC + _pack_snp_major(n_alt))
     _write_bim(prefix.with_suffix(".bim"), genotypes)
     _write_fam(prefix.with_suffix(".fam"), genotypes)
-    return PlinkFileset(bed=bed, bim=prefix.with_suffix(".bim"),
-                        fam=prefix.with_suffix(".fam"))
+    return PlinkFileset(bed=bed, bim=prefix.with_suffix(".bim"), fam=prefix.with_suffix(".fam"))
 
 
 def _pack_snp_major(n_alt: np.ndarray) -> bytes:
@@ -90,11 +89,11 @@ def decode_bed(fileset: PlinkFileset, n_samples: int) -> np.ndarray:
     raw = fileset.bed.read_bytes()
     if raw[:3] != _MAGIC:
         raise ValueError("not a SNP-major PLINK .bed")
-    body = np.frombuffer(raw[3:], dtype=np.uint8)
+    body: np.ndarray = np.frombuffer(raw[3:], dtype=np.uint8)
     bytes_per_var = (n_samples + 3) // 4
     body = body.reshape(-1, bytes_per_var)
     decode = {0b00: 0, 0b10: 1, 0b11: 2, 0b01: -1}
-    out = np.empty((body.shape[0], bytes_per_var * 4), dtype=np.int8)
+    out: np.ndarray = np.empty((body.shape[0], bytes_per_var * 4), dtype=np.int8)
     for b in range(4):  # b-th 2-bit field within each byte -> samples b, b+4, b+8, ...
         codes = (body >> (2 * b)) & 0b11
         out[:, b::4] = np.vectorize(decode.get)(codes)

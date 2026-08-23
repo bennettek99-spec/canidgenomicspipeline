@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 import allel
 import numpy as np
@@ -37,9 +38,11 @@ from make_cohort import simulate_introgression_cohort
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
-PLINK2 = shutil.which("plink2")
-DSUITE = shutil.which("Dsuite") or shutil.which("dsuite")
-BCFTOOLS = shutil.which("bcftools")
+# Each binary is only invoked under its @requires_* guard, which skips the test when
+# the lookup returned None; the casts just reflect that invariant to the type checker.
+PLINK2 = cast(str, shutil.which("plink2"))
+DSUITE = cast(str, shutil.which("Dsuite") or shutil.which("dsuite"))
+BCFTOOLS = cast(str, shutil.which("bcftools"))
 
 requires_plink2 = pytest.mark.skipif(PLINK2 is None, reason="plink2 not on PATH")
 requires_dsuite = pytest.mark.skipif(DSUITE is None, reason="Dsuite not on PATH")
@@ -70,9 +73,18 @@ def test_plink2_reads_our_bed_and_agrees_on_allele_frequencies(tmp_path: Path) -
     geno = _demo_cohort()
     write_plink_bed(geno, tmp_path / "cohort")
     subprocess.run(
-        [PLINK2, "--bfile", str(tmp_path / "cohort"), "--freq",
-         "--allow-extra-chr", "--out", str(tmp_path / "freq")],
-        check=True, capture_output=True, text=True,
+        [
+            PLINK2,
+            "--bfile",
+            str(tmp_path / "cohort"),
+            "--freq",
+            "--allow-extra-chr",
+            "--out",
+            str(tmp_path / "freq"),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     report = pd.read_csv(tmp_path / "freq.afreq", sep="\t")
     assert len(report) == geno.n_variants
@@ -95,14 +107,26 @@ def test_plink2_agrees_on_per_sample_missingness(tmp_path: Path) -> None:
     calls = np.asarray(geno.calls).copy()
     calls[:20, 0] = -1  # 20 missing sites for the first sample only
     geno = Genotypes(
-        calls=allel.GenotypeArray(calls), pos=geno.pos,
-        chrom=geno.chrom, samples=geno.samples,
+        calls=allel.GenotypeArray(calls),
+        pos=geno.pos,
+        chrom=geno.chrom,
+        samples=geno.samples,
     )
     write_plink_bed(geno, tmp_path / "cohort")
     subprocess.run(
-        [PLINK2, "--bfile", str(tmp_path / "cohort"), "--missing", "sample-only",
-         "--allow-extra-chr", "--out", str(tmp_path / "miss")],
-        check=True, capture_output=True, text=True,
+        [
+            PLINK2,
+            "--bfile",
+            str(tmp_path / "cohort"),
+            "--missing",
+            "sample-only",
+            "--allow-extra-chr",
+            "--out",
+            str(tmp_path / "miss"),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     report = pd.read_csv(tmp_path / "miss.smiss", sep="\t").set_index("IID")
     assert int(report.loc[geno.samples[0], "MISSING_CT"]) == 20
@@ -115,9 +139,19 @@ def test_plink2_pca_agrees_on_first_component(tmp_path: Path) -> None:
     geno = _demo_cohort(n_variants=500, n_samples=12)
     write_plink_bed(geno, tmp_path / "cohort")
     subprocess.run(
-        [PLINK2, "--bfile", str(tmp_path / "cohort"), "--pca", "2",
-         "--allow-extra-chr", "--out", str(tmp_path / "pca")],
-        check=True, capture_output=True, text=True,
+        [
+            PLINK2,
+            "--bfile",
+            str(tmp_path / "cohort"),
+            "--pca",
+            "2",
+            "--allow-extra-chr",
+            "--out",
+            str(tmp_path / "pca"),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     theirs = pd.read_csv(tmp_path / "pca.eigenvec", sep=r"\s+")
     ours, _model = allel.pca(
@@ -136,12 +170,19 @@ def test_bcftools_stats_agrees_on_snp_count(tmp_path: Path) -> None:
     """The external callset summary must see the same biallelic SNP count as CANIS."""
     geno = _demo_cohort(n_variants=200, n_samples=8)
     vcf = write_minimal_vcf(
-        tmp_path / "cohort.vcf", geno.chrom, geno.pos,
-        np.full(geno.n_variants, "A"), np.full(geno.n_variants, "G"),
-        geno.samples, np.asarray(geno.calls),
+        tmp_path / "cohort.vcf",
+        geno.chrom,
+        geno.pos,
+        np.full(geno.n_variants, "A"),
+        np.full(geno.n_variants, "G"),
+        geno.samples,
+        np.asarray(geno.calls),
     )
     result = subprocess.run(
-        [BCFTOOLS, "stats", str(vcf)], check=True, capture_output=True, text=True,
+        [BCFTOOLS, "stats", str(vcf)],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     match = re.search(r"^SN\t[^\n]*number of SNPs:\t(\d+)", result.stdout, re.MULTILINE)
     assert match, result.stdout
@@ -154,39 +195,43 @@ def test_bcftools_stats_agrees_on_snp_count(tmp_path: Path) -> None:
 @requires_dsuite
 def test_dsuite_agrees_on_the_simulated_introgression_signal(tmp_path: Path) -> None:
     """Both implementations must find the same COYOTE->DOG pulse in the same cohort."""
-    vcf, sheet = simulate_introgression_cohort(
-        tmp_path / "sim", seed=11, admixture_proportion=0.25
-    )
+    vcf, sheet = simulate_introgression_cohort(tmp_path / "sim", seed=11, admixture_proportion=0.25)
     labels = pd.read_csv(sheet)
 
     # Dsuite wants sample<TAB>population, with the outgroup named "Outgroup".
     sets = tmp_path / "sets.txt"
     sets.write_text(
         "".join(
-            f"{row.sample_id}\t"
-            f"{'Outgroup' if row.population == 'JACKAL' else row.population}\n"
+            f"{row.sample_id}\t{'Outgroup' if row.population == 'JACKAL' else row.population}\n"
             for row in labels.itertuples(index=False)
         ),
         encoding="utf-8",
     )
     subprocess.run(
         [DSUITE, "Dtrios", "-o", str(tmp_path / "dsuite"), str(vcf), str(sets)],
-        check=True, capture_output=True, text=True, cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
     )
     theirs = pd.read_csv(tmp_path / "dsuite_BBAA.txt", sep="\t")
 
-    cfg = GlobalConfig.load(overrides={
-        "project_name": "parity", "paths.root": str(tmp_path),
-        "pipeline": ["ingest", "load_genotypes", "dstats"],
-        "logging.level": "WARNING",
-        "stages.ingest.sample_sheet": str(sheet), "stages.ingest.callset": str(vcf),
-        "stages.dstats.outgroup": "JACKAL",
-    })
+    cfg = GlobalConfig.load(
+        overrides={
+            "project_name": "parity",
+            "paths.root": str(tmp_path),
+            "pipeline": ["ingest", "load_genotypes", "dstats"],
+            "logging.level": "WARNING",
+            "stages.ingest.sample_sheet": str(sheet),
+            "stages.ingest.callset": str(vcf),
+            "stages.dstats.outgroup": "JACKAL",
+        }
+    )
     run_pipeline(cfg)
     store = DataStore(cfg.paths.data_root / "store")
     ours = pd.read_csv(store.get(ArtifactKind.ANALYSIS_RESULT, "dstats").path)
 
-    def _key(p1: str, p2: str, p3: str) -> frozenset:
+    def _key(p1: str, p2: str, p3: str) -> tuple[frozenset[str], str]:
         return frozenset({p1, p2}), p3
 
     our_by_key = {_key(r.P1, r.P2, r.P3): abs(float(r.D)) for r in ours.itertuples()}
@@ -203,6 +248,4 @@ def test_dsuite_agrees_on_the_simulated_introgression_signal(tmp_path: Path) -> 
     # And both must localize the signal to the same trio.
     our_top = ours.loc[ours["D"].abs().idxmax()]
     their_top = theirs.loc[theirs["Dstatistic"].abs().idxmax()]
-    assert {our_top.P1, our_top.P2, our_top.P3} == {
-        their_top.P1, their_top.P2, their_top.P3
-    }
+    assert {our_top.P1, our_top.P2, our_top.P3} == {their_top.P1, their_top.P2, their_top.P3}
