@@ -16,6 +16,7 @@ import os
 from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from jinja2 import Template
 from pydantic import Field
@@ -82,6 +83,7 @@ _TEMPLATE = Template(
 {% if excluded_table %}<h3>Excluded samples and sites</h3>{{ excluded_table }}{% endif %}
 
 {% if pca_img %}<h2 id="pca">Principal component analysis</h2>
+{% if pca_caption %}<p class="stat">{{ pca_caption }}</p>{% endif %}
 <img src="data:image/png;base64,{{ pca_img }}" alt="PCA scatter">
 {% if pca_svg %}<p class="small">Interactive PCA: hover or focus a point to inspect its sample and coordinates.</p>{{ pca_svg }}{% endif %}
 {% endif %}
@@ -89,7 +91,7 @@ _TEMPLATE = Template(
 {% if admixture_img %}<h2>Admixture</h2>
 
 <p class="stat">Backend: {{ admix_backend }} &middot; selected K = {{ admix_k }}
-   (cross-validation).</p>
+   (cross-validation).{% if admix_cv %} {{ admix_cv }}{% endif %}</p>
 <img src="data:image/png;base64,{{ admixture_img }}" alt="admixture barplot">{% endif %}
 
 {% if dendro_img %}<h2>Population clustering</h2>
@@ -101,6 +103,7 @@ _TEMPLATE = Template(
 <img src="data:image/png;base64,{{ tree_img }}" alt="NJ tree">{% endif %}
 
 {% if fst_img %}<h2>Population differentiation (F<sub>ST</sub>)</h2>
+{% if fst_summary %}<p class="stat">{{ fst_summary }}</p>{% endif %}
 <img src="data:image/png;base64,{{ fst_img }}" alt="FST heatmap">
 {{ fst_table }}{% endif %}
 
@@ -149,7 +152,9 @@ _TEMPLATE = Template(
 {% if demography_table %}<h2>Demographic summary</h2>{{ demography_table }}{% endif %}
 
 {% if roh_img %}<h2>Runs of homozygosity</h2>
-<img src="data:image/png;base64,{{ roh_img }}" alt="ROH barplot">{% endif %}
+{% if roh_summary %}<p class="stat">{{ roh_summary }}</p>{% endif %}
+<img src="data:image/png;base64,{{ roh_img }}" alt="ROH barplot">
+{% if roh_table %}{{ roh_table }}{% endif %}{% endif %}
 
 {% if map_img or ibd_img %}<h2>Geography</h2>
 {% if mantel_line %}<p class="stat">{{ mantel_line }}</p>{% endif %}
@@ -255,8 +260,13 @@ class ReportStage(Stage):
             if sheet is not None
             else "<p class='small'>No sample sheet in this recipe.</p>",
             "pca_img": None,
+            "pca_caption": None,
             "fst_img": None,
             "fst_table": None,
+            "fst_summary": None,
+            "admix_cv": None,
+            "roh_summary": None,
+            "roh_table": None,
             "div_img": None,
             "div_table": None,
             "diversity_note": diversity_meta.get("limitations"),
@@ -288,10 +298,12 @@ class ReportStage(Stage):
                 )
             )
             ctx_vars["pca_svg"] = _pca_svg(pca_art.path)
+            ctx_vars["pca_caption"] = _pca_caption(pca_art)
         if ds.has(R, "fst"):
             fst_art = ds.get(R, "fst")
             ctx_vars["fst_img"] = _b64(figures.fst_heatmap(fst_art.path, d / "fst.png"))
             ctx_vars["fst_table"] = pd.read_csv(fst_art.path, index_col=0).to_html(border=0)
+            ctx_vars["fst_summary"] = _fst_summary(fst_art.path)
         if ds.has(R, "diversity"):
             div_art = ds.get(R, "diversity")
             ctx_vars["div_img"] = _b64(figures.diversity_bar(div_art.path, d / "diversity.png"))
@@ -328,6 +340,7 @@ class ReportStage(Stage):
         v["admixture_img"] = _b64(figures.admixture_barplot(art.path, d / "admixture.png"))
         v["admix_backend"] = art.metadata.get("backend", "?")
         v["admix_k"] = art.metadata.get("best_k", "?")
+        v["admix_cv"] = _admixture_cv_summary(art.metadata)
 
     def _add_clustering(self, ds, d: Path, v: dict) -> None:
         if not (
@@ -452,6 +465,8 @@ class ReportStage(Stage):
         if ds.has(ArtifactKind.ANALYSIS_RESULT, "roh"):
             art = ds.get(ArtifactKind.ANALYSIS_RESULT, "roh")
             v["roh_img"] = _b64(figures.roh_barplot(art.path, d / "roh.png"))
+            v["roh_table"] = pd.read_csv(art.path).to_html(index=False, border=0)
+            v["roh_summary"] = _roh_summary(art.path)
 
     def _add_geography(self, ds, d: Path, v: dict) -> None:
         if not ds.has(ArtifactKind.ANALYSIS_RESULT, "geography"):
@@ -624,19 +639,94 @@ def _limitations(ds, diversity_metadata: dict) -> list[str]:
 
 
 def _executive_summary(ds, diversity_metadata: dict) -> str:
+    """Plain-language takeaways: what the data show, not just what ran.
+
+    Every block is best-effort — a missing or malformed artifact is skipped rather
+    than failing the report, so minimal recipes still render.
+    """
     parts: list[str] = []
-    genotype_role = (
-        "analysis_genotypes"
-        if ds.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
-        else "genotypes"
-    )
-    if ds.has(ArtifactKind.GENOTYPES, genotype_role):
-        meta = ds.get(ArtifactKind.GENOTYPES, genotype_role).metadata
-        parts.append(
-            f"The analysis contains {meta.get('n_samples', '?')} included samples and "
-            f"{meta.get('n_variants', '?')} retained variants."
-        )
     R = ArtifactKind.ANALYSIS_RESULT
+    n_samples: object = "?"
+    n_variants: object = "?"
+    try:
+        if ds.has(ArtifactKind.QC_TABLE, "analysis_readiness"):
+            audit = ds.get(ArtifactKind.QC_TABLE, "analysis_readiness")
+            meta = audit.metadata or {}
+            # The audit path carries the full JSON; prefer its exact counts.
+            import json as _json
+
+            try:
+                doc = _json.loads(audit.path.read_text(encoding="utf-8"))
+                n_variants = doc.get("n_variants_ready", n_variants)
+                n_samples = doc.get("n_samples", n_samples)
+                if doc.get("ld_removed"):
+                    parts.append(
+                        f"LD pruning retained {doc.get('n_variants_ready')} of "
+                        f"{doc.get('n_variants_input')} variants "
+                        f"({doc.get('ld_removed')} linked markers removed)."
+                    )
+            except (OSError, ValueError):
+                pass
+        genotype_role = (
+            "analysis_genotypes"
+            if ds.has(ArtifactKind.GENOTYPES, "analysis_genotypes")
+            else "genotypes"
+        )
+        if ds.has(ArtifactKind.GENOTYPES, genotype_role):
+            meta = ds.get(ArtifactKind.GENOTYPES, genotype_role).metadata or {}
+            if n_samples == "?":
+                n_samples = meta.get("n_samples", "?")
+            if n_variants == "?":
+                n_variants = meta.get("n_variants", "?")
+    except Exception:  # pragma: no cover - summary must never break the report
+        pass
+    parts.insert(
+        0,
+        f"The analysis contains {n_samples} included samples and {n_variants} retained variants.",
+    )
+    if ds.has(R, "pca"):
+        caption = _pca_caption(ds.get(R, "pca"))
+        if caption:
+            parts.append(caption)
+    if ds.has(R, "fst"):
+        summary = _fst_summary(ds.get(R, "fst").path)
+        if summary:
+            parts.append(summary)
+    if ds.has(R, "admixture"):
+        art = ds.get(R, "admixture")
+        cv = _admixture_cv_summary(art.metadata or {})
+        parts.append(
+            f"Ancestry modelling selects K={art.metadata.get('best_k', '?')} "
+            f"({art.metadata.get('backend', '?')} backend{(', ' + cv) if cv else ''})."
+        )
+    if ds.has(R, "diversity"):
+        try:
+            div = pd.read_csv(ds.get(R, "diversity").path)
+            if not div.empty and {"population", "pi"}.issubset(div.columns):
+                ranked = div.sort_values("pi", ascending=False)
+                top = ranked.iloc[0]
+                bottom = ranked.iloc[-1]
+                parts.append(
+                    f"Diversity is highest in {top['population']} "
+                    f"(pi={float(top['pi']):.3g}) and lowest in "
+                    f"{bottom['population']} (pi={float(bottom['pi']):.3g})."
+                )
+        except Exception:  # pragma: no cover
+            pass
+    if ds.has(R, "roh"):
+        summary = _roh_summary(ds.get(R, "roh").path)
+        if summary:
+            parts.append(summary)
+    if ds.has(R, "geography"):
+        try:
+            meta = ds.get(R, "geography").metadata or {}
+            if meta.get("mantel_r") is not None:
+                parts.append(
+                    f"Isolation by distance: Mantel r={float(meta['mantel_r']):.3f}, "
+                    f"p={meta.get('mantel_p')} over {meta.get('n_localities')} localities."
+                )
+        except (TypeError, ValueError):  # pragma: no cover
+            pass
     if ds.has(R, "reference_mixture"):
         art = ds.get(R, "reference_mixture")
         parts.append(
@@ -656,9 +746,27 @@ def _executive_summary(ds, diversity_metadata: dict) -> str:
             f"{art.metadata.get('n_queries', '?')} queries."
         )
     if ds.has(R, "dstats"):
-        parts.append(
-            "D-statistics were calculated with uncertainty reported in the introgression section."
-        )
+        try:
+            frame = pd.read_csv(ds.get(R, "dstats").path)
+            if not frame.empty and "Z" in frame.columns:
+                strongest = frame.loc[frame["Z"].abs().idxmax()]
+                sig = int((frame["Z"].abs() > 3).sum())
+                parts.append(
+                    f"D-statistics: {sig}/{len(frame)} tests exceed |Z|>3; strongest is "
+                    f"{strongest.get('P1', '?')}/{strongest.get('P2', '?')}/"
+                    f"{strongest.get('P3', '?')} (D={float(strongest.get('D', float('nan'))):.3f}, "
+                    f"Z={float(strongest.get('Z', float('nan'))):.2f})."
+                )
+            else:
+                parts.append(
+                    "D-statistics were calculated with uncertainty reported in the "
+                    "introgression section."
+                )
+        except Exception:  # pragma: no cover
+            parts.append(
+                "D-statistics were calculated with uncertainty reported in the "
+                "introgression section."
+            )
     if ds.has(R, "local_ancestry"):
         parts.append(
             "Chromosome-reset local ancestry calls are included where source panels were configured."
@@ -668,6 +776,90 @@ def _executive_summary(ds, diversity_metadata: dict) -> str:
     return (
         " ".join(parts) or "The configured analyses completed; inspect each section and its limits."
     )
+
+
+def _pca_caption(pca_art) -> str:
+    """One-line PCA takeaway: variance explained plus the most PC1-distinct population."""
+    try:
+        evr = pca_art.metadata.get("explained_variance_ratio") or []
+        frame = pd.read_csv(pca_art.path)
+        if frame.empty or "PC1" not in frame.columns or "population" not in frame.columns:
+            return ""
+        means = frame.groupby("population")["PC1"].mean()
+        if len(means) < 2:
+            return ""
+        ordered = means.sort_values()
+        spread = float(ordered.iloc[-1] - ordered.iloc[0])
+        sentence = (
+            f"PC1 separates {ordered.index[-1]} from {ordered.index[0]} "
+            f"(group-mean gap {spread:.2f})"
+        )
+        if evr and len(evr) >= 2:
+            sentence += (
+                f"; PC1 explains {float(evr[0]) * 100:.1f}% and PC2 {float(evr[1]) * 100:.1f}%"
+            )
+        return sentence + "."
+    except Exception:  # pragma: no cover - caption must never break the report
+        return ""
+
+
+def _fst_summary(fst_csv: Path) -> str:
+    """Plain-language F_ST extremes (max = most differentiated pair)."""
+    try:
+        frame = pd.read_csv(fst_csv, index_col=0)
+        if frame.empty:
+            return ""
+        values = frame.to_numpy(dtype=float)
+        pops = list(frame.index)
+        mask: np.ndarray = np.eye(len(pops), dtype=bool)
+        off = np.where(~mask, values, np.nan)
+        if np.isnan(off).all():
+            return ""
+        hi = np.nanargmax(off)
+        lo = np.nanargmin(off)
+        hi_pair = (pops[hi // len(pops)], pops[hi % len(pops)])
+        lo_pair = (pops[lo // len(pops)], pops[lo % len(pops)])
+        return (
+            f"Strongest differentiation is {hi_pair[0]}-{hi_pair[1]} "
+            f"(F_ST={float(off[hi // len(pops), hi % len(pops)]):.3f}); weakest is "
+            f"{lo_pair[0]}-{lo_pair[1]} "
+            f"(F_ST={float(off[lo // len(pops), lo % len(pops)]):.3f})."
+        )
+    except Exception:  # pragma: no cover
+        return ""
+
+
+def _admixture_cv_summary(metadata: dict) -> str:
+    try:
+        cv_errors = metadata.get("cv_errors") or {}
+        if len(cv_errors) < 2:
+            return ""
+        ordered = sorted(cv_errors.items(), key=lambda item: float(item[1]))
+        best_k, best_err = ordered[0]
+        second_k, second_err = ordered[1]
+        margin = (float(second_err) - float(best_err)) / max(abs(float(best_err)), 1e-12)
+        strength = "decisively" if margin > 0.05 else "marginally"
+        return (
+            f"CV error {float(best_err):.4f} at K={best_k} {strength} beats "
+            f"K={second_k} ({float(second_err):.4f})"
+        )
+    except (TypeError, ValueError):  # pragma: no cover
+        return ""
+
+
+def _roh_summary(roh_csv: Path) -> str:
+    try:
+        frame = pd.read_csv(roh_csv)
+        if frame.empty or "froh" not in frame.columns or "sample_id" not in frame.columns:
+            return ""
+        top = frame.loc[frame["froh"].astype(float).idxmax()]
+        return (
+            f"Highest inbreeding signal is {top['sample_id']} "
+            f"(F_ROH={float(top['froh']):.3f}, {int(top.get('n_roh_segments', 0))} segments); "
+            f"cohort median F_ROH={float(frame['froh'].astype(float).median()):.3f}."
+        )
+    except Exception:  # pragma: no cover
+        return ""
 
 
 def _run_status(ctx: RunContext) -> str:

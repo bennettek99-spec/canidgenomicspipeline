@@ -2,6 +2,21 @@
 
 ## Unreleased — hybrid-canid stages
 
+### Improved
+
+- **LD pruning is now laptop-fast.** `analysis_readiness` used a per-pair
+  `np.corrcoef` Python loop (~220 s on a 9.6k-variant simulated cohort); the same
+  greedy bp-window prune now standardizes the matrix once and scores each variant
+  against its in-window retained set with one vector dot product plus a per-contig
+  sliding window (~0.3 s, identical results on complete data, mean-imputed missing
+  calls). Full `ingest → report` laptop pipelines drop from minutes to seconds.
+- **The report now states its findings.** The executive summary names the retained
+  analysis panel, LD-pruning yield, PC1 separation and variance explained, strongest
+  and weakest F_ST pairs, selected admixture K with its CV margin, diversity ranking,
+  top F_ROH sample, and Mantel isolation-by-distance. PCA/FST sections carry the same
+  one-line captions, admixture shows CV errors per K, and ROH renders its per-sample
+  table alongside the barplot.
+
 ### Fixed
 
 - **Corrected a genotype-scale bug in the hybrid likelihood layer.** `analysis.genotypes.dosage`

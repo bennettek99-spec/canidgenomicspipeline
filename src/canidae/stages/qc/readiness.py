@@ -8,6 +8,7 @@ duplicate samples are audited, and small-panel ascertainment is carried into pro
 from __future__ import annotations
 
 import json
+from collections import defaultdict, deque
 
 import allel
 import numpy as np
@@ -216,20 +217,57 @@ def _ld_prune(
     window_bp: int,
     r2_threshold: float,
 ) -> np.ndarray:
-    n_alt = np.asarray(geno.calls.to_n_alt(fill=-1), dtype=np.float32)
-    retained: list[int] = []
-    for index in candidates:
-        chrom = str(geno.chrom[index])
-        position = int(geno.pos[index])
-        recent = [
-            prior
-            for prior in reversed(retained)
-            if str(geno.chrom[prior]) == chrom and position - int(geno.pos[prior]) <= window_bp
-        ]
-        if any(_r2(n_alt[index], n_alt[prior]) >= r2_threshold for prior in recent):
-            continue
-        retained.append(int(index))
-    return np.asarray(retained, dtype=int)
+    """Greedy LD prune, vectorized for laptop-scale panels.
+
+    Same greedy semantics as before (in variant order, drop a variant when any
+    retained same-contig variant within ``window_bp`` has r² >= threshold), but
+    the per-pair ``np.corrcoef`` loop is replaced by one standardized dot
+    product per variant. Missing calls are mean-imputed per variant; monomorphic
+    variants standardize to zeros (r² = 0, always retained).
+    """
+    candidates = np.asarray(candidates, dtype=int)
+    if candidates.size == 0:
+        return candidates
+    n_alt = np.asarray(geno.calls.to_n_alt(fill=-1), dtype=np.float64)
+    n_samples = int(n_alt.shape[1])
+    if n_samples < 2:
+        return candidates
+    # Standardize candidate rows once: mean-impute missing, unit-variance rows.
+    sub = n_alt[candidates]
+    called = sub >= 0
+    row_counts = called.sum(axis=1)
+    row_sums = np.where(called, sub, 0.0).sum(axis=1)
+    row_means = np.divide(row_sums, np.maximum(row_counts, 1))
+    filled = np.where(called, sub, row_means[:, None])
+    centered = filled - row_means[:, None]
+    row_std = np.sqrt((centered**2).sum(axis=1) / max(n_samples, 1))
+    row_std[row_std == 0] = 1.0
+    standardized = centered / row_std[:, None]
+
+    chroms: np.ndarray = np.asarray([str(value) for value in geno.chrom[candidates]])
+    positions: np.ndarray = np.asarray(
+        [int(value) for value in geno.pos[candidates]], dtype=np.int64
+    )
+
+    # Per-contig sliding window of retained (position, candidate-order) pairs.
+    # Positions arrive in VCF order so each deque only holds in-window variants —
+    # no scan over the full retained set per variant.
+    recent: dict[str, deque] = defaultdict(deque)
+    retained_orders: list[int] = []
+    for order in range(candidates.size):
+        chrom = str(chroms[order])
+        position = int(positions[order])
+        window_dq = recent[chrom]
+        while window_dq and position - window_dq[0][0] > window_bp:
+            window_dq.popleft()
+        if window_dq:
+            window: np.ndarray = np.fromiter((prior for _, prior in window_dq), dtype=int)
+            correlations = standardized[order] @ standardized[window].T / n_samples
+            if bool((correlations * correlations >= r2_threshold).any()):
+                continue
+        window_dq.append((position, order))
+        retained_orders.append(order)
+    return candidates[np.asarray(retained_orders, dtype=int)]
 
 
 def _r2(left: np.ndarray, right: np.ndarray) -> float:
