@@ -2,6 +2,15 @@
 
 ## Unreleased — hybrid-canid stages
 
+### Added
+
+- **Red / Great Lakes / eastern wolf ancestry study** (`results/wolf_ancestry_cline/`).
+  `scripts/fetch_wolf_cline_panel.py` reads 500 contiguous, unascertained windows of the
+  indexed NHGRI 722-genome VCF (2.0 GB of 309 GB); `scripts/wolf_ancestry_cline.py` runs
+  f4-ratio, D-statistic, PCA, sNMF and heterozygosity analyses and renders a 7-panel figure.
+- **`canidae.analysis.f_statistics`**: frequency-based f4, D and f4-ratio statistics with a
+  weighted delete-one block jackknife, validated against msprime admixture simulations.
+
 ### Improved
 
 - **LD pruning is now laptop-fast.** `analysis_readiness` used a per-pair

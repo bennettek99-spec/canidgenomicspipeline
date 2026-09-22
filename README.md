@@ -82,6 +82,17 @@ pytest tests\unit\test_hybrid_analysis.py tests\integration\test_hybrid_pipeline
 study-panel snapshots skip unless the prepared panels are present under `data/`;
 re-bless either set with `CANIDAE_UPDATE_GOLDEN=1` after reviewing the diff.
 
+## Study: red, Great Lakes and eastern wolves
+
+[`results/wolf_ancestry_cline/`](results/wolf_ancestry_cline/README.md) places red wolves,
+Great Lakes wolves and eastern (Algonquin) wolves on the gray-wolf ↔ coyote continuum using
+f4-ratio ancestry, D-statistics, PCA and sNMF on 75,762 unascertained SNPs byte-range-read
+from the NHGRI 722-genome callset. Headline: red wolves carry ~36% gray-wolf ancestry and are
+decisively more coyote-like than Great Lakes (~74%) or Algonquin (~56–65%) wolves, which
+this sample cannot separate from each other.
+
+![Wolf ancestry cline](results/wolf_ancestry_cline/wolf_ancestry_cline.png)
+
 ## Citing the data behind a run
 
 Each public preset names its data sources through a citation bundle under

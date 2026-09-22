@@ -1,0 +1,328 @@
+{
+  "source": "https://research.nhgri.nih.gov/dog_genome/downloads/datasets/WGS/722g.990.SNP.INDEL.chrAll.vcf.gz",
+  "reference": "CanFam3.1",
+  "bytes_transferred": 2001048576,
+  "n_windows": 500,
+  "window_span_bp": 15470656,
+  "n_snps": 75762,
+  "jackknife_blocks": "38 autosomes",
+  "f4_ratio_model": "alpha = f4(eurasian_wolf, golden_jackal; X, coyote) / f4(eurasian_wolf, golden_jackal; western_gray_wolf, coyote)",
+  "wolf_ancestry": {
+    "great_lakes_wolf": {
+      "gq20": [
+        0.7417,
+        0.0528
+      ],
+      "all_calls": [
+        0.7422,
+        0.0356
+      ]
+    },
+    "eastern_wolf": {
+      "gq20": [
+        0.4538,
+        0.0385
+      ],
+      "all_calls": [
+        0.491,
+        0.0239
+      ]
+    },
+    "algonquin": {
+      "gq20": [
+        0.5588,
+        0.044
+      ],
+      "all_calls": [
+        0.6512,
+        0.0276
+      ]
+    },
+    "red_wolf": {
+      "gq20": [
+        0.3556,
+        0.041
+      ],
+      "all_calls": [
+        0.3587,
+        0.0335
+      ]
+    },
+    "Wolf28": {
+      "gq20": [
+        1.0081,
+        0.0477
+      ],
+      "all_calls": [
+        0.9767,
+        0.0381
+      ]
+    },
+    "Wolf29": {
+      "gq20": [
+        1.0498,
+        0.0365
+      ],
+      "all_calls": [
+        1.0022,
+        0.0279
+      ]
+    },
+    "Wolf30": {
+      "gq20": [
+        0.9759,
+        0.0674
+      ],
+      "all_calls": [
+        1.0035,
+        0.0341
+      ]
+    },
+    "AlaskanWolf": {
+      "gq20": [
+        0.9053,
+        0.0803
+      ],
+      "all_calls": [
+        1.0183,
+        0.0539
+      ]
+    },
+    "Wolf18": {
+      "gq20": [
+        0.7614,
+        0.0636
+      ],
+      "all_calls": [
+        0.7476,
+        0.0433
+      ]
+    },
+    "Wolf40": {
+      "gq20": [
+        0.7139,
+        0.0685
+      ],
+      "all_calls": [
+        0.7361,
+        0.047
+      ]
+    },
+    "AlgonquinWolf13467": {
+      "gq20": [
+        0.5103,
+        0.0719
+      ],
+      "all_calls": [
+        0.6089,
+        0.0282
+      ]
+    },
+    "AlgonquinWolf13470": {
+      "gq20": [
+        0.5648,
+        0.0493
+      ],
+      "all_calls": [
+        0.6879,
+        0.0349
+      ]
+    },
+    "QuebecWolf": {
+      "gq20": [
+        -0.0002,
+        0.0713
+      ],
+      "all_calls": [
+        0.018,
+        0.0292
+      ]
+    },
+    "Wolf25": {
+      "gq20": [
+        0.3714,
+        0.0439
+      ],
+      "all_calls": [
+        0.3613,
+        0.0424
+      ]
+    },
+    "Wolf26": {
+      "gq20": [
+        0.2855,
+        0.0488
+      ],
+      "all_calls": [
+        0.3593,
+        0.0311
+      ]
+    },
+    "Coyote01": {
+      "gq20": [
+        -0.0468,
+        0.0464
+      ],
+      "all_calls": [
+        -0.0326,
+        0.0345
+      ]
+    },
+    "Coyote02": {
+      "gq20": [
+        -0.0545,
+        0.0509
+      ],
+      "all_calls": [
+        -0.0101,
+        0.0321
+      ]
+    },
+    "Coyote03": {
+      "gq20": [
+        0.0929,
+        0.0525
+      ],
+      "all_calls": [
+        0.0427,
+        0.0393
+      ]
+    }
+  },
+  "d_x_westernwolf_coyote_jackal": {
+    "great_lakes_wolf": {
+      "gq20": [
+        0.0806,
+        3.39
+      ],
+      "all_calls": [
+        0.1009,
+        5.05
+      ]
+    },
+    "eastern_wolf": {
+      "gq20": [
+        0.1291,
+        5.97
+      ],
+      "all_calls": [
+        0.1803,
+        10.18
+      ]
+    },
+    "algonquin": {
+      "gq20": [
+        0.0937,
+        4.08
+      ],
+      "all_calls": [
+        0.1366,
+        7.19
+      ]
+    },
+    "red_wolf": {
+      "gq20": [
+        0.197,
+        8.3
+      ],
+      "all_calls": [
+        0.2232,
+        13.24
+      ]
+    },
+    "Wolf18": {
+      "gq20": [
+        0.0974,
+        3.34
+      ],
+      "all_calls": [
+        0.1171,
+        4.81
+      ]
+    },
+    "Wolf40": {
+      "gq20": [
+        0.0643,
+        2.17
+      ],
+      "all_calls": [
+        0.0841,
+        3.49
+      ]
+    },
+    "AlgonquinWolf13467": {
+      "gq20": [
+        0.1085,
+        4.11
+      ],
+      "all_calls": [
+        0.147,
+        6.52
+      ]
+    },
+    "AlgonquinWolf13470": {
+      "gq20": [
+        0.0905,
+        3.71
+      ],
+      "all_calls": [
+        0.128,
+        7.59
+      ]
+    },
+    "QuebecWolf": {
+      "gq20": [
+        0.2564,
+        6.14
+      ],
+      "all_calls": [
+        0.2937,
+        13.4
+      ]
+    },
+    "Wolf25": {
+      "gq20": [
+        0.1998,
+        8.23
+      ],
+      "all_calls": [
+        0.2274,
+        12.42
+      ]
+    },
+    "Wolf26": {
+      "gq20": [
+        0.1826,
+        6.14
+      ],
+      "all_calls": [
+        0.2183,
+        12.29
+      ]
+    }
+  },
+  "target_contrasts_gq20": {
+    "D(red_wolf, algonquin; coyote, jackal)": {
+      "D": 0.1125,
+      "se": 0.0236,
+      "z": 4.77
+    },
+    "D(algonquin, great_lakes_wolf; coyote, jackal)": {
+      "D": 0.0229,
+      "se": 0.0246,
+      "z": 0.93
+    },
+    "D(red_wolf, great_lakes_wolf; coyote, jackal)": {
+      "D": 0.1335,
+      "se": 0.0278,
+      "z": 4.8
+    }
+  },
+  "pca": {
+    "n_sites": 7215,
+    "explained_variance_ratio": [
+      0.2214,
+      0.1457
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+sample_id,group,PC1,PC2,snmf_k2_wolf,snmf_k2_coyote
+Wolf28,western_gray_wolf,-87.6085,51.3663,1.0,0.0
+Wolf29,western_gray_wolf,-93.0447,56.4812,1.0,0.0
+Wolf30,western_gray_wolf,-76.7099,41.0786,1.0,0.0
+AlaskanWolf,western_gray_wolf,-56.8008,23.1994,0.8811,0.1189
+Wolf18,great_lakes_wolf,-24.0412,-38.6667,0.6713,0.3287
+Wolf40,great_lakes_wolf,-37.3079,-126.1102,0.7862,0.2138
+AlgonquinWolf13467,eastern_wolf,-0.1735,-23.1768,0.5003,0.4997
+AlgonquinWolf13470,eastern_wolf,-16.1878,-90.45,0.6309,0.3691
+QuebecWolf,eastern_wolf,56.6504,13.6096,0.0,1.0
+Wolf25,red_wolf,47.3733,16.7611,0.1805,0.8195
+Wolf26,red_wolf,46.3309,17.0608,0.1526,0.8474
+Coyote01,coyote,87.8931,19.9757,0.0,1.0
+Coyote02,coyote,82.0637,21.7764,0.0,1.0
+Coyote03,coyote,71.5629,17.0945,0.0004,0.9996

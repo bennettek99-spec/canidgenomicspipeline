@@ -1,0 +1,22 @@
+sample_id,taxon,population,locality,biosample,coverage,role
+Wolf25,red_wolf,red_wolf,Red wolf 01 (captive SSP),SAMN02921317,28.5,target
+Wolf26,red_wolf,red_wolf,Red wolf 02 (captive SSP),SAMN02921318,7.1,target
+Wolf18,gray_wolf,great_lakes_wolf,Great Lakes 01,SAMN02921310,26.3,target
+Wolf40,gray_wolf,great_lakes_wolf,"Isle Royale National Park, Michigan",SAMN04209256,16.4,target
+AlgonquinWolf13467,eastern_wolf,eastern_wolf,"Algonquin Provincial Park, Ontario",SAMN05791669,5.2,target
+AlgonquinWolf13470,eastern_wolf,eastern_wolf,"Algonquin Provincial Park, Ontario",SAMN05791668,7.2,target
+QuebecWolf,eastern_wolf,eastern_wolf,Quebec,SAMN05736724,6.7,target
+Coyote01,coyote,coyote,California,SAMN02921301,26.3,reference
+Coyote02,coyote,coyote,Alabama,SAMN02921302,6.8,reference
+Coyote03,coyote,coyote,Midwest,SAMN02921303,8.0,reference
+Wolf28,gray_wolf,western_gray_wolf,Yellowstone 01,SAMN02921320,27.9,reference
+Wolf29,gray_wolf,western_gray_wolf,Yellowstone 02,SAMN02921321,25.9,reference
+Wolf30,gray_wolf,western_gray_wolf,Yellowstone 03,SAMN02921322,6.5,reference
+AlaskanWolf,gray_wolf,western_gray_wolf,Alaska,SAMN05439956,7.3,reference
+Wolf01,gray_wolf,eurasian_wolf,"Altai, Russia",SAMN01974486,12.5,reference
+Wolf02,gray_wolf,eurasian_wolf,"Chukotka, Russia",SAMN01974487,9.7,reference
+Wolf03,gray_wolf,eurasian_wolf,"Bryansk, Russia",SAMN01974488,13.5,reference
+Wolf06,gray_wolf,eurasian_wolf,Croatia,SAMN03366712,9.0,reference
+Wolf24,gray_wolf,eurasian_wolf,Portugal,SAMN02921316,27.8,reference
+Wolf27,gray_wolf,eurasian_wolf,Spain,SAMN02921319,27.4,reference
+GoldenJackal01,golden_jackal,golden_jackal,Golden jackal,SAMN03366713,5.5,outgroup
