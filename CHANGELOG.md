@@ -42,10 +42,12 @@
     trios where Dtrios reports one. It now passes against Dsuite `a547f99`.
   - Newer tskit refuses to write a VCF site at position 0; the simulated cohorts now
     write it at 1.
-  - `population_genomics.json` and `introgression.json` goldens were blessed on a machine
-    whose msprime/tskit simulated a different cohort; they never ran in CI. They are
-    re-blessed after checking that the 2026-08-17 code and current code give identical
-    results on the same simulated input.
+  - msprime/tskit draw a different simulated cohort from the same seed on Apple-silicon
+    macOS than on x86-64 Linux/Windows, where the `population_genomics.json` and
+    `introgression.json` goldens were blessed. CI reproduces them exactly; the two golden
+    tests now skip on Apple-silicon macOS with that reason instead of failing.
+  - The PLINK2 PCA parity test never ran: plink2 refuses in-sample allele frequencies
+    from fewer than 50 samples, so the 12-sample check now passes `--bad-freqs`.
   - `tests/fixtures/real_bridge/bridge.vcf.gz` was never committed (hidden by a
     `*.vcf.gz` ignore rule). Its tests now skip with that reason instead of erroring,
     and fixture VCFs are exempt from the rule.

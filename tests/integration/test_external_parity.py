@@ -145,6 +145,9 @@ def test_plink2_pca_agrees_on_first_component(tmp_path: Path) -> None:
             str(tmp_path / "cohort"),
             "--pca",
             "2",
+            # 12 samples: plink2 refuses in-sample frequencies below 50 unless told to.
+            # scikit-allel uses the same in-sample frequencies, which is the comparison.
+            "--bad-freqs",
             "--allow-extra-chr",
             "--out",
             str(tmp_path / "pca"),
