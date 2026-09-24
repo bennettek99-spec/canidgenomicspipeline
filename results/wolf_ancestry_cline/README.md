@@ -51,6 +51,54 @@ below); the hard-call columns are shown for comparison.
    (0.74 het/kb vs 0.93–1.06 for Yellowstone and Great Lakes 01), consistent with that
    island population's documented inbreeding.
 
+## Ancestry summary: gray wolf, dog and coyote
+
+Each group fitted as a mixture of western gray wolf + dog + coyote with qpAdm
+(genotype-likelihood frequencies; ± is one chromosome-jackknife standard error).
+Details and the outgroup set are in *Robustness tests* §1 below.
+
+| Group | Genomes | Gray wolf | Dog | Coyote | Model fits? (p) |
+|---|---|---|---|---|---|
+| Great Lakes wolf | Wolf18, Wolf40 | **75% ± 5** | 2% ± 2 | **24% ± 4** | yes (0.36) |
+| Eastern wolf (Algonquin) | 2 | **59% ± 3** | 4% ± 2 | **37% ± 3** | yes (0.63) |
+| Red wolf | Wolf25, Wolf26 | **35% ± 4** | 1% ± 2 | **65% ± 3** | yes (0.89) |
+| Quebec "wolf" | 1 | −4% ± 4 (≈0) | 6% ± 2 | **98% ± 3** | yes (0.67) |
+| *Yellowstone wolf (control)* | 1 | 101% ± 5 | −2% ± 3 (≈0) | 1% ± 3 | yes (0.59) |
+| *Mexican wolves (control)* | 2 | 77% ± 8 | 11% ± 4\* | 12% ± 5 | yes (0.82) |
+
+| Genome | Group | Gray wolf | Dog | Coyote |
+|---|---|---|---|---|
+| Wolf18 | Great Lakes | 74% | 3% | 22% |
+| Wolf40 (Isle Royale) | Great Lakes | 74% | 0% | 26% |
+| AlgonquinWolf13467 | Algonquin | 54% | 6% | 40% |
+| AlgonquinWolf13470 ⚠ | Algonquin | 62% | 6% | 33% |
+| Wolf25 | Red wolf | 35% | 1% | 63% |
+| Wolf26 | Red wolf | 33% | 2% | 65% |
+
+**How to read these tables**
+
+- **The dog column is an upper limit, not a measurement.** None of the dog weights is
+  solidly established.
+  - \* The Mexican-wolf "dog" weight is an artifact. The direct test finds no excess dog
+    allele sharing, consistent with Fitak et al. 2018 (see *Follow-up tests*).
+  - The 4–6% in the Algonquin and Quebec genomes is equally well explained by a
+    Mexican-like wolf source, so it is not evidence of dog ancestry.
+  - Without a dog source, the two-way fits give:
+    - Great Lakes: 77% wolf / 23% coyote
+    - Algonquin: 65% wolf / 35% coyote
+    - Red wolf: 36% wolf / 64% coyote
+- **Negative values** (−2%, −4%) are sampling noise around zero; a true proportion
+  cannot be negative.
+- **⚠ AlgonquinWolf13470** is the suspect genome with the Isle Royale signal (see
+  *Follow-up tests*). For Algonquin wolves, AlgonquinWolf13467 is the more trustworthy
+  genome.
+- **Group rows** are fitted to the pooled genomes, so they are close to, but not exactly,
+  the average of the individual rows.
+- **"Coyote"** means the non-gray-wolf side of the tree. It cannot distinguish recent
+  coyote hybridization from an old lineage closely related to coyotes.
+
+Source: [`robustness/qpadm_dog_ancestry.csv`](robustness/qpadm_dog_ancestry.csv).
+
 ## Robustness tests
 
 ![Robustness tests](robustness/wolf_cline_robustness.png)
