@@ -1,3 +1,4 @@
+# Dsuite is not packaged on conda-forge or bioconda; CI builds it from source.
 name: canis-parity
 channels:
   - conda-forge
@@ -6,5 +7,4 @@ dependencies:
   - python=3.12
   - pip
   - bcftools
-  - dsuite
   - plink2

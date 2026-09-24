@@ -202,7 +202,7 @@ def test_dsuite_agrees_on_the_simulated_introgression_signal(tmp_path: Path) -> 
     sets = tmp_path / "sets.txt"
     sets.write_text(
         "".join(
-            f"{row.sample_id}\t{'Outgroup' if row.population == 'JACKAL' else row.population}\n"
+            f"{row.sample_id}\t{'Outgroup' if row.population == 'jackal' else row.population}\n"
             for row in labels.itertuples(index=False)
         ),
         encoding="utf-8",
@@ -224,7 +224,9 @@ def test_dsuite_agrees_on_the_simulated_introgression_signal(tmp_path: Path) -> 
             "logging.level": "WARNING",
             "stages.ingest.sample_sheet": str(sheet),
             "stages.ingest.callset": str(vcf),
-            "stages.dstats.outgroup": "JACKAL",
+            "stages.dstats.outgroup": "jackal",
+            # One simulated contig: jackknife over site blocks, as the other D tests do.
+            "stages.dstats.block_mode": "site_count",
         }
     )
     run_pipeline(cfg)
@@ -243,7 +245,9 @@ def test_dsuite_agrees_on_the_simulated_introgression_signal(tmp_path: Path) -> 
         compared += 1
         # Sign depends on each tool's P1/P2 ordering, so compare magnitudes.
         assert our_by_key[key] == pytest.approx(abs(float(row.Dstatistic)), abs=0.03)
-    assert compared >= 3, "no overlapping trios were compared"
+    # Dtrios reports one arrangement per population triple (three ingroups -> one trio);
+    # every trio it reports must have a matching quartet on our side.
+    assert compared == len(theirs) >= 1, "Dsuite trios without a CANIS counterpart"
 
     # And both must localize the signal to the same trio.
     our_top = ours.loc[ours["D"].abs().idxmax()]

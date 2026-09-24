@@ -25,6 +25,8 @@ runs/
 *.bam
 *.vcf
 *.vcf.gz
+# Small vendored test fixtures are the exception.
+!tests/fixtures/**/*.vcf.gz
 *.bcf
 *.zarr/
 *.bed

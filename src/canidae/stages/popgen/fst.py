@@ -114,7 +114,7 @@ class FstStage(Stage):
 
 def _hudson_fst(ac1: allel.AlleleCountsArray, ac2: allel.AlleleCountsArray) -> float:
     num, den = allel.hudson_fst(ac1, ac2)
-    denom = np.nansum(den)
+    denom = float(np.nansum(den))
     if denom <= 0:
         return float("nan")
     return float(np.nansum(num) / denom)

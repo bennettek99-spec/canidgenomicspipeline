@@ -6,8 +6,8 @@
       "wolf",
       "jackal"
     ],
-    "top_D": 0.36259,
-    "top_Z": 12.227,
+    "top_D": 0.30286,
+    "top_Z": 9.219,
     "top_q_value_bh": 0.0,
     "n_quartets": 3
   },
@@ -15,19 +15,19 @@
     "outgroup": "jackal",
     "matrix": {
       "coyote": {
-        "coyote": 0.141871,
-        "dog": 0.121971,
-        "wolf": 0.117877
+        "coyote": 0.143913,
+        "dog": 0.122785,
+        "wolf": 0.118795
       },
       "dog": {
-        "coyote": 0.121971,
-        "dog": 0.139694,
-        "wolf": 0.131913
+        "coyote": 0.122785,
+        "dog": 0.136992,
+        "wolf": 0.130537
       },
       "wolf": {
-        "coyote": 0.117877,
-        "dog": 0.131913,
-        "wolf": 0.142482
+        "coyote": 0.118795,
+        "dog": 0.130537,
+        "wolf": 0.142145
       }
     }
   },
@@ -35,13 +35,10 @@
     "splits": [
       [
         "COYOTE01",
-        "COYOTE02"
-      ],
-      [
-        "COYOTE01",
         "COYOTE02",
         "COYOTE03",
-        "COYOTE04"
+        "COYOTE04",
+        "COYOTE05"
       ],
       [
         "COYOTE01",
@@ -58,9 +55,47 @@
         "COYOTE04",
         "COYOTE05",
         "COYOTE06",
-        "DOG04",
-        "DOG05",
-        "DOG06",
+        "DOG01",
+        "DOG02",
+        "DOG03",
+        "JACKAL01",
+        "JACKAL02",
+        "JACKAL03",
+        "JACKAL04",
+        "JACKAL05",
+        "JACKAL06",
+        "WOLF01",
+        "WOLF02",
+        "WOLF03",
+        "WOLF04",
+        "WOLF05",
+        "WOLF06"
+      ],
+      [
+        "COYOTE01",
+        "COYOTE02",
+        "COYOTE03",
+        "COYOTE04",
+        "COYOTE05",
+        "COYOTE06",
+        "DOG01",
+        "DOG03",
+        "JACKAL01",
+        "JACKAL02",
+        "JACKAL03",
+        "JACKAL04",
+        "JACKAL05",
+        "JACKAL06"
+      ],
+      [
+        "COYOTE01",
+        "COYOTE02",
+        "COYOTE03",
+        "COYOTE04",
+        "COYOTE05",
+        "COYOTE06",
+        "DOG01",
+        "DOG03",
         "JACKAL01",
         "JACKAL02",
         "JACKAL03",
@@ -89,37 +124,26 @@
         "JACKAL06"
       ],
       [
-        "COYOTE03",
+        "COYOTE01",
         "COYOTE04"
       ],
       [
-        "COYOTE05",
-        "COYOTE06"
+        "COYOTE02",
+        "COYOTE03"
+      ],
+      [
+        "COYOTE02",
+        "COYOTE03",
+        "COYOTE05"
       ],
       [
         "DOG01",
-        "DOG02",
-        "DOG03"
-      ],
-      [
-        "DOG02",
         "DOG03"
       ],
       [
         "DOG04",
         "DOG05",
         "DOG06"
-      ],
-      [
-        "DOG04",
-        "DOG05",
-        "DOG06",
-        "WOLF01",
-        "WOLF02",
-        "WOLF03",
-        "WOLF04",
-        "WOLF05",
-        "WOLF06"
       ],
       [
         "DOG04",
@@ -135,21 +159,32 @@
       ],
       [
         "JACKAL01",
-        "JACKAL03",
-        "JACKAL04",
-        "JACKAL05"
+        "JACKAL03"
       ],
       [
         "JACKAL01",
-        "JACKAL05"
-      ],
-      [
-        "JACKAL02",
+        "JACKAL03",
+        "JACKAL04",
         "JACKAL06"
       ],
       [
-        "JACKAL03",
-        "JACKAL04"
+        "JACKAL02",
+        "JACKAL05"
+      ],
+      [
+        "JACKAL04",
+        "JACKAL06"
+      ],
+      [
+        "WOLF01",
+        "WOLF02",
+        "WOLF03"
+      ],
+      [
+        "WOLF01",
+        "WOLF02",
+        "WOLF03",
+        "WOLF04"
       ],
       [
         "WOLF01",
@@ -162,24 +197,13 @@
       [
         "WOLF01",
         "WOLF02",
+        "WOLF03",
         "WOLF04",
-        "WOLF05",
         "WOLF06"
       ],
       [
         "WOLF02",
-        "WOLF04",
-        "WOLF05",
-        "WOLF06"
-      ],
-      [
-        "WOLF02",
-        "WOLF05"
-      ],
-      [
-        "WOLF02",
-        "WOLF05",
-        "WOLF06"
+        "WOLF03"
       ]
     ]
   }

@@ -55,6 +55,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build Dsuite (not packaged on conda)
+        env:
+          DSUITE_COMMIT: a547f99599d763c1760548191ea3f62cc58e8ac3
+        run: |
+          git clone --quiet https://github.com/millanek/Dsuite.git "$RUNNER_TEMP/Dsuite"
+          git -C "$RUNNER_TEMP/Dsuite" checkout --quiet "$DSUITE_COMMIT"
+          make -C "$RUNNER_TEMP/Dsuite"
+          echo "$RUNNER_TEMP/Dsuite/Build" >> "$GITHUB_PATH"
+
       - name: Set up parity environment
         uses: mamba-org/setup-micromamba@v2
         with:

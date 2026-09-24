@@ -26,7 +26,17 @@ from canidae.stages import load_builtin_stages
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "tests" / "fixtures" / "real_bridge"
 GOLDEN = ROOT / "tests" / "golden"
-pytestmark = [pytest.mark.integration]
+BRIDGE_VCF = FIXTURE / "bridge.vcf.gz"
+pytestmark = [
+    pytest.mark.integration,
+    # The bridge VCF carries the 36 RADseq query columns and cannot be rebuilt from the
+    # other fixture files. It was never committed (a *.vcf.gz ignore rule hid it); skip
+    # visibly rather than error until it is added with `git add -f`.
+    pytest.mark.skipif(
+        not BRIDGE_VCF.exists(),
+        reason=f"real-data fixture incomplete: {BRIDGE_VCF.name} is not in the repository",
+    ),
+]
 
 
 def _manifest(result) -> dict:
@@ -55,7 +65,7 @@ def _run_stage(preset: str, stage_name: str, tmp_path: Path):
     overrides: dict[str, object] = {
         "paths.root": str(tmp_path),
         "logging.level": "ERROR",
-        f"stages.{stage_name}.bridge_vcf": str(FIXTURE / "bridge.vcf.gz"),
+        f"stages.{stage_name}.bridge_vcf": str(BRIDGE_VCF),
         f"stages.{stage_name}.wgs_genotypes": str(FIXTURE / "wgs_genotypes.json"),
     }
     if stage_name == "multiway_admixture":
@@ -66,7 +76,7 @@ def _run_stage(preset: str, stage_name: str, tmp_path: Path):
     )
     if stage_name in {"reference_mixture", "breed_assign"}:
         values = {
-            "bridge_vcf": FIXTURE / "bridge.vcf.gz",
+            "bridge_vcf": BRIDGE_VCF,
             "calls_dir": FIXTURE,
         }
         if stage_name == "reference_mixture":

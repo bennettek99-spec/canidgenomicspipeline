@@ -14,3 +14,9 @@ Sources are the public inputs prepared under `data/`:
 The full study panels remain outside Git and are covered by the local promotion
 tests. This fixture exists only to keep a small real-data regression surface in
 CI; it is not a replacement for the full panels or a new scientific dataset.
+
+`bridge.vcf.gz` (the 252 bridge loci with the 36 RADseq query columns) belongs in this
+directory but was never committed: a `*.vcf.gz` ignore rule hid it. Until it is added,
+`tests/integration/test_hybrid_real_data_fixture.py` skips with that reason. The ignore
+rule now exempts `tests/fixtures/`, so `git add tests/fixtures/real_bridge/bridge.vcf.gz`
+is enough once the file is restored from the machine that generated it.

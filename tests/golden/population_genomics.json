@@ -1,72 +1,69 @@
 {
   "distance": {
-    "n_sites": 9650,
-    "mean_pairwise": 0.199938
+    "n_sites": 9415,
+    "mean_pairwise": 0.209215
   },
   "fst": {
-    "coyote__dog": 0.451182,
-    "coyote__wolf": 0.422423,
-    "dog__wolf": 0.093801
+    "coyote__dog": 0.467204,
+    "coyote__wolf": 0.47534,
+    "dog__wolf": 0.121051
   },
   "pca": {
     "explained_variance_ratio": [
-      0.30381,
-      0.06748,
-      0.06657,
-      0.06427,
-      0.05423,
-      0.0515
+      0.32421,
+      0.07756,
+      0.05845,
+      0.05804,
+      0.04952,
+      0.04788
     ],
     "population_pc1": {
-      "coyote": 115.565308,
-      "dog": -59.28415,
-      "wolf": -56.280842
+      "coyote": 118.201591,
+      "dog": -59.655933,
+      "wolf": -58.54577
     }
   },
   "diversity": {
     "coyote": {
-      "pi": 0.17384915,
-      "mean_heterozygosity": 0.169378
+      "pi": 0.16079596,
+      "mean_heterozygosity": 0.161356
     },
     "dog": {
-      "pi": 0.13664466,
-      "mean_heterozygosity": 0.132352
+      "pi": 0.15734885,
+      "mean_heterozygosity": 0.157249
     },
     "wolf": {
-      "pi": 0.15263609,
-      "mean_heterozygosity": 0.159673
+      "pi": 0.14909316,
+      "mean_heterozygosity": 0.1604
     }
   },
   "admixture": {
-    "best_k": 3,
+    "best_k": 2,
     "population_q": {
       "coyote": [
-        0.002556,
-        0.986256,
-        0.011189
+        0.006093,
+        0.993907
       ],
       "dog": [
-        0.868007,
-        0.010048,
-        0.121945
+        0.989592,
+        0.010408
       ],
       "wolf": [
-        0.096127,
-        0.008942,
-        0.894931
+        0.989219,
+        0.010781
       ]
     }
   },
   "cluster": {
     "best_k": 2,
-    "silhouette": 0.5079,
+    "silhouette": 0.5285,
     "adjusted_rand_index": 0.5405
   },
   "roh": {
     "COYOTE01": {
-      "n_roh_segments": 1,
-      "total_roh_bp": 200000,
-      "froh": 0.100003
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
     },
     "COYOTE02": {
       "n_roh_segments": 0,
@@ -74,9 +71,9 @@
       "froh": 0.0
     },
     "COYOTE03": {
-      "n_roh_segments": 0,
-      "total_roh_bp": 0,
-      "froh": 0.0
+      "n_roh_segments": 1,
+      "total_roh_bp": 200000,
+      "froh": 0.100007
     },
     "COYOTE04": {
       "n_roh_segments": 0,
@@ -95,8 +92,8 @@
     },
     "DOG01": {
       "n_roh_segments": 1,
-      "total_roh_bp": 599939,
-      "froh": 0.299979
+      "total_roh_bp": 200000,
+      "froh": 0.100007
     },
     "DOG02": {
       "n_roh_segments": 0,
@@ -104,9 +101,9 @@
       "froh": 0.0
     },
     "DOG03": {
-      "n_roh_segments": 1,
-      "total_roh_bp": 300000,
-      "froh": 0.150005
+      "n_roh_segments": 0,
+      "total_roh_bp": 0,
+      "froh": 0.0
     },
     "DOG04": {
       "n_roh_segments": 0,
@@ -114,9 +111,9 @@
       "froh": 0.0
     },
     "DOG05": {
-      "n_roh_segments": 0,
-      "total_roh_bp": 0,
-      "froh": 0.0
+      "n_roh_segments": 1,
+      "total_roh_bp": 200000,
+      "froh": 0.100007
     },
     "DOG06": {
       "n_roh_segments": 0,
@@ -156,6 +153,6 @@
   },
   "geography": {
     "n_localities": 18,
-    "mantel_r": 0.8679
+    "mantel_r": 0.8987
   }
 }

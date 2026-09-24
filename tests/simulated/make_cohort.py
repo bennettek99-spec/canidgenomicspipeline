@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import msprime
+import numpy as np
 
 # taxon label for each simulated population
 _TAXON = {"WOLF": "gray_wolf", "DOG": "domestic_dog", "COYOTE": "coyote"}
@@ -26,6 +27,11 @@ _LOCALITY = {
     "DOG": (52.0, 13.0, "europe"),
     "COYOTE": (39.0, -98.0, "north_america"),
 }
+
+
+def _vcf_positions(positions: np.ndarray) -> np.ndarray:
+    """1-based VCF positions: tskit refuses a site at 0, so it is written at 1."""
+    return np.fmax(1, positions).astype(np.int64)
 
 
 def simulate_cohort(
@@ -67,7 +73,7 @@ def simulate_cohort(
 
     vcf_path = out_dir / "cohort.vcf"
     with vcf_path.open("w", encoding="utf-8") as fh:
-        mts.write_vcf(fh, individual_names=names, contig_id="1")
+        mts.write_vcf(fh, individual_names=names, contig_id="1", position_transform=_vcf_positions)
 
     jitter = random.Random(seed)
     sheet_path = out_dir / "samples.csv"
@@ -145,7 +151,7 @@ def simulate_introgression_cohort(
 
     vcf_path = out_dir / "cohort.vcf"
     with vcf_path.open("w", encoding="utf-8") as fh:
-        mts.write_vcf(fh, individual_names=names, contig_id="1")
+        mts.write_vcf(fh, individual_names=names, contig_id="1", position_transform=_vcf_positions)
 
     jitter = random.Random(seed)
     sheet_path = out_dir / "samples.csv"

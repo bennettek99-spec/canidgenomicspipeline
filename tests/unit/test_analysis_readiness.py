@@ -78,7 +78,7 @@ def test_readiness_filters_non_autosomes_and_emits_small_population_warning(
 
 
 def test_ld_prune_drops_perfectly_linked_duplicates_within_window() -> None:
-    calls = np.zeros((4, 6, 2), dtype=np.int8)
+    calls: np.ndarray = np.zeros((4, 6, 2), dtype=np.int8)
     calls[0, :, 0] = [0, 0, 0, 1, 1, 1]
     calls[0, :, 1] = [0, 0, 0, 0, 1, 1]
     calls[1] = calls[0]  # perfect duplicate of variant 0

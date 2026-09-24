@@ -231,8 +231,8 @@ def infer_dog_fraction(
         if observed is None or abs(difference) < min_difference:
             continue
         called += 1
-        numerator += (dosage(observed) - coyote) * difference
-        denominator += difference * difference
+        numerator += float((dosage(observed) - coyote) * difference)
+        denominator += float(difference * difference)
     if called < min_called or denominator == 0:
         return None, called, None
     estimate = max(0.0, min(1.0, numerator / denominator))
