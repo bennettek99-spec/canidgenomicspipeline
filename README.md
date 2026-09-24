@@ -86,10 +86,12 @@ re-bless either set with `CANIDAE_UPDATE_GOLDEN=1` after reviewing the diff.
 
 [`results/wolf_ancestry_cline/`](results/wolf_ancestry_cline/README.md) places red wolves,
 Great Lakes wolves and eastern (Algonquin) wolves on the gray-wolf ↔ coyote continuum using
-f4-ratio ancestry, D-statistics, PCA and sNMF on 75,762 unascertained SNPs byte-range-read
-from the NHGRI 722-genome callset. Headline: red wolves carry ~36% gray-wolf ancestry and are
-decisively more coyote-like than Great Lakes (~74%) or Algonquin (~56–65%) wolves, which
-this sample cannot separate from each other.
+f4-ratio ancestry, D-statistics, qpAdm, PCA and sNMF on 87,538 unascertained SNPs
+byte-range-read from the NHGRI 722-genome callset, with genotype-likelihood allele
+frequencies. Headline: gray-wolf ancestry falls from ~75% (Great Lakes) to ~64% (Algonquin)
+to ~36% (red wolf). The ordering holds in all 96 reference-rotation models, and dog ancestry
+does not explain it. All three share an eastern component with a Midwest coyote that
+California and Alabama coyotes lack ([robustness tests](results/wolf_ancestry_cline/README.md#robustness-tests)).
 
 ![Wolf ancestry cline](results/wolf_ancestry_cline/wolf_ancestry_cline.png)
 

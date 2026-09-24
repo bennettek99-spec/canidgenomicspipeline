@@ -8,6 +8,7 @@ makes the panel suitable for f-statistics and per-window heterozygosity.
 Only byte ranges are transferred; the budget is hard-capped. Output (gitignored):
 
     data/wolf_cline/panel.npz      genotypes (alt-allele count, -1 missing), GQ,
+                                   phred genotype likelihoods (PL, capped at 255),
                                    chrom/pos, window id and window spans
 
 Run:
@@ -72,11 +73,21 @@ def window_starts(lengths: dict[str, int], n_windows: int) -> list[tuple[str, in
     return anchors
 
 
-def parse_window(
-    text: str, contig: str, columns: list[int]
-) -> tuple[list[tuple[int, list[int], list[int]]], int, int]:
+Record = tuple[int, list[int], list[int], list[tuple[int, int, int]]]
+NO_PL = (0, 0, 0)  # an all-zero PL carries no information: treated as missing data
+
+
+def parse_pl(field: str) -> tuple[int, int, int]:
+    values = field.split(",")
+    if len(values) != 3 or "." in values:
+        return NO_PL
+    a, b, c = (min(int(v), 255) for v in values)
+    return a, b, c
+
+
+def parse_window(text: str, contig: str, columns: list[int]) -> tuple[list[Record], int, int]:
     """Biallelic PASS SNPs on *contig* plus the span of all records seen."""
-    records: list[tuple[int, list[int], list[int]]] = []
+    records: list[Record] = []
     first = last = 0
     lines = text.split("\n")[:-1]  # the final line is truncated by the byte range
     for line in lines:
@@ -89,9 +100,12 @@ def parse_window(
         if fields[6] != "PASS" or len(fields[3]) != 1 or len(fields[4]) != 1:
             continue
         fmt = fields[8].split(":")
-        gt_i, gq_i = fmt.index("GT"), fmt.index("GQ") if "GQ" in fmt else -1
+        gt_i = fmt.index("GT")
+        gq_i = fmt.index("GQ") if "GQ" in fmt else -1
+        pl_i = fmt.index("PL") if "PL" in fmt else -1
         gts: list[int] = []
         gqs: list[int] = []
+        pls: list[tuple[int, int, int]] = []
         for column in columns:
             values = fields[column].split(":")
             alleles = values[gt_i].replace("|", "/").split("/")
@@ -103,8 +117,9 @@ def parse_window(
                 gqs.append(min(int(values[gq_i]), 99) if gq_i >= 0 else 0)
             except (IndexError, ValueError):
                 gqs.append(0)
+            pls.append(parse_pl(values[pl_i]) if 0 <= pl_i < len(values) else NO_PL)
         if any(g > 0 for g in gts):  # drop sites monomorphic-reference in this cohort
-            records.append((pos, gts, gqs))
+            records.append((pos, gts, gqs, pls))
     return records, first, last
 
 
@@ -136,7 +151,7 @@ def main() -> None:
             plans.append((window_id, contig, min(c[0] for c in chunks)))
     print(f"{len(plans)} windows x {args.window_bytes / 1e6:.1f} MB", flush=True)
 
-    Parsed = tuple[int, str, list[tuple[int, list[int], list[int]]], int, int]
+    Parsed = tuple[int, str, list[Record], int, int]
 
     def fetch(plan: tuple[int, str, int]) -> Parsed:
         # Parse inside the worker so only small per-window SNP lists are held in memory.
@@ -155,17 +170,19 @@ def main() -> None:
     win_out: list[int] = []
     gt_rows: list[list[int]] = []
     gq_rows: list[list[int]] = []
+    pl_rows: list[list[tuple[int, int, int]]] = []
     spans: list[tuple[int, int, int, int]] = []
     started = time.time()
     for done, (window_id, contig, records, first, last) in enumerate(results(), 1):
         chrom_i = AUTOSOMES.index(contig) + 1
         spans.append((window_id, chrom_i, first, last))
-        for pos, gts, gqs in records:
+        for pos, gts, gqs, pls in records:
             chrom.append(chrom_i)
             pos_out.append(pos)
             win_out.append(window_id)
             gt_rows.append(gts)
             gq_rows.append(gqs)
+            pl_rows.append(pls)
         if done % 20 == 0 or done == len(plans):
             rate = budget.used / (time.time() - started) / 1e6
             print(
@@ -182,6 +199,7 @@ def main() -> None:
         window=np.array(win_out, dtype=np.int32),
         gt=np.array(gt_rows, dtype=np.int8),
         gq=np.array(gq_rows, dtype=np.uint8),
+        pl=np.array(pl_rows, dtype=np.uint8),
         spans=np.array(spans, dtype=np.int64),
         bytes_transferred=np.array(budget.used),
         source=np.array(SOURCE_VCF_URL),

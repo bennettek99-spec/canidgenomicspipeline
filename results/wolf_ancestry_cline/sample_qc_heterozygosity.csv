@@ -1,22 +1,39 @@
 sample_id,group,locality,coverage,missing_all_calls,missing_gq20,het_per_kb,high_coverage
-Wolf25,red_wolf,Red wolf 01 (captive SSP),28.5,0.0177,0.0504,0.91,True
-Wolf26,red_wolf,Red wolf 02 (captive SSP),7.1,0.0556,0.6719,0.581,False
-Wolf18,great_lakes_wolf,Great Lakes 01,26.3,0.0129,0.0405,1.06,True
-Wolf40,great_lakes_wolf,"Isle Royale National Park, Michigan",16.4,0.0177,0.1549,0.737,True
-AlgonquinWolf13467,eastern_wolf,"Algonquin Provincial Park, Ontario",5.2,0.064,0.7178,0.833,False
-AlgonquinWolf13470,eastern_wolf,"Algonquin Provincial Park, Ontario",7.2,0.022,0.5012,1.488,False
-QuebecWolf,eastern_wolf,Quebec,6.7,0.2296,0.7472,0.57,False
-Coyote01,coyote,California,26.3,0.0132,0.0428,0.786,True
-Coyote02,coyote,Alabama,6.8,0.0677,0.6932,0.488,False
-Coyote03,coyote,Midwest,8.0,0.0492,0.5635,0.688,False
-Wolf28,western_gray_wolf,Yellowstone 01,27.9,0.0124,0.0401,0.926,True
-Wolf29,western_gray_wolf,Yellowstone 02,25.9,0.0127,0.0419,0.976,True
-Wolf30,western_gray_wolf,Yellowstone 03,6.5,0.0673,0.7371,0.665,False
-AlaskanWolf,western_gray_wolf,Alaska,7.3,0.0266,0.5254,0.906,False
-Wolf01,eurasian_wolf,"Altai, Russia",12.5,0.0315,0.3175,0.965,False
-Wolf02,eurasian_wolf,"Chukotka, Russia",9.7,0.0369,0.4305,0.781,False
-Wolf03,eurasian_wolf,"Bryansk, Russia",13.5,0.022,0.2389,0.921,False
-Wolf06,eurasian_wolf,Croatia,9.0,0.0651,0.5825,0.708,False
-Wolf24,eurasian_wolf,Portugal,27.8,0.0194,0.0561,0.702,True
-Wolf27,eurasian_wolf,Spain,27.4,0.019,0.0529,1.027,True
-GoldenJackal01,golden_jackal,Golden jackal,5.5,0.0825,0.8038,0.244,False
+Wolf25,red_wolf,Red wolf 01 (captive SSP),28.5,0.0191,0.0558,0.912,True
+Wolf26,red_wolf,Red wolf 02 (captive SSP),7.1,0.0554,0.6824,0.581,False
+Wolf18,great_lakes_wolf,Great Lakes 01,26.3,0.0144,0.0459,1.062,True
+Wolf40,great_lakes_wolf,"Isle Royale National Park, Michigan",16.4,0.0194,0.1614,0.738,True
+AlgonquinWolf13467,eastern_wolf,"Algonquin Provincial Park, Ontario",5.2,0.0629,0.7311,0.832,False
+AlgonquinWolf13470,eastern_wolf,"Algonquin Provincial Park, Ontario",7.2,0.0231,0.5149,1.489,False
+QuebecWolf,eastern_wolf,Quebec,6.7,0.2242,0.7514,0.566,False
+Coyote01,coyote,California,26.3,0.0146,0.0478,0.787,True
+Coyote02,coyote,Alabama,6.8,0.0666,0.7035,0.487,False
+Coyote03,coyote,Midwest,8.0,0.0491,0.5758,0.688,False
+Wolf28,western_gray_wolf,Yellowstone 01,27.9,0.0138,0.0452,0.927,True
+Wolf29,western_gray_wolf,Yellowstone 02,25.9,0.0139,0.0467,0.977,True
+Wolf30,western_gray_wolf,Yellowstone 03,6.5,0.0654,0.747,0.664,False
+AlaskanWolf,western_gray_wolf,Alaska,7.3,0.0275,0.5414,0.907,False
+Wolf01,eurasian_wolf,"Altai, Russia",12.5,0.0326,0.3276,0.966,False
+Wolf02,eurasian_wolf,"Chukotka, Russia",9.7,0.0378,0.4415,0.782,False
+Wolf03,eurasian_wolf,"Bryansk, Russia",13.5,0.0228,0.2486,0.922,False
+Wolf06,eurasian_wolf,Croatia,9.0,0.0651,0.5953,0.708,False
+Wolf24,eurasian_wolf,Portugal,27.8,0.0212,0.0617,0.704,True
+Wolf27,eurasian_wolf,Spain,27.4,0.021,0.0581,1.029,True
+GoldenJackal01,golden_jackal,Golden jackal,5.5,0.0825,0.8102,0.244,False
+Wolf22,mexican_wolf,Mexico 01,25.3,0.0157,0.0511,0.318,True
+Wolf23,mexican_wolf,Mexico 02,6.1,0.0691,0.801,0.189,False
+Wolf05,asian_wolf,China,28.2,0.0144,0.0465,0.829,True
+Wolf33,asian_wolf,"Xinjiang, China",19.1,0.0199,0.1151,1.041,True
+Wolf35,asian_wolf,"Xinjiang, China",31.9,0.0158,0.0775,1.121,True
+Wolf36,asian_wolf,"Xinjiang, China",21.2,0.0469,0.2417,0.957,True
+GermanShepherd12,dog,German Shepherd Dog,29.2,0.0099,0.0354,0.68,True
+LabradorRetriever01,dog,Labrador Retriever,41.4,0.0071,0.0226,0.738,True
+GoldenRetriever11,dog,Golden Retriever,53.7,0.0092,0.0279,0.687,True
+Rottweiler01,dog,Rottweiler,39.2,0.0115,0.0378,0.711,True
+Coonhound01,dog,Black and Tan Coonhound,27.3,0.0067,0.0283,0.854,True
+VillDog_China01,village_dog,"Village dog, China",20.4,0.0816,0.3055,0.836,True
+VillDog_India04,village_dog,"Village dog, India",14.0,0.0268,0.2248,0.779,False
+VillDog_Portugal01,village_dog,"Village dog, Portugal",17.7,0.0198,0.1502,0.974,True
+VillDog_Namibia02,village_dog,"Village dog, Namibia",14.1,0.0263,0.2298,0.887,False
+VillDog_Taiwan01,village_dog,"Village dog, Taiwan",14.7,0.0269,0.4467,1.058,False
+Dhole01,dhole,Dhole (Cuon alpinus),39.6,0.049,0.2021,0.027,True

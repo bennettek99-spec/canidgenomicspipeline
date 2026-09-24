@@ -20,3 +20,20 @@ Wolf06,gray_wolf,eurasian_wolf,Croatia,SAMN03366712,9.0,reference
 Wolf24,gray_wolf,eurasian_wolf,Portugal,SAMN02921316,27.8,reference
 Wolf27,gray_wolf,eurasian_wolf,Spain,SAMN02921319,27.4,reference
 GoldenJackal01,golden_jackal,golden_jackal,Golden jackal,SAMN03366713,5.5,outgroup
+Wolf22,gray_wolf,mexican_wolf,Mexico 01,SAMN02921314,25.3,rotation
+Wolf23,gray_wolf,mexican_wolf,Mexico 02,SAMN02921315,6.1,rotation
+Wolf05,gray_wolf,asian_wolf,China,SAMN03366711,28.2,rotation
+Wolf33,gray_wolf,asian_wolf,"Xinjiang, China",SAMN03168399,19.1,rotation
+Wolf35,gray_wolf,asian_wolf,"Xinjiang, China",SAMN03168398,31.9,rotation
+Wolf36,gray_wolf,asian_wolf,"Xinjiang, China",SAMN03168400,21.2,rotation
+GermanShepherd12,domestic_dog,dog,German Shepherd Dog,SAMN03580392,29.2,reference
+LabradorRetriever01,domestic_dog,dog,Labrador Retriever,SAMEA2417015,41.4,reference
+GoldenRetriever11,domestic_dog,dog,Golden Retriever,SAMN03067876,53.7,reference
+Rottweiler01,domestic_dog,dog,Rottweiler,,39.2,reference
+Coonhound01,domestic_dog,dog,Black and Tan Coonhound,SAMN04196853,27.3,reference
+VillDog_China01,village_dog,village_dog,"Village dog, China",SAMN01974490,20.4,right
+VillDog_India04,village_dog,village_dog,"Village dog, India",SAMN02485590,14.0,right
+VillDog_Portugal01,village_dog,village_dog,"Village dog, Portugal",SAMN02485604,17.7,right
+VillDog_Namibia02,village_dog,village_dog,"Village dog, Namibia",SAMN02485599,14.1,right
+VillDog_Taiwan01,village_dog,village_dog,"Village dog, Taiwan",SAMN02485608,14.7,right
+Dhole01,dhole,dhole,Dhole (Cuon alpinus),SAMN03168405,39.6,outgroup

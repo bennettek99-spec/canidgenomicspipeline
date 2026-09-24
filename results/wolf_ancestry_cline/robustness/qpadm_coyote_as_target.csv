@@ -1,0 +1,7 @@
+coyote,locality,coyote_source,wolf_weight,wolf_se,p_value
+Coyote01,California,Coyote02,-0.044,0.031,0.2172
+Coyote01,California,Coyote03,-0.1678,0.0549,0.0
+Coyote02,Alabama,Coyote01,0.0449,0.0271,0.217
+Coyote02,Alabama,Coyote03,-0.1298,0.0485,0.0002
+Coyote03,Midwest,Coyote01,0.1775,0.0377,0.0
+Coyote03,Midwest,Coyote02,0.1342,0.0377,0.0001

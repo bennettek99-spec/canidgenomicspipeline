@@ -38,6 +38,7 @@ from canidae.analysis.f_statistics import (
     JackknifeEstimate,
     d_statistic,
     f4_ratio,
+    gl_population_frequencies,
     population_frequencies,
 )
 from canidae.stages.popgen.ancestry_nmf import weighted_nmf
@@ -51,7 +52,16 @@ MIN_GQ = 20
 HIGH_COVERAGE = 15.0
 TARGET_GROUPS = ["great_lakes_wolf", "eastern_wolf", "red_wolf"]
 NA_ORDER = ["western_gray_wolf", "great_lakes_wolf", "eastern_wolf", "red_wolf", "coyote"]
-GROUP_ORDER = ["eurasian_wolf", *NA_ORDER, "golden_jackal"]
+GROUP_ORDER = [
+    "eurasian_wolf",
+    "asian_wolf",
+    "mexican_wolf",
+    *NA_ORDER,
+    "dog",
+    "village_dog",
+    "golden_jackal",
+    "dhole",
+]
 LABELS = {
     "eurasian_wolf": "Eurasian gray wolf",
     "western_gray_wolf": "Western gray wolf",
@@ -61,6 +71,11 @@ LABELS = {
     "red_wolf": "Red wolf",
     "coyote": "Coyote",
     "golden_jackal": "Golden jackal",
+    "asian_wolf": "Asian gray wolf",
+    "mexican_wolf": "Mexican wolf",
+    "dog": "Dog (breeds)",
+    "village_dog": "Village dog",
+    "dhole": "Dhole",
 }
 COLORS = {
     "eurasian_wolf": "#6b7a8f",
@@ -71,9 +86,19 @@ COLORS = {
     "red_wolf": "#c8553d",
     "coyote": "#d9a13b",
     "golden_jackal": "#8c8c8c",
+    "asian_wolf": "#8795a8",
+    "mexican_wolf": "#4f7cac",
+    "dog": "#b07aa1",
+    "village_dog": "#c9a3bf",
+    "dhole": "#5c5c5c",
 }
 WOLF_COLOR, COYOTE_COLOR = "#2f5d8a", "#d9a13b"
-CALLSETS = {"gq20": f"GQ ≥ {MIN_GQ}", "all": "all hard calls"}
+HEADLINE = "gl"  # the callset shown in the main panels
+CALLSETS = {
+    "gq20": f"hard calls, GQ ≥ {MIN_GQ}",
+    "all": "all hard calls",
+    "gl": "genotype likelihoods (EM)",
+}
 
 
 def load_samples() -> dict[str, dict[str, str]]:
@@ -131,7 +156,14 @@ def main() -> None:
     raw = panel["gt"].astype(np.int8)
     filtered = raw.copy()
     filtered[panel["gq"] < MIN_GQ] = -1
-    callsets = {"gq20": filtered, "all": raw}
+    pl = panel["pl"]
+
+    def frequencies(key: str, pops: dict[str, list[str]]) -> dict[str, np.ndarray]:
+        """Population allele frequencies under one of the three CALLSETS."""
+        if key == "gl":
+            return gl_population_frequencies(pl, samples, pops)
+        return population_frequencies(filtered if key == "gq20" else raw, samples, pops)
+
     blocks = panel["chrom"].astype(int)  # 38 autosome jackknife blocks
     groups: dict[str, list[str]] = {g: [] for g in GROUP_ORDER}
     for sample in samples:
@@ -165,8 +197,8 @@ def main() -> None:
         }
         a_row: dict[str, Any] = {"unit": unit, "id": unit_id, "group": group}
         d_row: dict[str, Any] = {"unit": unit, "id": unit_id, "group": group}
-        for key, gt in callsets.items():
-            freqs = population_frequencies(gt, samples, pops)
+        for key in CALLSETS:
+            freqs = frequencies(key, pops)
             a_row |= estimate_fields(f4_ratio(freqs, "A", "O", "X", "B", "C", blocks), key)
             # D(X, W; C, O) > 0: X shares more derived alleles with coyotes than western wolves do.
             d_row |= estimate_fields(d_statistic(freqs, "X", "B", "C", "O", blocks), key)
@@ -174,28 +206,25 @@ def main() -> None:
         if group in TARGET_GROUPS:
             d_rows.append(d_row)
 
-    # Between-target contrasts on the high-quality calls.
-    freqs = population_frequencies(
-        filtered,
-        samples,
-        {
-            # Algonquin only: the Quebec genome is coyote-like (see README).
-            "E": [s for s in groups["eastern_wolf"] if s.startswith("Algonquin")],
-            "G": groups["great_lakes_wolf"],
-            "R": groups["red_wolf"],
-            "C": groups["coyote"],
-            "O": groups["golden_jackal"],
-        },
-    )
-    contrasts = {
-        "D(red_wolf, algonquin; coyote, jackal)": d_statistic(freqs, "R", "E", "C", "O", blocks),
-        "D(algonquin, great_lakes_wolf; coyote, jackal)": d_statistic(
-            freqs, "E", "G", "C", "O", blocks
-        ),
-        "D(red_wolf, great_lakes_wolf; coyote, jackal)": d_statistic(
-            freqs, "R", "G", "C", "O", blocks
-        ),
+    # Between-target contrasts, per callset.
+    contrast_pops = {
+        # Algonquin only: the Quebec genome is coyote-like (see README).
+        "E": [s for s in groups["eastern_wolf"] if s.startswith("Algonquin")],
+        "G": groups["great_lakes_wolf"],
+        "R": groups["red_wolf"],
+        "C": groups["coyote"],
+        "O": groups["golden_jackal"],
     }
+    contrast_tests = {
+        "D(red_wolf, algonquin; coyote, jackal)": ("R", "E"),
+        "D(algonquin, great_lakes_wolf; coyote, jackal)": ("E", "G"),
+        "D(red_wolf, great_lakes_wolf; coyote, jackal)": ("R", "G"),
+    }
+    contrasts: dict[str, dict[str, JackknifeEstimate]] = {name: {} for name in contrast_tests}
+    for key in CALLSETS:
+        freqs = frequencies(key, contrast_pops)
+        for name, (p1, p2) in contrast_tests.items():
+            contrasts[name][key] = d_statistic(freqs, p1, p2, "C", "O", blocks)
 
     # PCA + sNMF on North American canids: all hard calls, >= 90% call rate, MAF >= 5%,
     # thinned to one SNP per 2 kb to damp local LD.
@@ -270,22 +299,19 @@ def main() -> None:
         "f4_ratio_model": "alpha = f4(eurasian_wolf, golden_jackal; X, coyote) / "
         "f4(eurasian_wolf, golden_jackal; western_gray_wolf, coyote)",
         "wolf_ancestry": {
-            r["id"]: {
-                "gq20": [r["estimate_gq20"], r["se_gq20"]],
-                "all_calls": [r["estimate_all"], r["se_all"]],
-            }
+            r["id"]: {key: [r[f"estimate_{key}"], r[f"se_{key}"]] for key in CALLSETS}
             for r in ancestry_rows
         },
         "d_x_westernwolf_coyote_jackal": {
-            r["id"]: {
-                "gq20": [r["estimate_gq20"], r["z_gq20"]],
-                "all_calls": [r["estimate_all"], r["z_all"]],
-            }
+            r["id"]: {key: [r[f"estimate_{key}"], r[f"z_{key}"]] for key in CALLSETS}
             for r in d_rows
         },
-        "target_contrasts_gq20": {
-            name: {"D": round(e.estimate, 4), "se": round(e.se, 4), "z": round(e.z, 2)}
-            for name, e in contrasts.items()
+        "target_contrasts": {
+            name: {
+                key: {"D": round(e.estimate, 4), "se": round(e.se, 4), "z": round(e.z, 2)}
+                for key, e in by_key.items()
+            }
+            for name, by_key in contrasts.items()
         },
         "pca": {
             "n_sites": int(thin.sum()),
@@ -304,7 +330,7 @@ def main() -> None:
                 for k in (
                     "wolf_ancestry",
                     "d_x_westernwolf_coyote_jackal",
-                    "target_contrasts_gq20",
+                    "target_contrasts",
                     "pca",
                 )
             },
@@ -339,7 +365,7 @@ def plot_figure(
     fig = plt.figure(figsize=(14, 12))
     grid = fig.add_gridspec(3, 3, height_ratios=[1.1, 1, 1], hspace=0.62, wspace=0.34)
     indiv = [r for r in ancestry_rows if r["unit"] == "individual"]
-    indiv.sort(key=lambda r: (NA_ORDER.index(r["group"]), -r["estimate_gq20"]))
+    indiv.sort(key=lambda r: (NA_ORDER.index(r["group"]), -r[f"estimate_{HEADLINE}"]))
 
     def color_ticks(ax: Any, ids: list[str]) -> None:
         for tick, sample in zip(ax.get_xticklabels(), ids, strict=True):
@@ -348,13 +374,13 @@ def plot_figure(
     # (a) Per-genome ancestry bars.
     ax = fig.add_subplot(grid[0, :2])
     x = np.arange(len(indiv))
-    wolf = np.clip([r["estimate_gq20"] for r in indiv], 0, 1)
+    wolf = np.clip([r[f"estimate_{HEADLINE}"] for r in indiv], 0, 1)
     ax.bar(x, wolf, color=WOLF_COLOR, width=0.82, label="Gray-wolf lineage")
     ax.bar(x, 1 - wolf, bottom=wolf, color=COYOTE_COLOR, width=0.82, label="Coyote lineage")
     ax.errorbar(
         x,
-        [r["estimate_gq20"] for r in indiv],
-        yerr=[1.96 * r["se_gq20"] for r in indiv],
+        [r[f"estimate_{HEADLINE}"] for r in indiv],
+        yerr=[1.96 * r[f"se_{HEADLINE}"] for r in indiv],
         fmt="none",
         ecolor="#1d1d1d",
         elinewidth=1,
@@ -391,7 +417,7 @@ def plot_figure(
             else [r for r in indiv if r["id"].startswith("Algonquin")]
         )
         ax.scatter(
-            [r["estimate_gq20"] for r in members],
+            [r[f"estimate_{HEADLINE}"] for r in members],
             [y] * len(members),
             s=18,
             color=COLORS[row],
@@ -401,9 +427,9 @@ def plot_figure(
         if row in groups_by_id:
             g = groups_by_id[row]
             ax.errorbar(
-                g["estimate_gq20"],
+                g[f"estimate_{HEADLINE}"],
                 y,
-                xerr=1.96 * g["se_gq20"],
+                xerr=1.96 * g[f"se_{HEADLINE}"],
                 fmt="D",
                 ms=8,
                 color=COLORS[row],
@@ -412,8 +438,8 @@ def plot_figure(
                 mec="white",
             )
             ax.annotate(
-                f"{g['estimate_gq20'] * 100:.0f}% wolf",
-                (g["estimate_gq20"], y),
+                f"{g[f'estimate_{HEADLINE}'] * 100:.0f}% wolf",
+                (g[f"estimate_{HEADLINE}"], y),
                 xytext=(0, 8),
                 textcoords="offset points",
                 ha="center",
@@ -476,7 +502,7 @@ def plot_figure(
     ax.bar(xs, 1 - q, bottom=q, color=COYOTE_COLOR, width=0.82)
     ax.scatter(
         xs,
-        np.clip([r["estimate_gq20"] for r in indiv], 0, 1),
+        np.clip([r[f"estimate_{HEADLINE}"] for r in indiv], 0, 1),
         marker="_",
         s=260,
         color="white",
@@ -504,17 +530,17 @@ def plot_figure(
     ys = np.arange(len(drows))[::-1]
     for y, r in zip(ys, drows, strict=True):
         ax.errorbar(
-            r["estimate_gq20"],
+            r[f"estimate_{HEADLINE}"],
             y,
-            xerr=1.96 * r["se_gq20"],
+            xerr=1.96 * r[f"se_{HEADLINE}"],
             fmt="o",
             color=COLORS[r["group"]],
             ms=6,
             capsize=2,
         )
         ax.annotate(
-            f"Z={r['z_gq20']:.1f}",
-            (r["estimate_gq20"] + 1.96 * r["se_gq20"], y),
+            f"Z={r[f'z_{HEADLINE}']:.1f}",
+            (r[f"estimate_{HEADLINE}"] + 1.96 * r[f"se_{HEADLINE}"], y),
             xytext=(4, -3),
             textcoords="offset points",
             fontsize=6.5,
@@ -526,30 +552,42 @@ def plot_figure(
     ax.set_xlabel("D(X, western wolf; coyote, jackal)")
     ax.set_title("e  Excess allele sharing with coyotes")
 
-    # (f) Call-quality sensitivity.
+    # (f) Genotype-calling sensitivity.
     ax = fig.add_subplot(grid[2, 1])
     for r in indiv:
         low = float(meta[r["id"]]["coverage"]) < 10
+        marker = "^" if low else "o"
+        color = COLORS[r["group"]]
         ax.scatter(
             r["estimate_gq20"],
-            r["estimate_all"],
+            r["estimate_gl"],
             s=40,
-            color=COLORS[r["group"]],
-            marker="o" if not low else "^",
+            color=color,
+            marker=marker,
             edgecolor="white",
             lw=0.5,
             zorder=3,
         )
+        ax.scatter(
+            r["estimate_all"],
+            r["estimate_gl"],
+            s=26,
+            facecolor="none",
+            edgecolor=color,
+            marker=marker,
+            lw=0.9,
+            zorder=2,
+        )
     ax.plot([-0.1, 1.1], [-0.1, 1.1], color="#999999", lw=0.8, ls="--")
     ax.set_xlim(-0.12, 1.12)
     ax.set_ylim(-0.12, 1.12)
-    ax.set_xlabel(f"Gray-wolf ancestry, GQ ≥ {MIN_GQ}")
-    ax.set_ylabel("Gray-wolf ancestry, all hard calls")
-    ax.set_title("f  Robustness to genotype-quality filter")
+    ax.set_xlabel("Gray-wolf ancestry from hard calls")
+    ax.set_ylabel("Gray-wolf ancestry from genotype likelihoods")
+    ax.set_title("f  Robustness to genotype calling")
     ax.text(
         0.98,
         0.03,
-        "● ≥10x coverage   ▲ <10x",
+        f"filled: GQ ≥ {MIN_GQ}   hollow: all calls\n● ≥10x coverage   ▲ <10x",
         transform=ax.transAxes,
         ha="right",
         fontsize=7,
@@ -558,7 +596,8 @@ def plot_figure(
 
     # (g) Heterozygosity, high-coverage genomes only.
     ax = fig.add_subplot(grid[2, 2])
-    hrows = [r for r in het_rows if r["high_coverage"] and r["group"] != "golden_jackal"]
+    shown = {"eurasian_wolf", *NA_ORDER}
+    hrows = [r for r in het_rows if r["high_coverage"] and r["group"] in shown]
     hrows.sort(key=lambda r: (GROUP_ORDER.index(r["group"]), r["sample_id"]))
     ys = np.arange(len(hrows))[::-1]
     ax.barh(
@@ -588,7 +627,7 @@ def plot_figure(
         0.958,
         f"NHGRI 722-genome WGS callset (CanFam3.1) · {summary['n_snps']:,} PASS biallelic "
         f"SNPs from {summary['n_windows']} unascertained windows on 38 autosomes · "
-        "chromosome block jackknife\n"
+        "allele frequencies by EM from genotype likelihoods · chromosome block jackknife\n"
         "f4-ratio = f4(Eurasian wolves, golden jackal; X, coyotes) / "
         "f4(Eurasian wolves, golden jackal; western gray wolves, coyotes)",
         fontsize=8.5,

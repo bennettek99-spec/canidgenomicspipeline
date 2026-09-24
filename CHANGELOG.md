@@ -10,6 +10,20 @@
   f4-ratio, D-statistic, PCA, sNMF and heterozygosity analyses and renders a 7-panel figure.
 - **`canidae.analysis.f_statistics`**: frequency-based f4, D and f4-ratio statistics with a
   weighted delete-one block jackknife, validated against msprime admixture simulations.
+- **Wolf-cline robustness tests** (`scripts/wolf_cline_robustness.py`,
+  `results/wolf_ancestry_cline/robustness/`):
+  - qpAdm dog-ancestry fits.
+  - Coyote-source rotation, with known-answer controls.
+  - D-tests between coyote pairs.
+  - 96-model reference rotation.
+
+  The panel now carries 38 genomes (adds dogs, village dogs, Mexican and Asian wolves,
+  dhole) and phred genotype likelihoods.
+- **`gl_population_frequencies`** (EM allele frequencies from genotype likelihoods) and
+  **`qpadm`** (least-squares mixture weights with a jackknife χ² fit test) in
+  `canidae.analysis.f_statistics`, validated on simulated low-depth reads and msprime
+  three-way admixture. The wolf-cline headline now uses genotype-likelihood frequencies;
+  the GQ ≥ 20 filter was biased for the low-coverage Algonquin genomes (56% → 64% wolf).
 
 ### Improved
 

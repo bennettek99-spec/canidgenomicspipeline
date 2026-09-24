@@ -1,0 +1,423 @@
+{
+  "ordering_holds_in_models": "96/96",
+  "coyote_as_target": [
+    {
+      "coyote": "Coyote01",
+      "locality": "California",
+      "coyote_source": "Coyote02",
+      "wolf_weight": -0.044,
+      "wolf_se": 0.031,
+      "p_value": 0.2172
+    },
+    {
+      "coyote": "Coyote01",
+      "locality": "California",
+      "coyote_source": "Coyote03",
+      "wolf_weight": -0.1678,
+      "wolf_se": 0.0549,
+      "p_value": 0.0
+    },
+    {
+      "coyote": "Coyote02",
+      "locality": "Alabama",
+      "coyote_source": "Coyote01",
+      "wolf_weight": 0.0449,
+      "wolf_se": 0.0271,
+      "p_value": 0.217
+    },
+    {
+      "coyote": "Coyote02",
+      "locality": "Alabama",
+      "coyote_source": "Coyote03",
+      "wolf_weight": -0.1298,
+      "wolf_se": 0.0485,
+      "p_value": 0.0002
+    },
+    {
+      "coyote": "Coyote03",
+      "locality": "Midwest",
+      "coyote_source": "Coyote01",
+      "wolf_weight": 0.1775,
+      "wolf_se": 0.0377,
+      "p_value": 0.0
+    },
+    {
+      "coyote": "Coyote03",
+      "locality": "Midwest",
+      "coyote_source": "Coyote02",
+      "wolf_weight": 0.1342,
+      "wolf_se": 0.0377,
+      "p_value": 0.0001
+    }
+  ],
+  "frequencies": "EM from genotype likelihoods",
+  "qpadm_rights": [
+    "golden_jackal",
+    "eurasian_wolf",
+    "asian_wolf",
+    "village_dog",
+    "dhole"
+  ],
+  "dog_ancestry": {
+    "Wolf28": {
+      "target": "Wolf28",
+      "wolf": 1.0085,
+      "wolf_se": 0.0508,
+      "dog": -0.017,
+      "dog_se": 0.0274,
+      "dog_z": -0.62,
+      "coyote": 0.0085,
+      "coyote_se": 0.0348,
+      "p_wolf_dog_coyote": 0.5926,
+      "p_wolf_coyote": 0.732,
+      "two_way_wolf": 0.9845,
+      "two_way_wolf_se": 0.0329,
+      "n_sites": 77248
+    },
+    "mexican_wolf": {
+      "target": "mexican_wolf",
+      "wolf": 0.7709,
+      "wolf_se": 0.0801,
+      "dog": 0.1051,
+      "dog_se": 0.0417,
+      "dog_z": 2.52,
+      "coyote": 0.1241,
+      "coyote_se": 0.0522,
+      "p_wolf_dog_coyote": 0.8165,
+      "p_wolf_coyote": 0.0935,
+      "two_way_wolf": 0.9186,
+      "two_way_wolf_se": 0.0491,
+      "n_sites": 77251
+    },
+    "great_lakes_wolf": {
+      "target": "great_lakes_wolf",
+      "wolf": 0.7453,
+      "wolf_se": 0.0453,
+      "dog": 0.0151,
+      "dog_se": 0.0232,
+      "dog_z": 0.65,
+      "coyote": 0.2397,
+      "coyote_se": 0.035,
+      "p_wolf_dog_coyote": 0.3588,
+      "p_wolf_coyote": 0.2841,
+      "two_way_wolf": 0.7665,
+      "two_way_wolf_se": 0.0348,
+      "n_sites": 77348
+    },
+    "algonquin": {
+      "target": "algonquin",
+      "wolf": 0.5945,
+      "wolf_se": 0.0308,
+      "dog": 0.0394,
+      "dog_se": 0.0183,
+      "dog_z": 2.15,
+      "coyote": 0.3661,
+      "coyote_se": 0.025,
+      "p_wolf_dog_coyote": 0.6326,
+      "p_wolf_coyote": 0.2084,
+      "two_way_wolf": 0.6499,
+      "two_way_wolf_se": 0.0268,
+      "n_sites": 77234
+    },
+    "red_wolf": {
+      "target": "red_wolf",
+      "wolf": 0.3453,
+      "wolf_se": 0.0416,
+      "dog": 0.0096,
+      "dog_se": 0.0238,
+      "dog_z": 0.4,
+      "coyote": 0.6451,
+      "coyote_se": 0.0335,
+      "p_wolf_dog_coyote": 0.8854,
+      "p_wolf_coyote": 0.9504,
+      "two_way_wolf": 0.3591,
+      "two_way_wolf_se": 0.0345,
+      "n_sites": 77299
+    },
+    "Wolf18": {
+      "target": "Wolf18",
+      "wolf": 0.7415,
+      "wolf_se": 0.0533,
+      "dog": 0.0345,
+      "dog_se": 0.0275,
+      "dog_z": 1.26,
+      "coyote": 0.224,
+      "coyote_se": 0.0421,
+      "p_wolf_dog_coyote": 0.0069,
+      "p_wolf_coyote": 0.0052,
+      "two_way_wolf": 0.7901,
+      "two_way_wolf_se": 0.0427,
+      "n_sites": 77241
+    },
+    "Wolf40": {
+      "target": "Wolf40",
+      "wolf": 0.743,
+      "wolf_se": 0.0517,
+      "dog": 0.0008,
+      "dog_se": 0.0259,
+      "dog_z": 0.03,
+      "coyote": 0.2561,
+      "coyote_se": 0.0443,
+      "p_wolf_dog_coyote": 0.9178,
+      "p_wolf_coyote": 0.9817,
+      "two_way_wolf": 0.7443,
+      "two_way_wolf_se": 0.0453,
+      "n_sites": 76991
+    },
+    "AlgonquinWolf13467": {
+      "target": "AlgonquinWolf13467",
+      "wolf": 0.5447,
+      "wolf_se": 0.0332,
+      "dog": 0.0568,
+      "dog_se": 0.0234,
+      "dog_z": 2.42,
+      "coyote": 0.3985,
+      "coyote_se": 0.0275,
+      "p_wolf_dog_coyote": 0.9594,
+      "p_wolf_coyote": 0.099,
+      "two_way_wolf": 0.6242,
+      "two_way_wolf_se": 0.0311,
+      "n_sites": 73626
+    },
+    "AlgonquinWolf13470": {
+      "target": "AlgonquinWolf13470",
+      "wolf": 0.6152,
+      "wolf_se": 0.0368,
+      "dog": 0.0573,
+      "dog_se": 0.0189,
+      "dog_z": 3.03,
+      "coyote": 0.3275,
+      "coyote_se": 0.0308,
+      "p_wolf_dog_coyote": 0.3014,
+      "p_wolf_coyote": 0.032,
+      "two_way_wolf": 0.696,
+      "two_way_wolf_se": 0.0325,
+      "n_sites": 76504
+    },
+    "QuebecWolf": {
+      "target": "QuebecWolf",
+      "wolf": -0.0356,
+      "wolf_se": 0.0357,
+      "dog": 0.0558,
+      "dog_se": 0.0221,
+      "dog_z": 2.52,
+      "coyote": 0.9798,
+      "coyote_se": 0.0317,
+      "p_wolf_dog_coyote": 0.666,
+      "p_wolf_coyote": 0.0615,
+      "two_way_wolf": 0.0417,
+      "two_way_wolf_se": 0.0342,
+      "n_sites": 60321
+    },
+    "Wolf25": {
+      "target": "Wolf25",
+      "wolf": 0.3539,
+      "wolf_se": 0.0526,
+      "dog": 0.0115,
+      "dog_se": 0.0263,
+      "dog_z": 0.44,
+      "coyote": 0.6345,
+      "coyote_se": 0.0425,
+      "p_wolf_dog_coyote": 0.8491,
+      "p_wolf_coyote": 0.9281,
+      "two_way_wolf": 0.3704,
+      "two_way_wolf_se": 0.0424,
+      "n_sites": 77094
+    },
+    "Wolf26": {
+      "target": "Wolf26",
+      "wolf": 0.3289,
+      "wolf_se": 0.0394,
+      "dog": 0.0241,
+      "dog_se": 0.0276,
+      "dog_z": 0.87,
+      "coyote": 0.647,
+      "coyote_se": 0.03,
+      "p_wolf_dog_coyote": 0.6556,
+      "p_wolf_coyote": 0.736,
+      "two_way_wolf": 0.3633,
+      "two_way_wolf_se": 0.0327,
+      "n_sites": 74907
+    }
+  },
+  "coyote_source_p_values": {
+    "Wolf28": {
+      "California": 0.5384,
+      "Alabama": 0.4162,
+      "Midwest": 0.4017
+    },
+    "mexican_wolf": {
+      "California": 0.1075,
+      "Alabama": 0.1838,
+      "Midwest": 0.0664
+    },
+    "great_lakes_wolf": {
+      "California": 0.0038,
+      "Alabama": 0.0074,
+      "Midwest": 0.7258
+    },
+    "algonquin": {
+      "California": 0.0,
+      "Alabama": 0.0001,
+      "Midwest": 0.5124
+    },
+    "red_wolf": {
+      "California": 0.0,
+      "Alabama": 0.0,
+      "Midwest": 0.8098
+    },
+    "Wolf18": {
+      "California": 0.0002,
+      "Alabama": 0.0001,
+      "Midwest": 0.0279
+    },
+    "Wolf40": {
+      "California": 0.0342,
+      "Alabama": 0.0903,
+      "Midwest": 0.9567
+    },
+    "AlgonquinWolf13467": {
+      "California": 0.0,
+      "Alabama": 0.0,
+      "Midwest": 0.5792
+    },
+    "AlgonquinWolf13470": {
+      "California": 0.0001,
+      "Alabama": 0.0018,
+      "Midwest": 0.4886
+    },
+    "QuebecWolf": {
+      "California": 0.0,
+      "Alabama": 0.0,
+      "Midwest": 0.4704
+    },
+    "Wolf25": {
+      "California": 0.0,
+      "Alabama": 0.0,
+      "Midwest": 0.8439
+    },
+    "Wolf26": {
+      "California": 0.0,
+      "Alabama": 0.0,
+      "Midwest": 0.9467
+    }
+  },
+  "reference_rotation": {
+    "great_lakes_wolf": {
+      "n_models": 96,
+      "median": 0.7484,
+      "min": 0.6907,
+      "max": 0.8847,
+      "median_by_factor": {
+        "A": {
+          "Asia": 0.7537,
+          "Europe": 0.7494,
+          "all Eurasian": 0.7405
+        },
+        "B": {
+          "Alaska": 0.7373,
+          "Mexican": 0.8249,
+          "Yellowstone": 0.7448,
+          "Yellowstone + Alaska": 0.7434
+        },
+        "C": {
+          "Alabama coyote": 0.7504,
+          "California coyote": 0.7526,
+          "Midwest coyote": 0.7367,
+          "all coyotes": 0.7484
+        },
+        "O": {
+          "dhole": 0.7371,
+          "golden jackal": 0.7529
+        }
+      }
+    },
+    "algonquin": {
+      "n_models": 96,
+      "median": 0.6367,
+      "min": 0.5799,
+      "max": 0.7379,
+      "median_by_factor": {
+        "A": {
+          "Asia": 0.6305,
+          "Europe": 0.6485,
+          "all Eurasian": 0.642
+        },
+        "B": {
+          "Alaska": 0.6275,
+          "Mexican": 0.7096,
+          "Yellowstone": 0.6324,
+          "Yellowstone + Alaska": 0.6321
+        },
+        "C": {
+          "Alabama coyote": 0.6352,
+          "California coyote": 0.6473,
+          "Midwest coyote": 0.6216,
+          "all coyotes": 0.6351
+        },
+        "O": {
+          "dhole": 0.6321,
+          "golden jackal": 0.6463
+        }
+      }
+    },
+    "red_wolf": {
+      "n_models": 96,
+      "median": 0.3596,
+      "min": 0.2964,
+      "max": 0.4414,
+      "median_by_factor": {
+        "A": {
+          "Asia": 0.3595,
+          "Europe": 0.3593,
+          "all Eurasian": 0.3607
+        },
+        "B": {
+          "Alaska": 0.3536,
+          "Mexican": 0.3981,
+          "Yellowstone": 0.359,
+          "Yellowstone + Alaska": 0.3582
+        },
+        "C": {
+          "Alabama coyote": 0.3553,
+          "California coyote": 0.3895,
+          "Midwest coyote": 0.3295,
+          "all coyotes": 0.362
+        },
+        "O": {
+          "dhole": 0.3608,
+          "golden jackal": 0.3596
+        }
+      }
+    },
+    "QuebecWolf": {
+      "n_models": 96,
+      "median": 0.0315,
+      "min": -0.0575,
+      "max": 0.0891,
+      "median_by_factor": {
+        "A": {
+          "Asia": 0.0149,
+          "Europe": 0.0382,
+          "all Eurasian": 0.0321
+        },
+        "B": {
+          "Alaska": 0.0339,
+          "Mexican": 0.0336,
+          "Yellowstone": 0.0309,
+          "Yellowstone + Alaska": 0.0312
+        },
+        "C": {
+          "Alabama coyote": 0.0319,
+          "California coyote": 0.061,
+          "Midwest coyote": -0.0338,
+          "all coyotes": 0.0338
+        },
+        "O": {
+          "dhole": 0.0358,
+          "golden jackal": 0.0274
+        }
+      }
+    }
+  }
+}
