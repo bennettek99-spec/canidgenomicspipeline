@@ -29,9 +29,11 @@ below); the hard-call columns are shown for comparison.
    D(red, Algonquin; coyote, jackal) = 0.101 (Z = 5.3),
    D(red, Great Lakes; coyote, jackal) = 0.145 (Z = 6.9),
    D(Algonquin, Great Lakes; coyote, jackal) = 0.053 (Z = 3.0).
-   The Algonquin vs Great Lakes step is the weakest. It is Z = 2.5 on all hard calls and
-   not significant (Z = 0.9) on GQ ≥ 20 calls, which discard 50–70% of the Algonquin data.
-   Treat it as moderate evidence from two genomes per group.
+   The Algonquin vs Great Lakes step is the weakest, and it is only **suggestive**. It is
+   Z = 2.5 on all hard calls and not significant (Z = 0.9) on GQ ≥ 20 calls. Tested one
+   genome pair at a time, all four pairs point the same way but reach only Z = 0.8–2.8.
+   One of the two Algonquin genomes also looks compromised (see *Follow-up tests*). The
+   cleaner Algonquin genome (AlgonquinWolf13467) gives ~61% gray wolf.
 2. **All three share significantly more alleles with coyotes than western gray wolves do**
    (every individual D > 0, Z = 3.5–12.5), so none is simply a gray-wolf population.
 3. **Four independent views agree on the order.** The reference-based f4-ratio (panel a/b),
@@ -72,14 +74,14 @@ wolves, village dogs and dhole.
 
 - **Red and Great Lakes wolves:** no detectable dog ancestry. Their gray-wolf estimates
   stand as they are.
-- **Algonquin wolves (and the Quebec coyote):** weak evidence of ~4–6% dog ancestry
-  (individual Z = 2.4–3.0). If real, about 5 points of the Algonquin "gray wolf" fraction
-  is dog, and the true wolf fraction is nearer 59%.
-- **Calibration warning.** The inbred captive Mexican wolves, included as a second
-  control, also get 10% ± 4% dog (Z = 2.5). That may be real, but it also shows that
-  dog signals at Z ≈ 2–3 are suggestive, not conclusive.
-- Wolf18 (Great Lakes 01) is the one genome no model fits well (p = 0.005–0.03).
-  Something in its ancestry is not captured by western wolf + dog + coyote.
+- **Algonquin wolves (and the Quebec coyote):** the ~4–6% "dog" weight (individual
+  Z = 2.4–3.0) is **not dog-specific**. A model using a Mexican-wolf-like source instead
+  of dogs fits just as well, and with both offered the weights become unidentifiable
+  (*Follow-up tests*). There is no evidence of dog ancestry here.
+- **Mexican wolves (control):** the 10% ± 4% "dog" weight is an artifact. The direct test
+  shows no excess dog sharing, which agrees with Fitak et al. 2018 (next section).
+- Wolf18 (Great Lakes 01) is the one genome no wolf + dog + coyote model fits
+  (p = 0.005–0.03). *Follow-up tests* explains why.
 
 ### 2. Where did the coyote-side ancestry come from? A shared eastern component.
 
@@ -135,6 +137,57 @@ Results:
 - **The ordering holds in all 96 of 96 models.**
 - **The one systematic shift:** using Mexican wolves as the North American wolf reference
   raises every target by 4–8 points.
+
+### 4. Follow-up tests: Mexican wolves, Wolf18, and one suspect genome
+
+All values are in [`robustness/followup_tests.csv`](robustness/followup_tests.csv).
+
+**Mexican wolves have no dog ancestry, and they reveal what the "dog" source was absorbing.**
+
+- **No dog signal in the direct test.** Relative to Yellowstone wolves, Mexican wolves
+  share no extra alleles with breed dogs (D = +0.004, Z = 0.1) or village dogs (Z = 0.1).
+- **What actually differs.** Yellowstone wolves share *more* with Eurasian and Asian wolves
+  than Mexican wolves do (Z = 1.9 and 2.1). That fits Mexican wolves as a distinct, older
+  North American lineage. In qpAdm, the "dog" source was simply a convenient stand-in for
+  "wolf ancestry unlike Yellowstone's".
+- **Consistent with the literature.** Fitak et al. 2018 genotyped 87 Mexican wolves at
+  >172,000 SNPs and found no biologically significant dog ancestry
+  ([doi:10.1093/jhered/esy009](https://doi.org/10.1093/jhered/esy009)). Taron et al.
+  2021 found historical and modern Mexican wolves form a discrete unit, distinct from
+  other North American wolves ([doi:10.1111/mec.16037](https://doi.org/10.1111/mec.16037)).
+
+**Wolf18 (Great Lakes 01) carries Mexican-wolf-like gray-wolf ancestry.**
+
+- **Leaning toward Mexican wolves.** In a test where coyote ancestry cancels out,
+  D(Yellowstone, Wolf18; Mexican wolf, Eurasian wolf) = −0.071 (Z = −2.4): Wolf18 is
+  closer to Mexican wolves than Yellowstone wolves are. The Great Lakes (Z = −2.1) and
+  Algonquin (Z = −1.9) groups lean the same way; red wolves do not (Z = +0.2).
+- **Only a Mexican-like source fixes the model.** Wolf18 is rejected as western wolf +
+  coyote (p = 0.005). Adding dog does not help (p = 0.007). Adding Mexican wolves does
+  (p = 0.20, ~18% Mexican-like, though that weight is poorly determined at ±35%).
+- **Best guess:** Wolf18 is ~75–80% gray wolf and ~20–25% coyote-lineage, as the f4-ratio
+  says. Part of its gray-wolf ancestry comes from an older North American wolf lineage
+  (today best represented by Mexican wolves) rather than from Yellowstone/Alaska-type
+  wolves.
+- **Caution.** This rests on one genome and Z ≈ 2 signals; it is a hypothesis to test
+  with more Great Lakes genomes, not a result.
+
+**AlgonquinWolf13470 shares an extraordinary amount with the Isle Royale genome.**
+
+- **The anomaly.** D(AlgonquinWolf13467, AlgonquinWolf13470; Wolf40, jackal) = −0.47
+  (Z = −29.5). One Algonquin genome shares far more with the Isle Royale wolf than its
+  packmate does; qpAdm models it as ~60% "other Algonquin wolf" + ~40% "Isle Royale wolf".
+- **Not a sequencing-batch effect.** Other genomes from the same BioProject (the Alaska
+  wolf and QuebecWolf) show nothing (|Z| ≤ 1.5).
+- **Not a duplicated sample.** Genotype concordance with Wolf40 is 46% at variable sites,
+  versus ~90%+ expected for a duplicate.
+- **Likely explanation.** The remaining possibilities are contamination of this 7× library
+  with DNA from an Isle-Royale-related wolf, a labelling error, or improbably close kinship
+  across ~700 km. Treat AlgonquinWolf13470 as suspect.
+- **Effect on the results.** It pulls the Algonquin estimate toward Isle Royale's value
+  (69% vs 61% for AlgonquinWolf13467), so ~61% is the more trustworthy Algonquin figure.
+  It makes Algonquin and Great Lakes wolves look *more* alike, so it does not create the
+  cline. It weakens the evidence that they differ.
 
 ### Genotype calling
 

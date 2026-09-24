@@ -90,7 +90,7 @@ f4-ratio ancestry, D-statistics, qpAdm, PCA and sNMF on 87,538 unascertained SNP
 byte-range-read from the NHGRI 722-genome callset, with genotype-likelihood allele
 frequencies. Headline: gray-wolf ancestry falls from ~75% (Great Lakes) to ~64% (Algonquin)
 to ~36% (red wolf). The ordering holds in all 96 reference-rotation models, and dog ancestry
-does not explain it. All three share an eastern component with a Midwest coyote that
+does not explain it. The Algonquin vs Great Lakes step is only suggestive. All three share an eastern component with a Midwest coyote that
 California and Alabama coyotes lack ([robustness tests](results/wolf_ancestry_cline/README.md#robustness-tests)).
 
 ![Wolf ancestry cline](results/wolf_ancestry_cline/wolf_ancestry_cline.png)

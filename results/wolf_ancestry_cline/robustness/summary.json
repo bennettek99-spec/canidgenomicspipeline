@@ -419,5 +419,223 @@
         }
       }
     }
-  }
+  },
+  "followup_tests": [
+    {
+      "question": "Mexican-wolf dog signal",
+      "test": "D(yellowstone, mexican_wolf; dog, golden_jackal)",
+      "estimate": 0.004,
+      "se": 0.0268,
+      "z": 0.15,
+      "p_value": "",
+      "note": "<0 would mean excess allele sharing with breed dogs"
+    },
+    {
+      "question": "Mexican-wolf dog signal",
+      "test": "D(yellowstone, mexican_wolf; village_dog, golden_jackal)",
+      "estimate": 0.0019,
+      "se": 0.0218,
+      "z": 0.09,
+      "p_value": "",
+      "note": "<0 would mean excess allele sharing with village dogs"
+    },
+    {
+      "question": "Mexican-wolf dog signal",
+      "test": "D(yellowstone, mexican_wolf; eurasian_wolf, golden_jackal)",
+      "estimate": 0.0495,
+      "se": 0.0267,
+      "z": 1.86,
+      "p_value": "",
+      "note": ">0: Yellowstone shares more with Eurasian wolves than Mexican wolves do"
+    },
+    {
+      "question": "Mexican-wolf dog signal",
+      "test": "D(yellowstone, mexican_wolf; asian_wolf, golden_jackal)",
+      "estimate": 0.0543,
+      "se": 0.0253,
+      "z": 2.15,
+      "p_value": "",
+      "note": ">0: Yellowstone shares more with Asian wolves than Mexican wolves do"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "D(yellowstone, Wolf18; mexican_wolf, eurasian_wolf)",
+      "estimate": -0.0706,
+      "se": 0.0293,
+      "z": -2.41,
+      "p_value": "",
+      "note": "<0: target closer to Mexican wolves than Yellowstone is; coyote ancestry cancels"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "D(yellowstone, Wolf40; mexican_wolf, eurasian_wolf)",
+      "estimate": -0.0427,
+      "se": 0.0289,
+      "z": -1.48,
+      "p_value": "",
+      "note": "<0: target closer to Mexican wolves than Yellowstone is; coyote ancestry cancels"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "D(yellowstone, great_lakes_wolf; mexican_wolf, eurasian_wolf)",
+      "estimate": -0.0569,
+      "se": 0.0266,
+      "z": -2.14,
+      "p_value": "",
+      "note": "<0: target closer to Mexican wolves than Yellowstone is; coyote ancestry cancels"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "D(yellowstone, algonquin; mexican_wolf, eurasian_wolf)",
+      "estimate": -0.0434,
+      "se": 0.0229,
+      "z": -1.89,
+      "p_value": "",
+      "note": "<0: target closer to Mexican wolves than Yellowstone is; coyote ancestry cancels"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "D(yellowstone, red_wolf; mexican_wolf, eurasian_wolf)",
+      "estimate": 0.0043,
+      "se": 0.028,
+      "z": 0.16,
+      "p_value": "",
+      "note": "<0: target closer to Mexican wolves than Yellowstone is; coyote ancestry cancels"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "qpAdm Wolf18 = western_gray_wolf + coyote",
+      "estimate": "western_gray_wolf=0.790\u00b10.043, coyote=0.210\u00b10.043",
+      "se": "",
+      "z": "",
+      "p_value": 0.0052,
+      "note": "rights: golden_jackal, eurasian_wolf, asian_wolf, village_dog, dhole"
+    },
+    {
+      "question": "Algonquin dog vs Mexican-like wolf",
+      "test": "qpAdm algonquin = western_gray_wolf + coyote",
+      "estimate": "western_gray_wolf=0.650\u00b10.027, coyote=0.350\u00b10.027",
+      "se": "",
+      "z": "",
+      "p_value": 0.2084,
+      "note": "rights: golden_jackal, eurasian_wolf, asian_wolf, village_dog, dhole"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "qpAdm Wolf18 = western_gray_wolf + coyote + dog",
+      "estimate": "western_gray_wolf=0.741\u00b10.053, coyote=0.224\u00b10.042, dog=0.035\u00b10.027",
+      "se": "",
+      "z": "",
+      "p_value": 0.0069,
+      "note": "rights: golden_jackal, eurasian_wolf, asian_wolf, village_dog, dhole"
+    },
+    {
+      "question": "Algonquin dog vs Mexican-like wolf",
+      "test": "qpAdm algonquin = western_gray_wolf + coyote + dog",
+      "estimate": "western_gray_wolf=0.595\u00b10.031, coyote=0.366\u00b10.025, dog=0.039\u00b10.018",
+      "se": "",
+      "z": "",
+      "p_value": 0.6326,
+      "note": "rights: golden_jackal, eurasian_wolf, asian_wolf, village_dog, dhole"
+    },
+    {
+      "question": "Wolf18 ancestry",
+      "test": "qpAdm Wolf18 = western_gray_wolf + coyote + mexican_wolf",
+      "estimate": "western_gray_wolf=0.625\u00b10.321, coyote=0.195\u00b10.052, mexican_wolf=0.180\u00b10.349",
+      "se": "",
+      "z": "",
+      "p_value": 0.1968,
+      "note": "rights: golden_jackal, eurasian_wolf, asian_wolf, village_dog, dhole"
+    },
+    {
+      "question": "Algonquin dog vs Mexican-like wolf",
+      "test": "qpAdm algonquin = western_gray_wolf + coyote + mexican_wolf",
+      "estimate": "western_gray_wolf=0.334\u00b10.209, coyote=0.323\u00b10.029, mexican_wolf=0.344\u00b10.225",
+      "se": "",
+      "z": "",
+      "p_value": 0.7096,
+      "note": "rights: golden_jackal, eurasian_wolf, asian_wolf, village_dog, dhole"
+    },
+    {
+      "question": "Wolf40 / AlgonquinWolf13470 anomaly",
+      "test": "D(AlgonquinWolf13467, AlgonquinWolf13470; Wolf40, golden_jackal)",
+      "estimate": -0.4725,
+      "se": 0.016,
+      "z": -29.49,
+      "p_value": "",
+      "note": "<0: 13470 shares far more with the Isle Royale genome than its Algonquin packmate"
+    },
+    {
+      "question": "Wolf40 / AlgonquinWolf13470 anomaly",
+      "test": "D(Wolf40, Wolf18; AlgonquinWolf13470, golden_jackal)",
+      "estimate": 0.3931,
+      "se": 0.0163,
+      "z": 24.15,
+      "p_value": "",
+      "note": ">0: Isle Royale closer to 13470 than the other Great Lakes genome is"
+    },
+    {
+      "question": "Wolf40 / AlgonquinWolf13470 anomaly",
+      "test": "D(Wolf40, Wolf18; AlgonquinWolf13467, golden_jackal)",
+      "estimate": -0.0351,
+      "se": 0.0287,
+      "z": -1.22,
+      "p_value": "",
+      "note": "control: the other Algonquin genome"
+    },
+    {
+      "question": "Wolf40 / AlgonquinWolf13470 anomaly",
+      "test": "D(Wolf40, Wolf18; AlaskanWolf, golden_jackal)",
+      "estimate": -0.051,
+      "se": 0.0344,
+      "z": -1.48,
+      "p_value": "",
+      "note": "batch control: same BioProject (PRJNA331222) as the Algonquin genomes"
+    },
+    {
+      "question": "Wolf40 / AlgonquinWolf13470 anomaly",
+      "test": "qpAdm AlgonquinWolf13470 = AlgonquinWolf13467 + Wolf40",
+      "estimate": "AlgonquinWolf13467=0.604\u00b10.126, Wolf40=0.396\u00b10.126",
+      "se": "",
+      "z": "",
+      "p_value": 0.0112,
+      "note": "rights: golden_jackal, eurasian_wolf, asian_wolf, village_dog, dhole, coyote, western_gray_wolf"
+    },
+    {
+      "question": "Algonquin vs Great Lakes, per genome pair",
+      "test": "D(AlgonquinWolf13467, Wolf18; coyote, golden_jackal)",
+      "estimate": 0.0372,
+      "se": 0.0251,
+      "z": 1.49,
+      "p_value": "",
+      "note": ">0: the Algonquin genome carries more coyote-lineage ancestry"
+    },
+    {
+      "question": "Algonquin vs Great Lakes, per genome pair",
+      "test": "D(AlgonquinWolf13467, Wolf40; coyote, golden_jackal)",
+      "estimate": 0.0628,
+      "se": 0.0226,
+      "z": 2.78,
+      "p_value": "",
+      "note": ">0: the Algonquin genome carries more coyote-lineage ancestry"
+    },
+    {
+      "question": "Algonquin vs Great Lakes, per genome pair",
+      "test": "D(AlgonquinWolf13470, Wolf18; coyote, golden_jackal)",
+      "estimate": 0.0186,
+      "se": 0.0235,
+      "z": 0.79,
+      "p_value": "",
+      "note": ">0: the Algonquin genome carries more coyote-lineage ancestry"
+    },
+    {
+      "question": "Algonquin vs Great Lakes, per genome pair",
+      "test": "D(AlgonquinWolf13470, Wolf40; coyote, golden_jackal)",
+      "estimate": 0.0627,
+      "se": 0.0232,
+      "z": 2.7,
+      "p_value": "",
+      "note": ">0: the Algonquin genome carries more coyote-lineage ancestry"
+    }
+  ]
 }

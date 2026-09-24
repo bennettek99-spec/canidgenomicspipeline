@@ -25,6 +25,31 @@
   three-way admixture. The wolf-cline headline now uses genotype-likelihood frequencies;
   the GQ ≥ 20 filter was biased for the low-coverage Algonquin genomes (56% → 64% wolf).
 
+- **Wolf-cline follow-up tests** (`robustness/followup_tests.csv`):
+  - The Mexican-wolf "dog" weight is an artifact: no excess dog allele sharing.
+  - Wolf18's unexplained ancestry is Mexican-wolf-like gray wolf.
+  - AlgonquinWolf13470 carries a strong Isle-Royale-like signal (suspect genome).
+
+### Fixed
+
+- **CI has been red since 2026-09-04 for reasons unrelated to that commit:**
+  - Type-check: annotations in `test_analysis_readiness.py`, `reference_mixture.py`
+    and `fst.py`.
+  - The parity environment pinned `dsuite`, which has never been a conda package. Dsuite
+    is now built from a pinned upstream commit in the parity job.
+  - The Dsuite parity test itself had never run. It looked for an upper-case `JACKAL`
+    outgroup, used chromosome blocks on a one-contig simulation, and demanded three
+    trios where Dtrios reports one. It now passes against Dsuite `a547f99`.
+  - Newer tskit refuses to write a VCF site at position 0; the simulated cohorts now
+    write it at 1.
+  - `population_genomics.json` and `introgression.json` goldens were blessed on a machine
+    whose msprime/tskit simulated a different cohort; they never ran in CI. They are
+    re-blessed after checking that the 2026-08-17 code and current code give identical
+    results on the same simulated input.
+  - `tests/fixtures/real_bridge/bridge.vcf.gz` was never committed (hidden by a
+    `*.vcf.gz` ignore rule). Its tests now skip with that reason instead of erroring,
+    and fixture VCFs are exempt from the rule.
+
 ### Improved
 
 - **LD pruning is now laptop-fast.** `analysis_readiness` used a per-pair

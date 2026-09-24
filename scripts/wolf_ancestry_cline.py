@@ -360,6 +360,7 @@ def plot_figure(
             "axes.titlesize": 10,
             "axes.titlelocation": "left",
             "axes.titlepad": 10,
+            "svg.hashsalt": "canis",  # stable SVG ids across runs
         }
     )
     fig = plt.figure(figsize=(14, 12))
@@ -635,7 +636,7 @@ def plot_figure(
         va="top",
     )
     fig.savefig(OUT / "wolf_ancestry_cline.png", dpi=160, bbox_inches="tight")
-    fig.savefig(OUT / "wolf_ancestry_cline.svg", bbox_inches="tight")
+    fig.savefig(OUT / "wolf_ancestry_cline.svg", bbox_inches="tight", metadata={"Date": None})
     plt.close(fig)
 
 

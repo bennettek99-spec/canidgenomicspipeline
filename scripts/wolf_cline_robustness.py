@@ -12,6 +12,9 @@ All statistics use allele frequencies estimated by EM from genotype likelihoods.
    D(coyote i, coyote j; X, jackal).
 3. Reference rotation. The f4-ratio is recomputed under every combination of
    Eurasian reference, North American wolf reference, coyote reference and outgroup.
+4. Follow-ups. Is the Mexican-wolf "dog" weight dog-specific? Which extra source
+   does Wolf18 need? Why does the Isle Royale genome share so much with one
+   Algonquin genome?
 
 Outputs go to ``results/wolf_ancestry_cline/robustness/``.
 
@@ -225,6 +228,146 @@ def main() -> None:
                 }
             )
 
+    # ---- 4. Follow-up tests -------------------------------------------------
+    followup_rows: list[dict[str, Any]] = []
+
+    def add_d(question: str, p1: str, p2: str, p3: str, p4: str, note: str) -> None:
+        est = d_statistic(freqs, p1, p2, p3, p4, blocks)
+        followup_rows.append(
+            {
+                "question": question,
+                "test": f"D({p1}, {p2}; {p3}, {p4})",
+                "estimate": round(est.estimate, 4),
+                "se": round(est.se, 4),
+                "z": round(est.z, 2),
+                "p_value": "",
+                "note": note,
+            }
+        )
+
+    def add_qpadm(question: str, target: str, sources: list[str], rights: list[str]) -> None:
+        fit = safe_qpadm(target, sources, rights)
+        assert fit is not None
+        weights = ", ".join(
+            f"{src}={w:.3f}±{e:.3f}" for src, w, e in zip(sources, fit.weights, fit.se, strict=True)
+        )
+        followup_rows.append(
+            {
+                "question": question,
+                "test": f"qpAdm {target} = {' + '.join(sources)}",
+                "estimate": weights,
+                "se": "",
+                "z": "",
+                "p_value": round(fit.p_value, 4),
+                "note": "rights: " + ", ".join(rights),
+            }
+        )
+
+    mex = "Mexican-wolf dog signal"
+    add_d(
+        mex,
+        "yellowstone",
+        "mexican_wolf",
+        "dog",
+        "golden_jackal",
+        "<0 would mean excess allele sharing with breed dogs",
+    )
+    add_d(
+        mex,
+        "yellowstone",
+        "mexican_wolf",
+        "village_dog",
+        "golden_jackal",
+        "<0 would mean excess allele sharing with village dogs",
+    )
+    add_d(
+        mex,
+        "yellowstone",
+        "mexican_wolf",
+        "eurasian_wolf",
+        "golden_jackal",
+        ">0: Yellowstone shares more with Eurasian wolves than Mexican wolves do",
+    )
+    add_d(
+        mex,
+        "yellowstone",
+        "mexican_wolf",
+        "asian_wolf",
+        "golden_jackal",
+        ">0: Yellowstone shares more with Asian wolves than Mexican wolves do",
+    )
+    wolf18 = "Wolf18 ancestry"
+    for target in ["Wolf18", "Wolf40", "great_lakes_wolf", "algonquin", "red_wolf"]:
+        add_d(
+            wolf18,
+            "yellowstone",
+            target,
+            "mexican_wolf",
+            "eurasian_wolf",
+            "<0: target closer to Mexican wolves than Yellowstone is; coyote ancestry cancels",
+        )
+    for sources in (
+        ["western_gray_wolf", "coyote"],
+        ["western_gray_wolf", "coyote", "dog"],
+        ["western_gray_wolf", "coyote", "mexican_wolf"],
+    ):
+        for target in ["Wolf18", "algonquin"]:
+            add_qpadm(
+                wolf18 if target == "Wolf18" else "Algonquin dog vs Mexican-like wolf",
+                target,
+                sources,
+                RIGHTS,
+            )
+    pair = "Wolf40 / AlgonquinWolf13470 anomaly"
+    add_d(
+        pair,
+        "AlgonquinWolf13467",
+        "AlgonquinWolf13470",
+        "Wolf40",
+        "golden_jackal",
+        "<0: 13470 shares far more with the Isle Royale genome than its Algonquin packmate",
+    )
+    add_d(
+        pair,
+        "Wolf40",
+        "Wolf18",
+        "AlgonquinWolf13470",
+        "golden_jackal",
+        ">0: Isle Royale closer to 13470 than the other Great Lakes genome is",
+    )
+    add_d(
+        pair,
+        "Wolf40",
+        "Wolf18",
+        "AlgonquinWolf13467",
+        "golden_jackal",
+        "control: the other Algonquin genome",
+    )
+    add_d(
+        pair,
+        "Wolf40",
+        "Wolf18",
+        "AlaskanWolf",
+        "golden_jackal",
+        "batch control: same BioProject (PRJNA331222) as the Algonquin genomes",
+    )
+    add_qpadm(
+        pair,
+        "AlgonquinWolf13470",
+        ["AlgonquinWolf13467", "Wolf40"],
+        [*RIGHTS, "coyote", "western_gray_wolf"],
+    )
+    for a in ["AlgonquinWolf13467", "AlgonquinWolf13470"]:
+        for gl in ["Wolf18", "Wolf40"]:
+            add_d(
+                "Algonquin vs Great Lakes, per genome pair",
+                a,
+                gl,
+                "coyote",
+                "golden_jackal",
+                ">0: the Algonquin genome carries more coyote-lineage ancestry",
+            )
+
     # ---- Write --------------------------------------------------------------
     def write_csv(name: str, rows: list[dict[str, Any]]) -> None:
         with (ROBUST / name).open("w", newline="", encoding="utf-8") as handle:
@@ -237,6 +380,7 @@ def main() -> None:
     write_csv("qpadm_coyote_as_target.csv", coyote_target_rows)
     write_csv("d_coyote_pairs.csv", d_rows)
     write_csv("reference_rotation.csv", rotation_rows)
+    write_csv("followup_tests.csv", followup_rows)
     rotation_summary = {}
     for target in rotation_targets:
         values = np.array([r["wolf_ancestry"] for r in rotation_rows if r["target"] == target])
@@ -284,6 +428,7 @@ def main() -> None:
             for t in [*controls, *targets]
         },
         "reference_rotation": rotation_summary,
+        "followup_tests": followup_rows,
     }
     (ROBUST / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     plot(dog_rows, source_rows, d_rows, rotation_rows, label, color)
@@ -308,6 +453,7 @@ def plot(
             "axes.titlesize": 10,
             "axes.titlelocation": "left",
             "axes.titlepad": 10,
+            "svg.hashsalt": "canis",  # stable SVG ids across runs
         }
     )
     fig = plt.figure(figsize=(14, 10.5))
@@ -480,7 +626,7 @@ def plot(
         color="#555555",
     )
     fig.savefig(ROBUST / "wolf_cline_robustness.png", dpi=160, bbox_inches="tight")
-    fig.savefig(ROBUST / "wolf_cline_robustness.svg", bbox_inches="tight")
+    fig.savefig(ROBUST / "wolf_cline_robustness.svg", bbox_inches="tight", metadata={"Date": None})
     plt.close(fig)
 
 
