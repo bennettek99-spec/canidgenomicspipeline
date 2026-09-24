@@ -95,6 +95,28 @@ California and Alabama coyotes lack ([robustness tests](results/wolf_ancestry_cl
 
 ![Wolf ancestry cline](results/wolf_ancestry_cline/wolf_ancestry_cline.png)
 
+Each group fitted as gray wolf + dog + coyote with qpAdm (± one jackknife standard error):
+
+| Group | Genomes | Gray wolf | Dog | Coyote | Model fits? (p) |
+|---|---|---|---|---|---|
+| Great Lakes wolf | Wolf18, Wolf40 | **75% ± 5** | 2% ± 2 | **24% ± 4** | yes (0.36) |
+| Eastern wolf (Algonquin) | 2 | **59% ± 3** | 4% ± 2 | **37% ± 3** | yes (0.63) |
+| Red wolf | Wolf25, Wolf26 | **35% ± 4** | 1% ± 2 | **65% ± 3** | yes (0.89) |
+| Quebec "wolf" | 1 | −4% ± 4 (≈0) | 6% ± 2 | **98% ± 3** | yes (0.67) |
+| *Yellowstone wolf (control)* | 1 | 101% ± 5 | −2% ± 3 (≈0) | 1% ± 3 | yes (0.59) |
+| *Mexican wolves (control)* | 2 | 77% ± 8 | 11% ± 4\* | 12% ± 5 | yes (0.82) |
+
+How to read it:
+
+- **The dog column is an upper limit, not a measurement.**
+  - \* The Mexican-wolf value is an artifact: there is no excess dog allele sharing.
+  - The Algonquin value is equally well explained by a Mexican-like wolf source.
+- **Negative values** are noise around zero.
+- **"Coyote"** means the non-gray-wolf side of the tree.
+
+Per-genome values and the full caveats are in the
+[study README](results/wolf_ancestry_cline/README.md#ancestry-summary-gray-wolf-dog-and-coyote).
+
 ## Citing the data behind a run
 
 Each public preset names its data sources through a citation bundle under
