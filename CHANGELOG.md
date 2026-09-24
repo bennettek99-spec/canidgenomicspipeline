@@ -46,8 +46,13 @@
     macOS than on x86-64 Linux/Windows, where the `population_genomics.json` and
     `introgression.json` goldens were blessed. CI reproduces them exactly; the two golden
     tests now skip on Apple-silicon macOS with that reason instead of failing.
-  - The PLINK2 PCA parity test never ran: plink2 refuses in-sample allele frequencies
-    from fewer than 50 samples, so the 12-sample check now passes `--bad-freqs`.
+  - The PLINK2 PCA parity test never ran:
+    - plink2 refuses in-sample allele frequencies from fewer than 50 samples, so the
+      12-sample check now passes `--bad-freqs`;
+    - monomorphic variants are dropped so Patterson scaling stays finite.
+  - Golden snapshots compare floats to a relative 1e-6. PCA coordinates moved in the
+    sixth decimal between Python 3.11 and 3.12 builds; structure, integers and strings
+    stay exact.
   - `tests/fixtures/real_bridge/bridge.vcf.gz` was never committed (hidden by a
     `*.vcf.gz` ignore rule). Its tests now skip with that reason instead of erroring,
     and fixture VCFs are exempt from the rule.

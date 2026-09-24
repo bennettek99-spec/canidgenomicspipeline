@@ -137,6 +137,15 @@ def test_plink2_agrees_on_per_sample_missingness(tmp_path: Path) -> None:
 def test_plink2_pca_agrees_on_first_component(tmp_path: Path) -> None:
     """PLINK2 and scikit-allel must recover the same leading genotype axis."""
     geno = _demo_cohort(n_variants=500, n_samples=12)
+    # With 12 samples some variants are monomorphic; Patterson scaling divides by zero
+    # there, so both tools get the same polymorphic set.
+    polymorphic = geno.calls.count_alleles().is_segregating()
+    geno = Genotypes(
+        calls=geno.calls[polymorphic],
+        pos=geno.pos[polymorphic],
+        chrom=geno.chrom[polymorphic],
+        samples=geno.samples,
+    )
     write_plink_bed(geno, tmp_path / "cohort")
     subprocess.run(
         [

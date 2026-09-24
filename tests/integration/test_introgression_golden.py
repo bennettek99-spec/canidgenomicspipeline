@@ -103,9 +103,9 @@ def observed(tmp_path_factory) -> dict:
     }
 
 
-def test_introgression_estimators_match_golden(observed: dict) -> None:
+def test_introgression_estimators_match_golden(observed: dict, assert_golden_close) -> None:
     if os.environ.get("CANIDAE_UPDATE_GOLDEN"):
         GOLDEN.write_text(json.dumps(observed, indent=2) + "\n", encoding="utf-8")
         pytest.skip(f"golden snapshot rewritten: {GOLDEN}")
     assert GOLDEN.exists(), f"missing golden snapshot; regenerate {GOLDEN}"
-    assert observed == json.loads(GOLDEN.read_text(encoding="utf-8"))
+    assert_golden_close(observed, json.loads(GOLDEN.read_text(encoding="utf-8")))

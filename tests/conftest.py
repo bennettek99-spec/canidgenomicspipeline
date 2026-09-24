@@ -6,7 +6,9 @@ bioinformatics tool, so the foundation is fully testable in CI on any platform.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -17,6 +19,40 @@ from canidae.core.model import Artifact, ArtifactKind, FileFormat
 from canidae.core.provenance import ProvenanceWriter
 from canidae.core.runtime import LocalRunner
 from canidae.core.stage import ArtifactSpec, RunContext, Stage, StageConfig, StageResult
+
+
+def _assert_close(observed: Any, expected: Any, path: str) -> None:
+    if isinstance(expected, dict):
+        assert isinstance(observed, dict), f"{path}: expected a mapping"
+        assert observed.keys() == expected.keys(), f"{path}: keys differ"
+        for key, value in expected.items():
+            _assert_close(observed[key], value, f"{path}.{key}")
+    elif isinstance(expected, list):
+        assert isinstance(observed, (list, tuple)), f"{path}: expected a sequence"
+        assert len(observed) == len(expected), f"{path}: length differs"
+        for index, (got, want) in enumerate(zip(observed, expected, strict=True)):
+            _assert_close(got, want, f"{path}[{index}]")
+    elif isinstance(expected, float):
+        assert observed == pytest.approx(expected, rel=1e-6, abs=2e-6), (
+            f"{path}: {observed} != {expected}"
+        )
+    else:
+        assert observed == expected, f"{path}: {observed!r} != {expected!r}"
+
+
+@pytest.fixture()
+def assert_golden_close() -> Callable[[Any, Any], None]:
+    """Compare a result to a golden snapshot: exact structure, floats to 1e-6.
+
+    Goldens store floats rounded to six decimals, and the last digit can move between
+    BLAS builds or Python versions; a relative 1e-6 tolerance absorbs that and nothing
+    more.
+    """
+
+    def check(observed: Any, expected: Any) -> None:
+        _assert_close(observed, expected, "$")
+
+    return check
 
 
 @pytest.fixture()
