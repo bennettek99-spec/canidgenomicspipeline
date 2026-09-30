@@ -1,0 +1,16 @@
+{
+  "voucher": "MCZ:Mamm:BOM-11183",
+  "biosample": "SAMN19515123",
+  "run": "SRR14761957",
+  "archive_label": "historical Great Lakes wolf female MCZ-BOM-11183",
+  "museum_identification": "Canis lupus nubilus Say, 1823",
+  "museum_locality": "Fort Kearny, Nebraska",
+  "inspection": "Read the decompressed BAM header from both public submitted alignments (first full-file stream, second 128 KiB HTTP range).",
+  "bam_references": [
+    {"name": "NC_008093.1", "length_bp": 16724}
+  ],
+  "bam_program_reference": "CoyoteMitogenome.fa",
+  "conclusion": "The archived alignments map to a mitochondrial reference only. They do not provide a usable autosomal genotype for wolf-coyote-dog ancestry estimation.",
+  "voucher_url": "https://mczbase.mcz.harvard.edu/guid/MCZ%3AMamm%3ABOM-11183",
+  "study_url": "https://doi.org/10.1111/mec.16048"
+}

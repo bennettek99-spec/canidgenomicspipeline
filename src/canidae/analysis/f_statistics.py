@@ -205,6 +205,32 @@ def f4_ratio(
     )
 
 
+def paired_f4_ratio_difference(
+    freqs: Mapping[str, np.ndarray],
+    a: str,
+    o: str,
+    x: str,
+    y: str,
+    b: str,
+    c: str,
+    blocks: np.ndarray,
+) -> JackknifeEstimate:
+    """Estimate alpha(X)-alpha(Y) on identical sites with one block jackknife.
+
+    The two f4 ratios have the same reference denominator. Their difference is
+    therefore one ratio of sums, with numerator f4(A,O;X,C)-f4(A,O;Y,C).
+    Requiring X and Y on the same sites preserves their covariance; subtracting
+    their separately reported standard errors would not.
+    """
+    num_x = f4_terms(freqs[a], freqs[o], freqs[x], freqs[c])
+    num_y = f4_terms(freqs[a], freqs[o], freqs[y], freqs[c])
+    den = f4_terms(freqs[a], freqs[o], freqs[b], freqs[c])
+    keep = np.isfinite(num_x) & np.isfinite(num_y) & np.isfinite(den)
+    return weighted_block_jackknife(
+        np.where(keep, num_x - num_y, np.nan), np.where(keep, den, np.nan), blocks
+    )
+
+
 def _qpadm_fit(y: np.ndarray, m: np.ndarray) -> np.ndarray:
     """Weights for sources 1..n-1 (source 0 takes the remainder) by least squares."""
     return np.linalg.lstsq(m, y, rcond=None)[0]

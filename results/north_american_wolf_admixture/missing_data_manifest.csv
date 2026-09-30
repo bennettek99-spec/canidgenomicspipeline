@@ -1,0 +1,7 @@
+group,sample_accession,run_accession,source,archived_data,bytes_approx,local_status,note
+Historical Plains wolf,SAMN19515123,SRR14761957,https://mczbase.mcz.harvard.edu/guid/MCZ%3AMamm%3ABOM-11183,mitochondrial-only mapped BAM,128848810,no_population_matched_nuclear_genotype,"Museum voucher MCZ:Mamm:BOM-11183 is C. l. nubilus; BAM header contains only NC_008093.1. C. variabilis Wied-Neuwied 1841 is a synonym."
+Pacific Coast wolf,SAMN10246091,SRR8066604,https://www.ncbi.nlm.nih.gov/bioproject/PRJNA496590,paired FASTQ,49667691185,raw_reads_not_joint_genotypes,"Published population-matched sample; requires mapping and genotyping with shared sites."
+Atlantic Coast wolf,SAMN10246086,SRR8066601,https://www.ncbi.nlm.nih.gov/bioproject/PRJNA496590,paired FASTQ,35056546550,raw_reads_not_joint_genotypes,"Published population-matched sample; requires mapping and genotyping with shared sites."
+West Arctic wolf (Banks Island),SAMN10246089,SRR8066615,https://www.ncbi.nlm.nih.gov/bioproject/PRJNA496590,paired FASTQ,54711249017,raw_reads_not_joint_genotypes,"One of two West Arctic samples."
+West Arctic wolf (Victoria Island),SAMN10246096,SRR8066608,https://www.ncbi.nlm.nih.gov/bioproject/PRJNA496590,paired FASTQ,42614851138,raw_reads_not_joint_genotypes,"One of two West Arctic samples."
+Saskatchewan wolf (not substituted for Plains),SAMN10246093,SRR8066605,https://www.ncbi.nlm.nih.gov/bioproject/PRJNA496590,paired FASTQ,21851068392,not_authenticated_as_historical_plains,"Geography alone does not establish an historical C. l. nubilus identification."

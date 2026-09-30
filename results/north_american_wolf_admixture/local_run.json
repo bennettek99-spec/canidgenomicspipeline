@@ -1,0 +1,41 @@
+{
+  "panel": "data/wolf_cline/panel.npz",
+  "samples": 38,
+  "variants": 87538,
+  "jackknife_blocks": 38,
+  "methods": "genotype-likelihood EM population frequencies; f4-ratio and Patterson D; autosome-block jackknife",
+  "targets": {
+    "Great Lakes wolf": [
+      "Wolf18",
+      "Wolf40"
+    ],
+    "Red wolf": [
+      "Wolf25",
+      "Wolf26"
+    ],
+    "Eastern/Algonquin wolf": [
+      "AlgonquinWolf13467",
+      "AlgonquinWolf13470"
+    ],
+    "Mexican wolf": [
+      "Wolf22",
+      "Wolf23"
+    ],
+    "Yellowstone wolf": [
+      "Wolf28",
+      "Wolf29",
+      "Wolf30"
+    ],
+    "Alaskan wolf": [
+      "AlaskanWolf"
+    ]
+  },
+  "unsampled": [
+    "Historical Plains wolf (C. l. nubilus; C. variabilis Wied-Neuwied, 1841)",
+    "Pacific Coast wolf",
+    "Atlantic Coast wolf",
+    "West Arctic wolf"
+  ],
+  "manifest": "configs/examples/wolf_cline_samples.csv",
+  "interpretation": "A significant positive coyote D supports excess coyote-lineage allele sharing relative to the listed western comparator. The wolf f4 ratio is conditional on the specified reference model; it is not a direct hybridization fraction. This script does not infer dog ancestry."
+}

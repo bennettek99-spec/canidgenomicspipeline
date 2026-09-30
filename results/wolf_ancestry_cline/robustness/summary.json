@@ -420,6 +420,247 @@
       }
     }
   },
+  "paired_cline": {
+    "panel_sha256": "404bbbbb8021800ff09007efa58b3b27f59376c1c9423756b7a897b2f3305a9c",
+    "method": "shared-site chromosome-block weighted jackknife of paired f4-ratio difference",
+    "n_rotations": 96,
+    "baseline": {
+      "great_lakes_minus_algonquin": {
+        "contrast": "great_lakes_minus_algonquin",
+        "A": "all Eurasian",
+        "B": "Yellowstone + Alaska",
+        "C": "all coyotes",
+        "O": "golden jackal",
+        "difference": 0.102082,
+        "se": 0.027806,
+        "ci95_low": 0.047582,
+        "ci95_high": 0.156582,
+        "z": 3.6712,
+        "p_two_sided": 0.00024140857,
+        "n_sites": 79733,
+        "n_blocks": 38,
+        "baseline": true
+      },
+      "algonquin_minus_red": {
+        "contrast": "algonquin_minus_red",
+        "A": "all Eurasian",
+        "B": "Yellowstone + Alaska",
+        "C": "all coyotes",
+        "O": "golden jackal",
+        "difference": 0.284567,
+        "se": 0.037823,
+        "ci95_low": 0.210433,
+        "ci95_high": 0.358701,
+        "z": 7.5236,
+        "p_two_sided": 5.3291279e-14,
+        "n_sites": 79635,
+        "n_blocks": 38,
+        "baseline": true
+      },
+      "great_lakes_minus_red": {
+        "contrast": "great_lakes_minus_red",
+        "A": "all Eurasian",
+        "B": "Yellowstone + Alaska",
+        "C": "all coyotes",
+        "O": "golden jackal",
+        "difference": 0.386702,
+        "se": 0.043668,
+        "ci95_low": 0.301113,
+        "ci95_high": 0.472291,
+        "z": 8.8555,
+        "p_two_sided": 8.3292352e-19,
+        "n_sites": 79802,
+        "n_blocks": 38,
+        "baseline": true
+      },
+      "great_lakes_minus_algonquin_13467": {
+        "contrast": "great_lakes_minus_algonquin_13467",
+        "A": "all Eurasian",
+        "B": "Yellowstone + Alaska",
+        "C": "all coyotes",
+        "O": "golden jackal",
+        "difference": 0.133078,
+        "se": 0.035193,
+        "ci95_low": 0.0641,
+        "ci95_high": 0.202055,
+        "z": 3.7814,
+        "p_two_sided": 0.00015594637,
+        "n_sites": 75863,
+        "n_blocks": 38,
+        "baseline": true
+      },
+      "algonquin_13467_minus_red": {
+        "contrast": "algonquin_13467_minus_red",
+        "A": "all Eurasian",
+        "B": "Yellowstone + Alaska",
+        "C": "all coyotes",
+        "O": "golden jackal",
+        "difference": 0.246368,
+        "se": 0.037755,
+        "ci95_low": 0.172368,
+        "ci95_high": 0.320367,
+        "z": 6.5254,
+        "p_two_sided": 6.7801856e-11,
+        "n_sites": 75763,
+        "n_blocks": 38,
+        "baseline": true
+      }
+    },
+    "hard_call_sensitivity": [
+      {
+        "callset": "all_hard_calls",
+        "contrast": "great_lakes_minus_algonquin",
+        "difference": 0.091156,
+        "se": 0.028317,
+        "ci95_low": 0.035655,
+        "ci95_high": 0.146658,
+        "z": 3.2191,
+        "p_two_sided": 0.0012858093,
+        "n_sites": 79733,
+        "n_blocks": 38
+      },
+      {
+        "callset": "all_hard_calls",
+        "contrast": "algonquin_minus_red",
+        "difference": 0.29313,
+        "se": 0.038754,
+        "ci95_low": 0.217173,
+        "ci95_high": 0.369088,
+        "z": 7.5639,
+        "p_two_sided": 3.9111729e-14,
+        "n_sites": 79635,
+        "n_blocks": 38
+      },
+      {
+        "callset": "all_hard_calls",
+        "contrast": "great_lakes_minus_red",
+        "difference": 0.383876,
+        "se": 0.043627,
+        "ci95_low": 0.298366,
+        "ci95_high": 0.469385,
+        "z": 8.799,
+        "p_two_sided": 1.3805932e-18,
+        "n_sites": 79802,
+        "n_blocks": 38
+      },
+      {
+        "callset": "all_hard_calls",
+        "contrast": "great_lakes_minus_algonquin_13467",
+        "difference": 0.130023,
+        "se": 0.035676,
+        "ci95_low": 0.060097,
+        "ci95_high": 0.199949,
+        "z": 3.6445,
+        "p_two_sided": 0.00026789682,
+        "n_sites": 75863,
+        "n_blocks": 38
+      },
+      {
+        "callset": "all_hard_calls",
+        "contrast": "algonquin_13467_minus_red",
+        "difference": 0.246562,
+        "se": 0.038311,
+        "ci95_low": 0.171472,
+        "ci95_high": 0.321653,
+        "z": 6.4357,
+        "p_two_sided": 1.2287766e-10,
+        "n_sites": 75763,
+        "n_blocks": 38
+      },
+      {
+        "callset": "gq20_hard_calls",
+        "contrast": "great_lakes_minus_algonquin",
+        "difference": 0.203314,
+        "se": 0.052847,
+        "ci95_low": 0.099733,
+        "ci95_high": 0.306894,
+        "z": 3.8472,
+        "p_two_sided": 0.00011947217,
+        "n_sites": 10624,
+        "n_blocks": 38
+      },
+      {
+        "callset": "gq20_hard_calls",
+        "contrast": "algonquin_minus_red",
+        "difference": 0.202991,
+        "se": 0.049705,
+        "ci95_low": 0.105569,
+        "ci95_high": 0.300413,
+        "z": 4.0839,
+        "p_two_sided": 4.4284416e-05,
+        "n_sites": 10595,
+        "n_blocks": 38
+      },
+      {
+        "callset": "gq20_hard_calls",
+        "contrast": "great_lakes_minus_red",
+        "difference": 0.383362,
+        "se": 0.059781,
+        "ci95_low": 0.266191,
+        "ci95_high": 0.500533,
+        "z": 6.4128,
+        "p_two_sided": 1.4289972e-10,
+        "n_sites": 16316,
+        "n_blocks": 38
+      },
+      {
+        "callset": "gq20_hard_calls",
+        "contrast": "great_lakes_minus_algonquin_13467",
+        "difference": 0.265325,
+        "se": 0.082463,
+        "ci95_low": 0.103697,
+        "ci95_high": 0.426952,
+        "z": 3.2175,
+        "p_two_sided": 0.001293108,
+        "n_sites": 4352,
+        "n_blocks": 38
+      },
+      {
+        "callset": "gq20_hard_calls",
+        "contrast": "algonquin_13467_minus_red",
+        "difference": 0.127062,
+        "se": 0.084498,
+        "ci95_low": -0.038555,
+        "ci95_high": 0.292679,
+        "z": 1.5037,
+        "p_two_sided": 0.13265353,
+        "n_sites": 4348,
+        "n_blocks": 38
+      }
+    ],
+    "rotation_sensitivity": {
+      "great_lakes_minus_algonquin": {
+        "positive": 96,
+        "ci95_above_zero": 96,
+        "minimum_difference": 0.094025,
+        "maximum_difference": 0.152602
+      },
+      "algonquin_minus_red": {
+        "positive": 96,
+        "ci95_above_zero": 96,
+        "minimum_difference": 0.24291,
+        "maximum_difference": 0.337961
+      },
+      "great_lakes_minus_red": {
+        "positive": 96,
+        "ci95_above_zero": 96,
+        "minimum_difference": 0.347552,
+        "maximum_difference": 0.484464
+      },
+      "great_lakes_minus_algonquin_13467": {
+        "positive": 96,
+        "ci95_above_zero": 96,
+        "minimum_difference": 0.123709,
+        "maximum_difference": 0.185571
+      },
+      "algonquin_13467_minus_red": {
+        "positive": 96,
+        "ci95_above_zero": 96,
+        "minimum_difference": 0.209829,
+        "maximum_difference": 0.29886
+      }
+    }
+  },
   "followup_tests": [
     {
       "question": "Mexican-wolf dog signal",

@@ -29,9 +29,12 @@ below); the hard-call columns are shown for comparison.
    D(red, Algonquin; coyote, jackal) = 0.101 (Z = 5.3),
    D(red, Great Lakes; coyote, jackal) = 0.145 (Z = 6.9),
    D(Algonquin, Great Lakes; coyote, jackal) = 0.053 (Z = 3.0).
-   The Algonquin vs Great Lakes step is the weakest, and it is only **suggestive**. It is
-   Z = 2.5 on all hard calls and not significant (Z = 0.9) on GQ ≥ 20 calls. Tested one
-   genome pair at a time, all four pairs point the same way but reach only Z = 0.8–2.8.
+   The Algonquin vs Great Lakes step is the weakest. A paired f4-ratio
+   chromosome jackknife now estimates a **10.2 percentage-point gap** (95% interval
+   4.8–15.7 points; see *Paired cline contrasts*), conditional on this reference model.
+   The direct D contrast is Z = 2.5 on all hard calls and Z = 0.9 on GQ ≥ 20 calls.
+   Tested one genome pair at a time, all four pairs point the same way but reach
+   only Z = 0.8–2.8 on that D contrast.
    One of the two Algonquin genomes also looks compromised (see *Follow-up tests*). The
    cleaner Algonquin genome (AlgonquinWolf13467) gives ~61% gray wolf.
 2. **All three share significantly more alleles with coyotes than western gray wolves do**
@@ -186,6 +189,46 @@ Results:
 - **The one systematic shift:** using Mexican wolves as the North American wolf reference
   raises every target by 4–8 points.
 
+### 3a. Paired cline contrasts: how well is each step resolved?
+
+![Paired wolf-cline contrasts across genotype treatments](robustness/paired_cline_contrasts.png)
+
+The original group errors estimate each ancestry fraction separately. To measure
+the *difference* between two groups, the revised robustness script uses the same
+sites and the same 38 chromosome deletions for both groups. With shared A, B, C,
+and O references, the difference is
+`sum[f4(A,O;X,C) − f4(A,O;Y,C)] / sum[f4(A,O;B,C)]` on the common site set.
+This retains the covariance that is lost when marginal error bars are compared.
+
+| Baseline contrast | Difference in gray-wolf ancestry | 95% chromosome-jackknife interval | Shared SNPs |
+|---|---:|---:|---:|
+| Great Lakes − Algonquin | **10.2 points** | 4.8 to 15.7 | 79,733 |
+| Algonquin − red wolf | **28.5 points** | 21.0 to 35.9 | 79,635 |
+| Great Lakes − red wolf | **38.7 points** | 30.1 to 47.2 | 79,802 |
+| Great Lakes − AlgonquinWolf13467 alone | **13.3 points** | 6.4 to 20.2 | 75,863 |
+
+The first three paired differences are positive with intervals above zero in all
+96 reference rotations. Excluding the suspect AlgonquinWolf13470 also leaves the
+first step positive across all rotations. These rotations share genomes and SNPs;
+96/96 is a sensitivity check, not 96 independent replications.
+
+The Great Lakes − Algonquin baseline difference is 9.1 points (95% interval
+3.6–14.7) on all hard calls and 20.3 points (10.0–30.7) on GQ ≥ 20 hard calls.
+The latter uses only 10,624 common SNPs; its larger point estimate warns against
+overstating the exact step size. The GQ ≥ 20 *D-statistic* for this step remains
+weak (Z = 0.9). The GQ ≥ 20 contrast between the cleaner Algonquin genome alone
+and red wolves includes zero on only 4,348 shared SNPs. Thus the paired f4-ratio
+resolves a difference under its model,
+while the small cohort, genotype-filter sensitivity, and suspect genome limit a
+biological claim about its precise magnitude. More independently sequenced
+Great Lakes and Algonquin wolves are needed.
+
+Full six-decimal results are in
+[`paired_cline_contrasts.csv`](robustness/paired_cline_contrasts.csv) and
+[`paired_cline_callset_sensitivity.csv`](robustness/paired_cline_callset_sensitivity.csv).
+The analysis recomputes the existing 87,538-SNP panel; it does not add genomes
+or sites.
+
 ### 4. Follow-up tests: Mexican wolves, Wolf18, and one suspect genome
 
 All values are in [`robustness/followup_tests.csv`](robustness/followup_tests.csv).
@@ -331,7 +374,14 @@ first caveat below).
 | `robustness/qpadm_coyote_as_target.csv` | Each coyote modelled as gray wolf + another coyote |
 | `robustness/d_coyote_pairs.csv` | D(coyote i, coyote j; X, jackal) |
 | `robustness/reference_rotation.csv` | All 96 f4-ratio models per target |
+| `robustness/paired_cline_contrasts.csv` | Paired differences and chromosome-jackknife intervals across 96 reference rotations |
+| `robustness/paired_cline_callset_sensitivity.csv` | Paired baseline contrasts on all and GQ ≥ 20 hard calls |
+| `robustness/paired_cline_contrasts.png` / `.svg` | Paired contrasts and genotype-treatment sensitivity figure |
 | `robustness/summary.json` | Summary of the robustness tests |
+
+## Ten-group extension
+
+The [North American wolf admixture study](../north_american_wolf_admixture/README.md) extends this local panel calculation to six identified groups: Great Lakes, red, Algonquin, Mexican, Yellowstone, and Alaskan wolves. It reports the four requested groups lacking matched local nuclear genotypes, including the historical Plains wolf (*C. l. nubilus*; *C. variabilis* Wied-Neuwied, 1841), with accession-level source audits. The three eastern-group f4 ratios agree with the cline estimates here; the smaller coyote signals elsewhere are not resolved by this panel.
 
 ## Reproduce
 
@@ -339,6 +389,7 @@ first caveat below).
 python scripts/fetch_wolf_cline_panel.py --windows 500 --window-bytes 4000000 --threads 6
 python scripts/wolf_ancestry_cline.py
 python scripts/wolf_cline_robustness.py
+PYTHONPATH=src python scripts/ten_wolf_local_admixture.py
 ```
 
 The fetch writes `data/wolf_cline/panel.npz` (gitignored); each analysis runs in under a

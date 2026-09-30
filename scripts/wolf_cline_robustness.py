@@ -25,8 +25,10 @@ Run (after scripts/fetch_wolf_cline_panel.py):
 from __future__ import annotations
 
 import csv
+import hashlib
 import itertools
 import json
+import math
 from typing import Any
 
 import matplotlib
@@ -34,13 +36,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from wolf_ancestry_cline import COLORS, LABELS, OUT, PANEL, load_samples, short
+from wolf_ancestry_cline import COLORS, LABELS, MIN_GQ, OUT, PANEL, load_samples, short
 
 from canidae.analysis.f_statistics import (
     QpAdmResult,
     d_statistic,
     f4_ratio,
     gl_population_frequencies,
+    paired_f4_ratio_difference,
+    population_frequencies,
     qpadm,
 )
 
@@ -228,6 +232,88 @@ def main() -> None:
                 }
             )
 
+    # Paired contrasts use exactly the same sites and chromosome deletions for
+    # each pair. The marginal group SEs in the original table cannot answer
+    # whether two neighboring points of the cline differ.
+    contrast_pairs = [
+        ("great_lakes_minus_algonquin", "great_lakes_wolf", "algonquin"),
+        ("algonquin_minus_red", "algonquin", "red_wolf"),
+        ("great_lakes_minus_red", "great_lakes_wolf", "red_wolf"),
+        ("great_lakes_minus_algonquin_13467", "great_lakes_wolf", "AlgonquinWolf13467"),
+        ("algonquin_13467_minus_red", "AlgonquinWolf13467", "red_wolf"),
+    ]
+    paired_rows: list[dict[str, Any]] = []
+    for contrast, x, y in contrast_pairs:
+        for (a_name, a), (b_name, b), (c_name, c), (o_name, o) in itertools.product(
+            a_sets.items(), b_sets.items(), c_sets.items(), o_sets.items()
+        ):
+            est = paired_f4_ratio_difference(freqs, a, o, x, y, b, c, blocks)
+            z = est.z
+            paired_rows.append(
+                {
+                    "contrast": contrast,
+                    "A": a_name,
+                    "B": b_name,
+                    "C": c_name,
+                    "O": o_name,
+                    "difference": round(est.estimate, 6),
+                    "se": round(est.se, 6),
+                    "ci95_low": round(est.estimate - 1.96 * est.se, 6),
+                    "ci95_high": round(est.estimate + 1.96 * est.se, 6),
+                    "z": round(z, 4),
+                    "p_two_sided": float(f"{math.erfc(abs(z) / math.sqrt(2)):.8g}"),
+                    "n_sites": est.n_sites,
+                    "n_blocks": est.n_blocks,
+                    "baseline": (a, b, c, o)
+                    == ("eurasian_wolf", "western_gray_wolf", "coyote", "golden_jackal"),
+                }
+            )
+
+    baseline_pops = {
+        name: pops[name]
+        for name in (
+            "eurasian_wolf",
+            "golden_jackal",
+            "western_gray_wolf",
+            "coyote",
+            "great_lakes_wolf",
+            "algonquin",
+            "red_wolf",
+            "AlgonquinWolf13467",
+        )
+    }
+    raw = panel["gt"]
+    gq20 = raw.copy()
+    gq20[panel["gq"] < MIN_GQ] = -1
+    callset_rows: list[dict[str, Any]] = []
+    for callset, genotype in (("all_hard_calls", raw), ("gq20_hard_calls", gq20)):
+        hard_freqs = population_frequencies(genotype, samples, baseline_pops)
+        for contrast, x, y in contrast_pairs:
+            est = paired_f4_ratio_difference(
+                hard_freqs,
+                "eurasian_wolf",
+                "golden_jackal",
+                x,
+                y,
+                "western_gray_wolf",
+                "coyote",
+                blocks,
+            )
+            callset_rows.append(
+                {
+                    "callset": callset,
+                    "contrast": contrast,
+                    "difference": round(est.estimate, 6),
+                    "se": round(est.se, 6),
+                    "ci95_low": round(est.estimate - 1.96 * est.se, 6),
+                    "ci95_high": round(est.estimate + 1.96 * est.se, 6),
+                    "z": round(est.z, 4),
+                    "p_two_sided": float(f"{math.erfc(abs(est.z) / math.sqrt(2)):.8g}"),
+                    "n_sites": est.n_sites,
+                    "n_blocks": est.n_blocks,
+                }
+            )
+
     # ---- 4. Follow-up tests -------------------------------------------------
     followup_rows: list[dict[str, Any]] = []
 
@@ -380,6 +466,8 @@ def main() -> None:
     write_csv("qpadm_coyote_as_target.csv", coyote_target_rows)
     write_csv("d_coyote_pairs.csv", d_rows)
     write_csv("reference_rotation.csv", rotation_rows)
+    write_csv("paired_cline_contrasts.csv", paired_rows)
+    write_csv("paired_cline_callset_sensitivity.csv", callset_rows)
     write_csv("followup_tests.csv", followup_rows)
     rotation_summary = {}
     for target in rotation_targets:
@@ -428,11 +516,88 @@ def main() -> None:
             for t in [*controls, *targets]
         },
         "reference_rotation": rotation_summary,
+        "paired_cline": {
+            "panel_sha256": hashlib.sha256(PANEL.read_bytes()).hexdigest(),
+            "method": (
+                "shared-site chromosome-block weighted jackknife of paired f4-ratio difference"
+            ),
+            "n_rotations": len(a_sets) * len(b_sets) * len(c_sets) * len(o_sets),
+            "baseline": {r["contrast"]: r for r in paired_rows if r["baseline"]},
+            "hard_call_sensitivity": callset_rows,
+            "rotation_sensitivity": {
+                name: {
+                    "positive": sum(
+                        r["difference"] > 0 for r in paired_rows if r["contrast"] == name
+                    ),
+                    "ci95_above_zero": sum(
+                        r["ci95_low"] > 0 for r in paired_rows if r["contrast"] == name
+                    ),
+                    "minimum_difference": min(
+                        r["difference"] for r in paired_rows if r["contrast"] == name
+                    ),
+                    "maximum_difference": max(
+                        r["difference"] for r in paired_rows if r["contrast"] == name
+                    ),
+                }
+                for name, _, _ in contrast_pairs
+            },
+        },
         "followup_tests": followup_rows,
     }
     (ROBUST / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     plot(dog_rows, source_rows, d_rows, rotation_rows, label, color)
+    plot_paired_cline(paired_rows, callset_rows)
     print(json.dumps(summary, indent=1))
+
+
+def plot_paired_cline(
+    paired_rows: list[dict[str, Any]], callset_rows: list[dict[str, Any]]
+) -> None:
+    """Show baseline paired gaps and their genotype-treatment sensitivity."""
+    labels = {
+        "great_lakes_minus_algonquin": "Great Lakes - Algonquin",
+        "algonquin_minus_red": "Algonquin - red wolf",
+        "great_lakes_minus_red": "Great Lakes - red wolf",
+        "great_lakes_minus_algonquin_13467": "Great Lakes - Algonquin 13467",
+        "algonquin_13467_minus_red": "Algonquin 13467 - red wolf",
+    }
+    order = list(labels)
+    styles = {
+        "genotype_likelihoods": ("#2f5d8a", 0.22, "Genotype likelihoods"),
+        "all_hard_calls": ("#2a9d8f", 0, "All hard calls"),
+        "gq20_hard_calls": ("#c8553d", -0.22, "Hard calls, GQ ≥ 20"),
+    }
+    baseline = [{"callset": "genotype_likelihoods", **r} for r in paired_rows if r["baseline"]]
+    fig, ax = plt.subplots(figsize=(8.5, 5.2))
+    for callset, (color, offset, legend) in styles.items():
+        rows = [r for r in [*baseline, *callset_rows] if r["callset"] == callset]
+        ys = np.array([order.index(r["contrast"]) + offset for r in rows])
+        values = np.array([r["difference"] * 100 for r in rows])
+        low = np.array([r["ci95_low"] * 100 for r in rows])
+        high = np.array([r["ci95_high"] * 100 for r in rows])
+        ax.errorbar(
+            values,
+            ys,
+            xerr=np.vstack([values - low, high - values]),
+            fmt="o",
+            markersize=5,
+            capsize=3,
+            elinewidth=1.5,
+            color=color,
+            label=legend,
+        )
+    ax.axvline(0, color="#777777", lw=1, ls=":")
+    ax.set_yticks(range(len(order)), [labels[name] for name in order])
+    ax.invert_yaxis()
+    ax.set_xlabel("Difference in gray-wolf ancestry (percentage points; 95% chromosome CI)")
+    ax.set_title("Paired f4-ratio contrasts on shared sites", loc="left")
+    ax.legend(loc="lower right", frameon=False, fontsize=8)
+    ax.grid(axis="x", color="#dddddd", lw=0.7)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    fig.savefig(ROBUST / "paired_cline_contrasts.png", dpi=180)
+    fig.savefig(ROBUST / "paired_cline_contrasts.svg")
+    plt.close(fig)
 
 
 def plot(
