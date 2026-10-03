@@ -13,7 +13,12 @@ from pathlib import Path
 
 import numpy as np
 
-from canidae.analysis.f_statistics import JackknifeEstimate, d_statistic, f4_ratio, gl_population_frequencies
+from canidae.analysis.f_statistics import (
+    JackknifeEstimate,
+    d_statistic,
+    f4_ratio,
+    gl_population_frequencies,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PANEL = ROOT / "data" / "wolf_cline" / "panel.npz"
@@ -35,8 +40,27 @@ UNSAMPLED = [
     "West Arctic wolf",
 ]
 
+TARGET_NOTE = (
+    "Coyote D tests excess allele sharing relative to the listed western wolves. "
+    "Wolf f4 ratio is model-dependent, especially near 1. "
+    "Dog ancestry is not inferred by this contrast."
+)
+UNSAMPLED_NOTE = "No authenticated target genome in the local panel; no statistic computed."
+METHODS = (
+    "genotype-likelihood EM population frequencies; "
+    "f4-ratio and Patterson D; autosome-block jackknife"
+)
+INTERPRETATION = (
+    "A significant positive coyote D supports excess coyote-lineage allele sharing "
+    "relative to the listed western comparator. The wolf f4 ratio is conditional on "
+    "the specified reference model; it is not a direct hybridization fraction. "
+    "This script does not infer dog ancestry."
+)
 
-def fields(estimate: JackknifeEstimate, prefix: str, *, include_z: bool = True) -> dict[str, float | int]:
+
+def fields(
+    estimate: JackknifeEstimate, prefix: str, *, include_z: bool = True
+) -> dict[str, float | int]:
     value = float(estimate.estimate)
     se = float(estimate.se)
     result: dict[str, float | int] = {
@@ -57,7 +81,9 @@ def main() -> None:
         samples = [str(sample) for sample in panel["samples"]]
         if set(samples) != set(manifest):
             raise ValueError("Panel samples do not match the sample manifest")
-        missing = [sample for members in TARGETS.values() for sample in members if sample not in samples]
+        missing = [
+            sample for members in TARGETS.values() for sample in members if sample not in samples
+        ]
         if missing:
             raise ValueError(f"Target genomes missing from panel: {missing}")
         blocks = panel["chrom"].astype(int)
@@ -82,20 +108,57 @@ def main() -> None:
                 "n_genomes": len(members),
                 "genomes": ";".join(members),
                 "wolf_reference": ";".join(western),
-                "note": "Coyote D tests excess allele sharing relative to the listed western wolves. Wolf f4 ratio is model-dependent, especially near 1. Dog ancestry is not inferred by this contrast.",
+                "note": TARGET_NOTE,
             }
             row.update(fields(ratio, "wolf_f4_ratio", include_z=False))
             row.update(fields(coyote_d, "coyote_d"))
             rows.append(row)
         for name in UNSAMPLED:
-            rows.append({"group": name, "status": "no_population_matched_genotype", "n_genomes": 0, "genomes": "", "wolf_reference": "", "note": "No authenticated target genome in the local panel; no statistic computed."})
-    columns = ["group", "status", "n_genomes", "genomes", "wolf_reference", "wolf_f4_ratio", "wolf_f4_ratio_se", "wolf_f4_ratio_sites", "coyote_d", "coyote_d_se", "coyote_d_z", "coyote_d_sites", "note"]
+            rows.append(
+                {
+                    "group": name,
+                    "status": "no_population_matched_genotype",
+                    "n_genomes": 0,
+                    "genomes": "",
+                    "wolf_reference": "",
+                    "note": UNSAMPLED_NOTE,
+                }
+            )
+    columns = [
+        "group",
+        "status",
+        "n_genomes",
+        "genomes",
+        "wolf_reference",
+        "wolf_f4_ratio",
+        "wolf_f4_ratio_se",
+        "wolf_f4_ratio_sites",
+        "coyote_d",
+        "coyote_d_se",
+        "coyote_d_z",
+        "coyote_d_sites",
+        "note",
+    ]
     with (OUT / "local_contrasts.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns)
         writer.writeheader()
         writer.writerows(rows)
     (OUT / "local_run.json").write_text(
-        json.dumps({"panel": str(PANEL.relative_to(ROOT)), "samples": len(samples), "variants": len(blocks), "jackknife_blocks": len(np.unique(blocks)), "methods": "genotype-likelihood EM population frequencies; f4-ratio and Patterson D; autosome-block jackknife", "targets": {name: members for name, members in TARGETS.items()}, "unsampled": UNSAMPLED, "manifest": str(MANIFEST.relative_to(ROOT)), "interpretation": "A significant positive coyote D supports excess coyote-lineage allele sharing relative to the listed western comparator. The wolf f4 ratio is conditional on the specified reference model; it is not a direct hybridization fraction. This script does not infer dog ancestry."}, indent=2) + "\n",
+        json.dumps(
+            {
+                "panel": str(PANEL.relative_to(ROOT)),
+                "samples": len(samples),
+                "variants": len(blocks),
+                "jackknife_blocks": len(np.unique(blocks)),
+                "methods": METHODS,
+                "targets": {name: members for name, members in TARGETS.items()},
+                "unsampled": UNSAMPLED,
+                "manifest": str(MANIFEST.relative_to(ROOT)),
+                "interpretation": INTERPRETATION,
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
     print(f"wrote {len(rows)} rows to {OUT / 'local_contrasts.csv'}")

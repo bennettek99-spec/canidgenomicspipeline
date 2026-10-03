@@ -10,8 +10,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 os.environ.setdefault("MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "canidae-matplotlib"))
-from matplotlib.font_manager import FontProperties, findfont  # noqa: E402
-
+from matplotlib.font_manager import FontProperties, findfont
 
 ROOT = Path(__file__).resolve().parents[1]
 CLINE = ROOT / "results" / "wolf_ancestry_cline"
@@ -52,7 +51,9 @@ def main() -> None:
             img = ImageOps.contain(original.convert("RGB"), (x1 - x0 - 38, y1 - y0 - 105))
             im.paste(img, (x0 + (x1 - x0 - img.width) // 2, y0 + 82))
 
-    figure_panel(CLINE / "wolf_ancestry_cline.png", (65, 245, 2168, 2120), "01  Genome-wide ancestry cline")
+    figure_panel(
+        CLINE / "wolf_ancestry_cline.png", (65, 245, 2168, 2120), "01  Genome-wide ancestry cline"
+    )
     figure_panel(
         CLINE / "robustness" / "wolf_cline_robustness.png",
         (2220, 245, 4335, 2120),
@@ -65,9 +66,11 @@ def main() -> None:
     )
 
     box = (2105, 2150, 4335, 3510)
-    x0, y0, x1, y1 = box
+    x0, y0, x1, _y1 = box
     draw.rounded_rectangle(box, radius=24, fill="white", outline="#d9e3eb", width=3)
-    draw.text((x0 + 40, y0 + 25), "04  Ten-group ancestry readout", fill=INK, font=font(38, bold=True))
+    draw.text(
+        (x0 + 40, y0 + 25), "04  Ten-group ancestry readout", fill=INK, font=font(38, bold=True)
+    )
     draw.text(
         (x0 + 40, y0 + 85),
         "Local 87,538-site panel • 38 chromosome jackknife blocks",
@@ -101,7 +104,12 @@ def main() -> None:
         draw.text((x0 + 750, yy + 8), f"{ratio:.1f}% ± {se:.1f}", fill=INK, font=font(27))
         d = float(row["coyote_d"])
         z = float(row["coyote_d_z"])
-        draw.text((x0 + 1530, yy + 8), f"{d:+.3f}  ({z:.2f})", fill=color if z > 3 else MUTED, font=font(27))
+        draw.text(
+            (x0 + 1530, yy + 8),
+            f"{d:+.3f}  ({z:.2f})",
+            fill=color if z > 3 else MUTED,
+            font=font(27),
+        )
         yy += 75
 
     draw.rounded_rectangle((x0 + 38, yy + 11, x1 - 38, yy + 116), radius=12, fill=LIGHT)
@@ -118,9 +126,16 @@ def main() -> None:
         font=font(24),
     )
     yy += 144
-    draw.text((x0 + 40, yy), "No matched local nuclear genotypes", fill=INK, font=font(28, bold=True))
+    draw.text(
+        (x0 + 40, yy), "No matched local nuclear genotypes", fill=INK, font=font(28, bold=True)
+    )
     yy += 47
-    for label in ("Historical Plains (C. l. nubilus; C. variabilis Wied 1841)", "Pacific Coast", "Atlantic Coast", "West Arctic"):
+    for label in (
+        "Historical Plains (C. l. nubilus; C. variabilis Wied 1841)",
+        "Pacific Coast",
+        "Atlantic Coast",
+        "West Arctic",
+    ):
         draw.text((x0 + 57, yy), "• " + label, fill=MUTED, font=font(25))
         yy += 43
 
@@ -139,13 +154,15 @@ def main() -> None:
 
     draw.text(
         (80, 3560),
-        "Source: results/north_american_wolf_admixture/local_contrasts.csv • Cline figures from results/wolf_ancestry_cline",
+        "Source: results/north_american_wolf_admixture/local_contrasts.csv"
+        " • Cline figures from results/wolf_ancestry_cline",
         fill=MUTED,
         font=font(26),
     )
     draw.text(
         (80, 3602),
-        "Regional published context and limitations: doi:10.1371/journal.pgen.1007745 • Full methods and accessions in the study README",
+        "Regional published context and limitations: doi:10.1371/journal.pgen.1007745"
+        " • Full methods and accessions in the study README",
         fill=MUTED,
         font=font(25),
     )
